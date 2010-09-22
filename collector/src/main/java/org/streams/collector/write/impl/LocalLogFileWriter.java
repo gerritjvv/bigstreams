@@ -1,0 +1,263 @@
+package org.streams.collector.write.impl;
+
+import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.util.Timer;
+import java.util.TimerTask;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.log4j.Logger;
+import org.streams.collector.write.FileOutputStreamPool;
+import org.streams.collector.write.FileOutputStreamPoolFactory;
+import org.streams.collector.write.LogFileNameExtractor;
+import org.streams.collector.write.LogFileWriter;
+import org.streams.collector.write.LogRolloverCheck;
+import org.streams.collector.write.WriterException;
+import org.streams.commons.file.FileTrackingStatus;
+
+/**
+ * This class has the following aims:<br/>
+ * 
+ * Split chunks out by logtype, and a date-time parameter. Currently the
+ * date-time parameter is based on the original log file name sent from the
+ * agent.
+ * <p/>
+ * <b>What type of log files</b> Really big ones :) <br/>
+ * Everything about this class should be aimed at collecting huge log files and
+ * will be optimized for this.<br/>
+ * <p/>
+ * <b>Why have this?:</b><br/>
+ * A group of collectors already act as a pre hadoop cluster for log processing,
+ * e.g. if we have 100 agents and <br/>
+ * 5 collectors, we have a cluster of 5 machines that can do simple pre log
+ * processing, rather than burden the hadoop ETL process<br/>
+ * with this. Splitting log files up by log type and date does not require
+ * looking at the actual data and is simple to do.<br/>
+ * <p/>
+ * <b></b> Several areas are of concern here:<br/>
+ * <b>Disk space:</b><br/>
+ * The writer should fail to write if there is not sufficient disk space (long
+ * before filling up the entire disk).
+ * <p/>
+ * <b>Log Size</b><br/>
+ * LZO of GZ should be used (Bzip2 can only write at most at 5mb/s so this might
+ * be to slow (depending on disk speed).<br/>
+ * LZO is the best here as the files can be loaded directly to HDFS.<br/>
+ * Ideally log files should be at a standard 128mb or 256mb size. Its easier to
+ * controll on the collector side than it is on hdfs.<br/>
+ * <b>Log rotate</b> We want to open and close as less as possible files but at
+ * the same time we want to make sure as soon as a Chunk has been AcK as OK its
+ * persisted to disk. The rotate should be on ath 128mb or 256mb size or on some
+ * time limit.<br/>
+ * <p/>
+ * This class is thread safe. i.e. all public methods are synchronized.
+ * <p/>
+ * <b>Thread safety<b/><br/>
+ * This class will synchronise on a key value (log type date hour). This means
+ * that two different keys will each write in parallel to different files, but
+ * when the key is the same for two or more requests the code will synchronise
+ * on the key value. This gives thread safety to the class in that no two
+ * requests will ever write in parallel to the same file.<br/>
+ * 
+ */
+public class LocalLogFileWriter implements LogFileWriter {
+
+	private static final Logger LOG = Logger
+			.getLogger(LocalLogFileWriter.class);
+
+	File baseDir;
+	CompressionCodec compressionCodec;
+	LogRolloverCheck rolloverCheck;
+	FileOutputStreamPoolFactory fileOutputStreamPoolFactory;
+
+	Timer rolloverTimer = null;
+
+	LogFileNameExtractor logFileNameExtractor;
+
+	/**
+	 * A timer is created and will check the log files for rollover.
+	 */
+	long logRolloverCheckPeriod = 1000L;
+
+	/**
+	 * This is only to be used for testing
+	 */
+	protected File lastWrittenFile;
+
+	public File getBaseDir() {
+		return baseDir;
+	}
+
+	/**
+	 * @return the number of bytes written
+	 */
+	public int write(FileTrackingStatus fileStatus, InputStream input)
+			throws WriterException {
+
+		String key = logFileNameExtractor.getFileName(fileStatus);
+		int wasWritten = 0;
+
+		try {
+
+			FileOutputStreamPool fileOutputStreamPool = fileOutputStreamPoolFactory
+					.getPoolForKey(key);
+			try {
+				File file = getOutputFile(key);
+				lastWrittenFile = file;
+
+				OutputStream outputStream = fileOutputStreamPool.open(key,
+						compressionCodec, file, true);
+
+				// we don't need to synchronise here. The FileOutputStreamPool
+				// will lock the output stream for use only by this thread
+				// until the releaseFile method is called
+				wasWritten = IOUtils.copy(input, outputStream);
+
+			} finally {
+				// make sure to releaseFile after writing
+				// this line throws an IOException for this its embedded
+				// inside
+				// the
+				// try catch.
+				fileOutputStreamPool.releaseFile(key);
+			}
+
+		} catch (IOException e) {
+
+			WriterException exp = new WriterException(e.toString(), e);
+			exp.setStackTrace(e.getStackTrace());
+			throw exp;
+
+		}
+
+		return wasWritten;
+
+	}
+
+	private final File getOutputFile(String key) {
+		return (compressionCodec == null) ? new File(baseDir, key) : new File(
+				baseDir, key + compressionCodec.getDefaultExtension());
+	}
+
+	/**
+	 * Close all resources related with the LocalLogFileWriter
+	 */
+	public void close() throws WriterException {
+
+		LOG.info("Closing files");
+
+		rolloverTimer.cancel();
+		rolloverTimer = null;
+
+		fileOutputStreamPoolFactory.closeAll();
+
+	}
+
+	public void init() {
+		rolloverTimer = new Timer("LocalFileWriter-LogRolloverCheck");
+
+		// use schedule instead of fixed schedule
+		rolloverTimer.schedule(new RolloverChecker(fileOutputStreamPoolFactory,
+				rolloverCheck), 10000L, logRolloverCheckPeriod);
+
+	}
+
+	class RolloverChecker extends TimerTask {
+
+		final FileOutputStreamPoolFactory fileOutputStreamPoolFactory;
+		final LogRolloverCheck logRolloverCheck;
+
+		public RolloverChecker(
+				FileOutputStreamPoolFactory fileOutputStreamPoolFactory,
+				LogRolloverCheck logRolloverCheck) {
+			this.fileOutputStreamPoolFactory = fileOutputStreamPoolFactory;
+			this.logRolloverCheck = logRolloverCheck;
+
+		}
+
+		boolean canceled = false;
+
+		public boolean cancel() {
+			canceled = true;
+			return super.cancel();
+		}
+
+		@Override
+		public void run() {
+
+			LOG.debug("Checking files for rollover notification");
+
+			if (canceled) {
+				LOG.error("Timer has been canceled");
+				return;
+			}
+
+			try {
+				// do not send if the rolloverCheck is null this might happend
+				// dueue to threading and this method
+				// being called from the Timer Thread.
+				if (logRolloverCheck != null
+						&& fileOutputStreamPoolFactory != null)
+					fileOutputStreamPoolFactory
+							.checkFilesForRollover(logRolloverCheck);
+			} catch (IOException e) {
+				LOG.error(e.toString(), e);
+			}
+
+		}
+	}
+
+	public CompressionCodec getCompressionCodec() {
+		return compressionCodec;
+	}
+
+	public void setCompressionCodec(CompressionCodec compressionCodec) {
+		this.compressionCodec = compressionCodec;
+	}
+
+	public LogRolloverCheck getRolloverCheck() {
+		return rolloverCheck;
+	}
+
+	public void setRolloverCheck(LogRolloverCheck rolloverCheck) {
+		this.rolloverCheck = rolloverCheck;
+	}
+
+	public File getLastWrittenFile() {
+		return lastWrittenFile;
+	}
+
+	public void setBaseDir(File baseDir) {
+		this.baseDir = baseDir;
+	}
+
+	public LogFileNameExtractor getLogFileNameExtractor() {
+		return logFileNameExtractor;
+	}
+
+	public void setLogFileNameExtractor(
+			LogFileNameExtractor logFileNameExtractor) {
+		this.logFileNameExtractor = logFileNameExtractor;
+	}
+
+	public FileOutputStreamPoolFactory getFileOutputStreamPoolFactory() {
+		return fileOutputStreamPoolFactory;
+	}
+
+	public void setFileOutputStreamPoolFactory(
+			FileOutputStreamPoolFactory fileOutputStreamPoolFactory) {
+		this.fileOutputStreamPoolFactory = fileOutputStreamPoolFactory;
+	}
+
+	public long getLogRolloverCheckPeriod() {
+		return logRolloverCheckPeriod;
+	}
+
+	public void setLogRolloverCheckPeriod(long logRolloverCheckPeriod) {
+		this.logRolloverCheckPeriod = logRolloverCheckPeriod;
+	}
+
+}

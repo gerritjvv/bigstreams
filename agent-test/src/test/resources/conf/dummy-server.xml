@@ -1,0 +1,22 @@
+<configuration>
+
+<property>
+ <name>test.server.port</name>
+ <vaule>5040</vaule>
+</property>
+
+<property>
+ <name>test.server.port</name>
+ <vaule>5040</vaule>
+</property>
+
+<property>
+ <name>logwriter.dir</name>
+ <value>/tmp/testlogs</value>
+</property>
+
+<property>
+ <name>test.server.logdir</name>
+ <value>/tmp/serverlogdir</value>
+</property>
+</configuration>

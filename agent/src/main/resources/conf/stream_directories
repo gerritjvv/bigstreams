@@ -1,0 +1,6 @@
+#this is a comment
+/**
+* another comment
+*/
+test1 /root/test-logs/logs1/*.txt
+test2 /root/test-logs/logs2/*.txt
