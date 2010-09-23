@@ -9,9 +9,12 @@
 abspath=$(cd ${0%/*} && echo $PWD/${0##*/})
 STREAMS_BIN_HOME=`dirname $abspath`
 
-STREAMS_HOME=$STREAMS_BIN_HOME/../
+export STREAMS_HOME=$STREAMS_BIN_HOME/../
 
 export STREAMS_CONF_DIR=$STREAMS_HOME/conf
+
+#source environment variables
+. $STREAMS_CONF_DIR/streams-env.sh
 
 # some Java parameters
 if [ "$JAVA_HOME" != "" ]; then
@@ -25,7 +28,11 @@ if [ "$JAVA_HOME" = "" ]; then
 fi
 
 JAVA=$JAVA_HOME/bin/java
-JAVA_HEAP_MAX="-Xmx1024m"
+
+
+if [ -z $JAVA_HEAP ]; then
+ export JAVA_HEAP="-Xmx1024m"
+fi
 
 # check envvars which might override default args
 # CLASSPATH initially contains $STREAMS_CONF_DIR
@@ -46,5 +53,5 @@ CLASSPATH=$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH
 
 
 
-exec "$JAVA" $JAVA_HEAP_MAX -classpath "$CLASSPATH" $CLASS "$@"
+exec "$JAVA" $JAVA_HEAP $JAVA_OPTS-classpath "$CLASSPATH" $CLASS "$@"
 
