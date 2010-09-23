@@ -6,6 +6,7 @@ import java.util.List;
 
 import javax.inject.Inject;
 
+import org.apache.log4j.Logger;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Request;
@@ -47,6 +48,8 @@ import org.streams.coordination.cli.startup.service.impl.CollectorServerService;
 @Configuration
 public class CollectorDI {
 
+	private static final Logger LOG = Logger.getLogger(CollectorDI.class);
+	
 	@Inject
 	BeanFactory beanFactory;
 
@@ -203,13 +206,17 @@ public class CollectorDI {
 				.getBean(org.apache.commons.configuration.Configuration.class);
 		Component component = new Component();
 
+		int port = configuration.getInt(
+				CollectorProperties.WRITER.COLLECTOR_MON_PORT
+				.toString(),
+		(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
+				.getDefaultValue());
+		
+		LOG.info("Using collector monitoring port: " + port);
+		
 		component.getServers().add(
 				org.restlet.data.Protocol.HTTP,
-				configuration.getInt(
-						CollectorProperties.WRITER.COLLECTOR_MON_PORT
-								.toString(),
-						(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
-								.getDefaultValue()));
+				port);
 		component.getDefaultHost().attach(restApplication());
 
 		return component;
