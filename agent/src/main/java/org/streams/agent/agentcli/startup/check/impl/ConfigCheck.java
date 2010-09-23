@@ -58,11 +58,18 @@ public class ConfigCheck extends AbstractStartupCheck {
 		for (File file : files) {
 			// see the javadoc above for a textual explanation of each check
 			// performed here.
-			checkTrue(file.exists(), "The directory " + file.getAbsolutePath()
+			String fileName = file.getName();
+			File dirToCheck = file;
+			
+			if(fileName.contains("*") || fileName.contains("?")){
+				dirToCheck = file.getParentFile();
+			}
+			
+			checkTrue(dirToCheck.exists(), "The directory " + dirToCheck.getAbsolutePath()
 					+ " does not exist");
-			checkTrue(file.isDirectory(), "The path " + file.getAbsolutePath()
+			checkTrue(dirToCheck.isDirectory(), "The path " + dirToCheck.getAbsolutePath()
 					+ " must be a directory");
-			checkTrue(file.canRead(), "The path " + file.getAbsolutePath()
+			checkTrue(dirToCheck.canRead(), "The path " + dirToCheck.getAbsolutePath()
 					+ " is not readable");
 
 			String logType = logDirConf.getLogType(file);

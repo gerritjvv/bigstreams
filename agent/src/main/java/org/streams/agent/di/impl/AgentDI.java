@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Map;
 
 import javax.inject.Inject;
-import javax.inject.Singleton;
 import javax.persistence.EntityManagerFactory;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -45,7 +44,6 @@ import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.impl.ThreadedDirectoryWatcher;
 import org.streams.agent.mon.AgentStatus;
 import org.streams.agent.mon.impl.AgentShutdownResource;
-import org.streams.agent.mon.impl.AgentStatusImpl;
 import org.streams.agent.mon.impl.AgentStatusResource;
 import org.streams.agent.mon.impl.FileStatusCleanoutManager;
 import org.streams.agent.mon.impl.FileTrackingStatusCountResource;
@@ -73,7 +71,6 @@ import org.streams.commons.app.impl.RestletService;
 import org.streams.commons.cli.AppStartCommand;
 import org.streams.commons.io.Protocol;
 
-
 /**
  * Injects the AppLifeCycleManager and all of its dependencies
  * 
@@ -83,12 +80,6 @@ public class AgentDI {
 
 	@Autowired(required = true)
 	BeanFactory beanFactory;
-
-	@Bean
-	@Singleton
-	public AgentStatus agentStatus() {
-		return new AgentStatusImpl();
-	}
 
 	@Bean
 	public AppStartCommand startAgent() throws Exception {
@@ -239,8 +230,7 @@ public class AgentDI {
 
 			@Override
 			public ServerResource find(Request request, Response response) {
-				return new AgentStatusResource(
-						beanFactory.getBean(AgentStatus.class));
+				return beanFactory.getBean(AgentStatusResource.class);
 			}
 
 		};
@@ -295,6 +285,15 @@ public class AgentDI {
 		return app;
 	}
 
+	@Bean
+	@Lazy
+	public AgentStatusResource agentStatusResource(){
+		AgentStatusResource resource = new AgentStatusResource();
+		resource.setStatus(beanFactory.getBean(AgentStatus.class));
+		
+		return resource;
+	}
+	
 	@Bean
 	@Lazy
 	public FileStatusCleanoutManager fileStatusCleanoutManager()

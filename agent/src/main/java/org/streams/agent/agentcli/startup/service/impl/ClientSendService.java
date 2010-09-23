@@ -71,7 +71,9 @@ public class ClientSendService implements ApplicationService {
 
 		clientSendThreads.clear();
 		// start shutting down all threads used in the ExecutorService
-		service.shutdown();
+		if(service != null){
+			service.shutdown();
+		}
 
 	}
 

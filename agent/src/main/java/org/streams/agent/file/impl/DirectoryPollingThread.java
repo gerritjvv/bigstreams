@@ -91,10 +91,14 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 				// we need to check if wild cards are included in the file name
 				// if so create the filter
 				String name = directory.getName();
+				LOG.info("Directory " + directory + " name: " + name + " dir: " + dir);
+				
 				if (name.contains("*") || name.contains("?")) {
 					directory = directory.getParentFile();
+					LOG.info("USING File Filter:" + name);
 					filter = new WildcardFileFilter(name);
 				} else {
+					LOG.info("USING File Filter: *");
 					filter = new WildcardFileFilter("*");
 				}
 			}else{

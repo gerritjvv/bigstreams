@@ -2,16 +2,15 @@ package org.streams.agent.file;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Iterator;
 
 import junit.framework.TestCase;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.filefilter.IOFileFilter;
+import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.junit.Test;
-import org.streams.agent.file.DirectoryWatchListener;
-import org.streams.agent.file.DirectoryWatcher;
-import org.streams.agent.file.DirectoryWatcherFactory;
-import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.impl.ThreadedDirectoryWatcher;
 import org.streams.agent.main.Bootstrap;
 import org.streams.agent.send.utils.MapTrackerMemory;
@@ -38,6 +37,7 @@ public class TestDirectoryWatcher extends TestCase {
 		bootstrap = new Bootstrap();
 		bootstrap.loadProfiles(CommandLineProcessorFactory.PROFILE.DB,
 				CommandLineProcessorFactory.PROFILE.CLI,
+				CommandLineProcessorFactory.PROFILE.REST_CLIENT,
 				CommandLineProcessorFactory.PROFILE.AGENT);
 
 	}
@@ -137,6 +137,44 @@ public class TestDirectoryWatcher extends TestCase {
 		watch.close();
 
 	}
+	
+	@Test
+	public void testDirectoryWatcherFileCreateUnseenFileGlob() throws InterruptedException,
+			IOException {
+
+		File testMethodDir = new File(testDirectoryFile, "fileCreateUnseenFileGlob");
+		testMethodDir.mkdirs();
+
+		//create test files
+		for(int i = 0; i < 10; i++){
+			new File(testMethodDir, "transactions.log.2010-10-01." + i).createNewFile();
+		}
+		
+		//create unseen file
+		new File(testMethodDir, "transactions.log").createNewFile();
+		
+		
+		File directory = new File(testMethodDir.getAbsolutePath() + "/transactions.log.*");
+		
+		// we need to check if wild cards are included in the file name
+			// if so create the filter
+		IOFileFilter filter = null;
+		
+		String name = directory.getName();
+		if (name.contains("*") || name.contains("?")) {
+			directory = directory.getParentFile();
+			filter = new WildcardFileFilter(name);
+		} else {
+			filter = new WildcardFileFilter("*");
+		}
+
+		Iterator filesIt = FileUtils.iterateFiles(directory, filter, TrueFileFilter.INSTANCE);
+		while(filesIt.hasNext()){
+			File file = (File) filesIt.next();
+			System.out.println(file.getName());
+		}
+	}
+
 
 	@Test
 	public void testDirectoryWatcherFileCreate() throws InterruptedException,

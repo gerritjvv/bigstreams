@@ -84,14 +84,15 @@ public class LogDirConf {
 				}
 
 				
-				File dir = new File(directoryPath);
+				File globDir = new File(directoryPath);
 				
 				//check for wild cards in the path
 				//if any exist we can only check the parent directory.
 				//e.g. /listfile/*.* can only check /listfile/
-				String name = dir.getName();
+				String name = globDir.getName();
+				File dir = globDir;
 				if(name.contains("*") || name.contains("?")){
-					dir = dir.getParentFile();
+					dir = globDir.getParentFile();
 				}
 				
 				if (!(dir.exists() && dir.isDirectory() && dir.canRead())) {
@@ -104,9 +105,9 @@ public class LogDirConf {
 							+ dir + " in file ");
 				}
 
-				logDirs.put(dir, logType);
+				logDirs.put(globDir, logType);
 				if (LOG.isDebugEnabled()) {
-					LOG.debug("Register directory " + dir.getAbsolutePath()
+					LOG.debug("Register directory " + globDir.getAbsolutePath()
 							+ " logType: " + logType);
 				}
 			}

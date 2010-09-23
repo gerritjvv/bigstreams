@@ -9,9 +9,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.streams.agent.conf.AgentProperties;
+import org.streams.agent.mon.AgentStatus;
+import org.streams.agent.mon.impl.AgentStatusImpl;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
-
 
 /**
  * DI for the Agent
@@ -22,6 +23,11 @@ public class AgentCommonDI {
 
 	@Autowired(required = true)
 	org.apache.commons.configuration.Configuration configuration;
+
+	@Bean
+	public AgentStatus agentStatus() {
+		return new AgentStatusImpl();
+	}
 
 	@Bean
 	public Protocol protocol() {
