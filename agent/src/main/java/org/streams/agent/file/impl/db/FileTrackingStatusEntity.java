@@ -155,7 +155,7 @@ public class FileTrackingStatusEntity implements Serializable {
 				fileTrackingStatus.getStatus().toString().toUpperCase(),
 				fileTrackingStatus.getLinePointer(),
 				fileTrackingStatus.getFilePointer(),
-				fileTrackingStatus.getLogType().toUpperCase());
+				fileTrackingStatus.getLogType().toLowerCase());
 	}
 	
 	/**
@@ -183,7 +183,7 @@ public class FileTrackingStatusEntity implements Serializable {
 
 		return new FileTrackingStatus(getLastModificationTime(), getFileSize(),
 				getPath(), FileTrackingStatus.STATUS.valueOf(getStatus()),
-				getLinePointer(), getFilePointer(), getLogType().toUpperCase());
+				getLinePointer(), getFilePointer(), getLogType().toLowerCase());
 
 	}
 
