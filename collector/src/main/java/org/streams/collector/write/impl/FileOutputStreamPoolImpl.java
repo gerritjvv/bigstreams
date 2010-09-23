@@ -163,19 +163,21 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 						+ openFileLimit.get());
 			}
 
+			//these operations need to happend atomically so we must synch
 			if (file.length() > 0 && file.exists()) {
 				// if the file already exists it must be rolled before
 				closeLockedFile(key);
+				
+				if(file.exists()){
+					// we never expect this condition to happen but the local OS
+					// might be out of file handlers causing this condition to be
+					// true
+					throw new IOException("The file " + file.getAbsolutePath()
+							+ " was rolled over but the OS failed to move the file");
+				}
+				
 			}
 
-			// if the file exists throw an error
-			if (file.exists()) {
-				// we never expect this condition to happen but the local OS
-				// might be out of file handlers causing this condition to be
-				// true
-				throw new IOException("The file " + file.getAbsolutePath()
-						+ " was rolled over but the OS failed to move the file");
-			}
 
 			FileUtils.forceMkdir(file.getParentFile());
 			file.createNewFile();

@@ -13,6 +13,10 @@ STREAMS_HOME=$STREAMS_BIN_HOME/../
 
 export STREAMS_CONF_DIR=$STREAMS_HOME/conf
 
+#source environment variables
+. $STREAMS_CONF_DIR/streams-env.sh
+
+
 # some Java parameters
 if [ "$JAVA_HOME" != "" ]; then
     #echo "run java in $JAVA_HOME"
@@ -25,7 +29,11 @@ if [ "$JAVA_HOME" = "" ]; then
 fi
 
 JAVA=$JAVA_HOME/bin/java
-JAVA_HEAP_MAX="-Xmx1024m"
+
+
+if [ -z $JAVA_HEAP ]; then
+ export JAVA_HEAP="-Xmx1024m"
+fi
 
 # check envvars which might override default args
 # CLASSPATH initially contains $STREAMS_CONF_DIR
@@ -46,5 +54,5 @@ CLASSPATH=$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH
 
 
 
-exec "$JAVA" $JAVA_HEAP_MAX -Djava.library.path="$STREAMS_HOME/lib/native/Linux-amd64-64/" -classpath "$CLASSPATH" $CLASS "$@"
+exec "$JAVA" $JAVA_HEAP $JAVA_OPTS -Djava.library.path="$STREAMS_HOME/lib/native/Linux-amd64-64/" -classpath "$CLASSPATH" $CLASS "$@"
 
