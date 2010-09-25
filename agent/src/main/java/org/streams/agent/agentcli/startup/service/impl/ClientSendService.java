@@ -9,8 +9,10 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.log4j.Logger;
+import org.jboss.netty.util.HashedWheelTimer;
+import org.jboss.netty.util.Timer;
 import org.streams.agent.send.ClientSendThread;
-import org.streams.agent.send.ClientSendThreadFactory;
+import org.streams.agent.send.ClientResourceFactory;
 import org.streams.commons.app.ApplicationService;
 
 
@@ -32,15 +34,24 @@ public class ClientSendService implements ApplicationService {
 
 	int clientSendThreadTotal = 10;
 	
-	ClientSendThreadFactory clientSendThreadFactory;
+	ClientResourceFactory clientSendThreadFactory;
+	
+	ExecutorService threadServiceExec;
+	ExecutorService threadServiceWorker;
+
+	Timer timeoutTimer;
 	
 	public ClientSendService(){}
 	
 	public ClientSendService(int clientSendThreadTotal,
-			ClientSendThreadFactory clientSendThreadFactory) {
+			ClientResourceFactory clientSendThreadFactory) {
 		super();
 		this.clientSendThreadTotal = clientSendThreadTotal;
 		this.clientSendThreadFactory = clientSendThreadFactory;
+		threadServiceExec = Executors.newCachedThreadPool();
+		threadServiceWorker = Executors.newCachedThreadPool();
+		timeoutTimer = new HashedWheelTimer();
+		
 	}
 
 	/**
@@ -55,7 +66,7 @@ public class ClientSendService implements ApplicationService {
 		service = Executors.newFixedThreadPool(clientSendThreadTotal);
 
 		for (int i = 0; i < clientSendThreadTotal; i++) {
-			ClientSendThread sendThread = clientSendThreadFactory.get();
+			ClientSendThread sendThread = clientSendThreadFactory.get(threadServiceExec, threadServiceWorker, timeoutTimer);
 			clientSendThreads.add(sendThread);
 			service.submit(sendThread);
 		}
@@ -85,13 +96,13 @@ public class ClientSendService implements ApplicationService {
 		this.clientSendThreadTotal = clientSendThreadTotal;
 	}
 
-	public ClientSendThreadFactory getClientSendThreadFactory() {
+	public ClientResourceFactory getClientSendThreadFactory() {
 		return clientSendThreadFactory;
 	}
 
 	@Inject
 	public void setClientSendThreadFactory(
-			ClientSendThreadFactory clientSendThreadFactory) {
+			ClientResourceFactory clientSendThreadFactory) {
 		this.clientSendThreadFactory = clientSendThreadFactory;
 	}
 
