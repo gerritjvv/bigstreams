@@ -9,11 +9,13 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManagerFactory;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.jboss.netty.util.Timer;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Request;
@@ -33,7 +35,6 @@ import org.streams.agent.agentcli.startup.check.impl.CodecCheck;
 import org.streams.agent.agentcli.startup.check.impl.ConfigCheck;
 import org.streams.agent.agentcli.startup.check.impl.FileTrackingStatusStartupCheck;
 import org.streams.agent.agentcli.startup.check.impl.PersistenceCheck;
-import org.streams.agent.agentcli.startup.service.impl.ClientSendService;
 import org.streams.agent.agentcli.startup.service.impl.DirectoryPollingService;
 import org.streams.agent.agentcli.startup.service.impl.StatusCleanoutService;
 import org.streams.agent.conf.AgentProperties;
@@ -52,16 +53,17 @@ import org.streams.agent.mon.impl.FileTrackingStatusResource;
 import org.streams.agent.send.Client;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
-import org.streams.agent.send.ClientSendThread;
-import org.streams.agent.send.ClientSendThreadFactory;
+import org.streams.agent.send.ClientResourceFactory;
+import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.FilesToSendQueue;
-import org.streams.agent.send.ThreadContext;
-import org.streams.agent.send.impl.AbstractClientConnectionFactory;
+import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
 import org.streams.agent.send.impl.ClientConnectionImpl;
-import org.streams.agent.send.impl.ClientFileSendThreadImpl;
 import org.streams.agent.send.impl.ClientImpl;
+import org.streams.agent.send.impl.ClientResourceFactoryImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
+import org.streams.agent.send.impl.FileSendTaskImpl;
+import org.streams.agent.send.impl.FilesSendService;
 import org.streams.agent.send.impl.FilesToSendQueueImpl;
 import org.streams.commons.app.AppLifeCycleManager;
 import org.streams.commons.app.ApplicationService;
@@ -138,7 +140,7 @@ public class AgentDI {
 		List<ApplicationService> serviceList = Arrays.asList(
 				beanFactory.getBean(DirectoryPollingService.class),
 				beanFactory.getBean(RestletService.class),
-				beanFactory.getBean(ClientSendService.class));
+				beanFactory.getBean(FilesSendService.class));
 
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				null);
@@ -154,27 +156,28 @@ public class AgentDI {
 				.getBean(FileStatusCleanoutManager.class);
 
 		int statusCleanoutInterval = configuration.getInt(
-				AgentProperties.STATUS_CLEANOUT_INTERVAL, 86400);
+				AgentProperties.STATUS_CLEANOUT_INTERVAL, 20000);
 		StatusCleanoutService service = new StatusCleanoutService(
-				fileStatusCleanoutManager, 10, statusCleanoutInterval);
+				fileStatusCleanoutManager, 60000, statusCleanoutInterval);
 
 		return service;
 	}
 
 	@Bean
 	@Lazy
-	public ClientSendService clientSendService() throws Exception {
+	public FilesSendService filesSendService() throws Exception {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
-		ClientSendThreadFactory clientSendThreadFactory = beanFactory
-				.getBean(ClientSendThreadFactory.class);
 
 		int clientThreadCount = configuration.getInt(
 				AgentProperties.CLIENT_THREAD_COUNT, 5);
 
-		ClientSendService service = new ClientSendService(clientThreadCount,
-				clientSendThreadFactory);
-		return service;
+		return new FilesSendService(
+				beanFactory.getBean(ClientResourceFactory.class),
+				beanFactory.getBean(FileSendTask.class), clientThreadCount,
+				beanFactory.getBean(AgentStatus.class),
+				beanFactory.getBean(FileTrackerMemory.class),
+				beanFactory.getBean(FilesToSendQueue.class));
 	}
 
 	@Bean
@@ -287,13 +290,13 @@ public class AgentDI {
 
 	@Bean
 	@Lazy
-	public AgentStatusResource agentStatusResource(){
+	public AgentStatusResource agentStatusResource() {
 		AgentStatusResource resource = new AgentStatusResource();
 		resource.setStatus(beanFactory.getBean(AgentStatus.class));
-		
+
 		return resource;
 	}
-	
+
 	@Bean
 	@Lazy
 	public FileStatusCleanoutManager fileStatusCleanoutManager()
@@ -339,9 +342,10 @@ public class AgentDI {
 
 				ThreadedDirectoryWatcher watcher = map.get(directory);
 				if (watcher == null) {
-					// get polling interval, default is 10 seconds
+					// get polling interval, default is 20 seconds
 					int pollingInterval = configuration.getInt(
-							AgentProperties.DIRECTORY_WATCH_POLL_INTERVAL, 10);
+							AgentProperties.DIRECTORY_WATCH_POLL_INTERVAL,
+							20000);
 					watcher = new ThreadedDirectoryWatcher(logType,
 							pollingInterval, fileTrackerMemory);
 					watcher.setDirectory(directory.getAbsolutePath());
@@ -427,9 +431,12 @@ public class AgentDI {
 		// create factory passing the connection class to the factory.
 		// the factory class will take charge or creating the connection
 		// instances
-		AbstractClientConnectionFactory fact = new AbstractClientConnectionFactory() {
-			protected ClientConnection createConnection() {
-				return new ClientConnectionImpl();
+		ClientConnectionFactoryImpl fact = new ClientConnectionFactoryImpl() {
+			protected ClientConnection createConnection(
+					ExecutorService workerBossService,
+					ExecutorService workerService, Timer timeoutTimer) {
+				return new ClientConnectionImpl(workerBossService,
+						workerService, timeoutTimer);
 			}
 		};
 
@@ -451,73 +458,38 @@ public class AgentDI {
 		String className = configuration
 				.getString(AgentProperties.CLIENT_CLASS);
 
+		Client client = null;
 		Class<? extends Client> clientClass = null;
 
 		if (className == null) {
-			clientClass = ClientImpl.class;
+			client = new ClientImpl(beanFactory.getBean(FileStreamer.class),
+					beanFactory.getBean(ClientConnectionFactory.class));
 		} else {
 			clientClass = (Class<? extends Client>) Thread.currentThread()
 					.getContextClassLoader().loadClass(className);
-		}
 
-		Client client = clientClass.newInstance();
-		client.setClientConnectionFactory(clientConnectionFactory());
-		client.setFileStreamer(fileStreamer());
+			client = clientClass.newInstance();
+			client.setClientConnectionFactory(beanFactory
+					.getBean(ClientConnectionFactory.class));
+			client.setFileStreamer(beanFactory.getBean(FileStreamer.class));
+
+		}
 
 		return client;
 	}
 
-	/**
-	 * Creates an ExecutorService with as many client send threads as specified
-	 * by the CLIENT_THREAD_COUNT property.
-	 * 
-	 * @return
-	 * @throws MalformedURLException
-	 * @throws InstantiationException
-	 * @throws IllegalAccessException
-	 * @throws ClassNotFoundException
-	 */
 	@Bean
-	@Lazy
-	public ClientSendThreadFactory clientSendThreadFactory()
-			throws MalformedURLException, InstantiationException,
-			IllegalAccessException, ClassNotFoundException {
-
-		return new ClientSendThreadFactory() {
-			@Override
-			public ClientSendThread get() {
-				try {
-					return clientFileSendThread();
-				} catch (Exception t) {
-					RuntimeException rte = new RuntimeException(t.toString(), t);
-					rte.setStackTrace(t.getStackTrace());
-					throw rte;
-				}
-			}
-		};
-
+	public ClientResourceFactory clientResourceFactory() {
+		return new ClientResourceFactoryImpl(
+				beanFactory.getBean(ClientConnectionFactory.class),
+				beanFactory.getBean(FileStreamer.class));
 	}
 
-	/**
-	 * Returns an instance of the ClientFileSendThread
-	 * 
-	 * @return
-	 * @throws InstantiationException
-	 * @throws IllegalAccessException
-	 * @throws ClassNotFoundException
-	 * @throws MalformedURLException
-	 */
-	@Bean
-	@Scope("prototype")
-	@Lazy
-	public ClientSendThread clientFileSendThread() throws Exception {
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
-		FileTrackerMemory fileTrackerMemory = beanFactory
-				.getBean(FileTrackerMemory.class);
+	public FileSendTask fileSendTask() throws MalformedURLException {
 
 		// get and parse the collector address
-		org.apache.commons.configuration.Configuration conf = configuration;
+		org.apache.commons.configuration.Configuration conf = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
 		String collector = conf.getString(AgentProperties.COLLECTOR);
 
 		if (collector == null) {
@@ -532,21 +504,10 @@ public class AgentDI {
 		InetSocketAddress collectorAddress = new InetSocketAddress(
 				url.getHost(), url.getPort());
 
-		// get wait and retry parameters
-		long waitIfEmpty = conf.getLong(AgentProperties.THREAD_WAIT_IFEMPTY,
-				60000L);
-		int retries = conf.getInt(AgentProperties.THREAD_RETRIES, 3);
+		return new FileSendTaskImpl(
+				beanFactory.getBean(ClientResourceFactory.class),
+				collectorAddress, beanFactory.getBean(FileTrackerMemory.class));
 
-		AgentStatus agentStatus = beanFactory.getBean(AgentStatus.class);
-		ThreadContext threadContext = new ThreadContext(fileTrackerMemory,
-				filesToSendQueue(), client(), collectorAddress, agentStatus,
-				waitIfEmpty, retries);
-
-		ClientFileSendThreadImpl thread = new ClientFileSendThreadImpl(
-				threadContext);
-
-		agentStatus.incCounter("CLIENT_SEND_THREAD", 1);
-		return thread;
 	}
 
 	@Bean

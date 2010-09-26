@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.Collection;
+import java.util.concurrent.ExecutorService;
 
 import junit.framework.TestCase;
 
@@ -18,6 +19,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.jboss.netty.util.Timer;
 import org.junit.Before;
 import org.junit.Test;
 import org.streams.agent.file.FileTrackingStatus;
@@ -25,13 +27,16 @@ import org.streams.agent.mon.AgentStatus;
 import org.streams.agent.mon.impl.AgentStatusImpl;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
+import org.streams.agent.send.ClientResourceFactory;
+import org.streams.agent.send.FileSendTask;
+import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.FilesToSendQueue;
-import org.streams.agent.send.ThreadContext;
-import org.streams.agent.send.impl.AbstractClientConnectionFactory;
+import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
 import org.streams.agent.send.impl.ClientConnectionImpl;
-import org.streams.agent.send.impl.ClientFileSendThreadImpl;
-import org.streams.agent.send.impl.ClientImpl;
+import org.streams.agent.send.impl.ClientResourceFactoryImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
+import org.streams.agent.send.impl.FileSendTaskImpl;
+import org.streams.agent.send.impl.FilesSendWorkerImpl;
 import org.streams.agent.send.impl.FilesToSendQueueImpl;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.agent.send.utils.MessageEventBag;
@@ -89,14 +94,15 @@ public class TestClientServerFailures extends TestCase {
 
 		int port = serverUtil.getPort();
 
-		ThreadContext context = createThreadContext(new InetSocketAddress(port));
+		MapTrackerMemory memory = new MapTrackerMemory();
 
-		ClientFileSendThreadImpl clientSendThread = new ClientFileSendThreadImpl(
-				context);
+		AgentStatus agentStatus = new AgentStatusImpl();
+		FilesSendWorkerImpl worker = createWorker(memory, agentStatus, port);
+
 		try {
 
 			// start the clientSendThread
-			Thread thread = new Thread(clientSendThread);
+			Thread thread = new Thread(worker);
 			thread.setName("TestClientSendThread");
 			thread.setDaemon(true);
 			thread.start();
@@ -120,8 +126,7 @@ public class TestClientServerFailures extends TestCase {
 
 			// introduce errors at every 10 counts
 			int counter = 0;
-			while (context.getMemory().getFiles(FileTrackingStatus.STATUS.DONE)
-					.size() == 0) {
+			while (memory.getFiles(FileTrackingStatus.STATUS.DONE).size() == 0) {
 				Thread.sleep(500L);
 
 				if ((counter++) % 10 == 0) {
@@ -133,7 +138,7 @@ public class TestClientServerFailures extends TestCase {
 			}
 
 			// we have a file done here
-			Collection<FileTrackingStatus> statusList = context.getMemory()
+			Collection<FileTrackingStatus> statusList = memory
 					.getFiles(FileTrackingStatus.STATUS.DONE);
 
 			assertNotNull(statusList);
@@ -145,7 +150,6 @@ public class TestClientServerFailures extends TestCase {
 
 		} finally {
 
-			context.setShutdown();
 			Thread.sleep(500);
 			serverUtil.close();
 
@@ -182,9 +186,9 @@ public class TestClientServerFailures extends TestCase {
 						bag.getBytes());
 				DataInputStream datInput = new DataInputStream(inputStream);
 				// read header
-				
+
 				Header header = new ProtocolImpl().read(conf, datInput);
-				
+
 				assertEquals(fileToStream.getAbsolutePath(),
 						header.getFileName());
 				assertEquals("Test", header.getLogType());
@@ -214,29 +218,6 @@ public class TestClientServerFailures extends TestCase {
 
 	}
 
-	private ThreadContext createThreadContext(InetSocketAddress address) {
-		FileLineStreamerImpl fileLineStreamer = new FileLineStreamerImpl(codec,
-				500L);
-		ClientConnectionFactory ccFact = new AbstractClientConnectionFactory(){
-
-			protected ClientConnection createConnection() {
-				return new ClientConnectionImpl();
-			}
-			
-		};
-		ccFact.setProtocol(new ProtocolImpl());
-		
-		ClientImpl chunkSend = new ClientImpl(
-				fileLineStreamer, ccFact);
-
-		MapTrackerMemory memory = new MapTrackerMemory();
-		AgentStatus agentStatus = new AgentStatusImpl();
-		ThreadContext context = new ThreadContext(memory,
-				createFilesToSendQueue(memory), chunkSend, address, agentStatus, 500L, 1);
-
-		return context;
-	}
-
 	/**
 	 * Creates a FilestoSendQueue inserting an instance of the
 	 * FileTrackingStatus into the FileTrackerMemory.
@@ -250,6 +231,37 @@ public class TestClientServerFailures extends TestCase {
 
 		return queue;
 
+	}
+
+	private FilesSendWorkerImpl createWorker(MapTrackerMemory memory,
+			AgentStatus agentStatus, int port) {
+		FilesToSendQueue queue = createFilesToSendQueue(memory);
+
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl() {
+
+			protected ClientConnection createConnection(
+					ExecutorService workerBossService,
+					ExecutorService workerService, Timer timeoutTimer) {
+				return new ClientConnectionImpl(workerBossService,
+						workerService, timeoutTimer);
+			}
+
+		};
+		ccFact.setConnectEstablishTimeout(10000L);
+		ccFact.setSendTimeOut(10000L);
+		ccFact.setProtocol(new ProtocolImpl());
+
+		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, 500L);
+
+		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
+				ccFact, fileLineStreamer);
+		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
+				new InetSocketAddress("localhost", port), memory);
+
+		FilesSendWorkerImpl worker = new FilesSendWorkerImpl(queue,
+				agentStatus, memory, fileSendTask);
+
+		return worker;
 	}
 
 	/**
@@ -273,9 +285,9 @@ public class TestClientServerFailures extends TestCase {
 
 	@Before
 	public void setUp() throws Exception {
-		
+
 		conf = new SystemConfiguration();
-		
+
 		// Create LZO Codec
 		org.apache.hadoop.conf.Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
 		LzoCodec lzoCodec = new LzoCodec();

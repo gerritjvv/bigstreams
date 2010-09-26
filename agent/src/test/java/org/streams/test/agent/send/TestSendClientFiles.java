@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
+import java.util.concurrent.ExecutorService;
 
 import junit.framework.TestCase;
 
@@ -16,6 +17,7 @@ import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.jboss.netty.util.Timer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,7 +27,7 @@ import org.streams.agent.send.Client;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.FileStreamer;
-import org.streams.agent.send.impl.AbstractClientConnectionFactory;
+import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
 import org.streams.agent.send.impl.ClientConnectionImpl;
 import org.streams.agent.send.impl.ClientImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
@@ -62,10 +64,10 @@ public class TestSendClientFiles extends TestCase {
 	public void testSendFile() throws Exception {
 		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, 5000);
 
-		ClientConnectionFactory ccFact = new AbstractClientConnectionFactory() {
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl() {
 
-			protected ClientConnection createConnection() {
-				return new ClientConnectionImpl();
+			protected ClientConnection createConnection(ExecutorService workerBossService, ExecutorService workerService, Timer timeoutTimer){
+				return new ClientConnectionImpl(workerBossService, workerService, timeoutTimer);
 			}
 
 		};

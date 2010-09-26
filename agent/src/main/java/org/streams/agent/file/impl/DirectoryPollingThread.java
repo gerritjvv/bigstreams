@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Iterator;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
@@ -14,7 +15,6 @@ import org.streams.agent.file.DirectoryWatchListener;
 import org.streams.agent.file.DirectoryWatcher;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
-
 
 /**
  * 
@@ -60,7 +60,8 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 
 	String logType = null;
 
-	
+	AtomicBoolean isClosed = new AtomicBoolean(false);
+
 	public DirectoryPollingThread(FileTrackerMemory fileTrackerMemory) {
 		logType = "DEFAULT";
 		this.fileTrackerMemory = fileTrackerMemory;
@@ -82,40 +83,42 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 		try {
 
 			Iterator filesIt = null;
-			
+
 			File directory = new File(dir);
-			
+
 			IOFileFilter filter = null;
-			
-			if (fileFilter == null) {
-				// we need to check if wild cards are included in the file name
-				// if so create the filter
-				String name = directory.getName();
-				LOG.info("Directory " + directory + " name: " + name + " dir: " + dir);
-				
-				if (name.contains("*") || name.contains("?")) {
-					directory = directory.getParentFile();
-					LOG.info("USING File Filter:" + name);
-					filter = new WildcardFileFilter(name);
-				} else {
-					LOG.info("USING File Filter: *");
-					filter = new WildcardFileFilter("*");
-				}
-			}else{
+
+			// we need to check if wild cards are included in the file name
+			// if so create the filter
+			String name = directory.getName();
+			LOG.info("Directory " + directory + " name: " + name + " dir: "
+					+ dir);
+
+			if (name.contains("*") || name.contains("?")) {
+				directory = directory.getParentFile();
+				LOG.info("USING File Filter:" + name);
+				filter = new WildcardFileFilter(name);
+			} else {
+				LOG.info("USING File Filter: *");
+				filter = new WildcardFileFilter("*");
+			}
+
+			if (fileFilter != null) {
 				filter = fileFilter;
 			}
 
-			filesIt = FileUtils.iterateFiles(directory, filter, TrueFileFilter.INSTANCE);
-			
+			filesIt = FileUtils.iterateFiles(directory, filter,
+					TrueFileFilter.INSTANCE);
+
 			// find new files or updated
-			while (filesIt.hasNext()) {
+			while (filesIt.hasNext() && !isClosed.get()) {
 				File file = (File) filesIt.next();
 
-				if( ! filter.accept(file.getParentFile(), file.getName()) ){
-					LOG.info("Skipping file "  + file.getAbsolutePath());
+				if (!filter.accept(file.getParentFile(), file.getName())) {
+					LOG.info("Skipping file " + file.getAbsolutePath());
 					continue;
 				}
-				
+
 				FileTrackingStatus status = fileTrackerMemory
 						.getFileStatus(file);
 				if (status == null) {
@@ -130,23 +133,21 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 
 				} else if (!(status.getFileSize() == file.length() && status
 						.getLastModificationTime() == file.lastModified())) {
-					// is an update only if the file site is not smaller than that in the memory.
-					
-					if(file.length() < status.getFileSize()){
-						status.setStatus(FileTrackingStatus.STATUS.READ_ERROR);	
-					}else{
+					// is an update only if the file site is not smaller than
+					// that in the memory.
+
+					if (file.length() < status.getFileSize()) {
+						status.setStatus(FileTrackingStatus.STATUS.READ_ERROR);
+					} else {
 						status.setStatus(FileTrackingStatus.STATUS.CHANGED);
 					}
-					
+
 					status.setFileSize(file.length());
 					status.setLastModificationTime(file.lastModified());
-					
-					
-					
+
 					fileTrackerMemory.updateFile(status);
 					notifyFileUpdate(status);
-					
-					
+
 				}
 
 			}
@@ -242,12 +243,12 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 
 	@Override
 	public void close() {
-		// ignore
+		isClosed.set(true);
 	}
 
 	@Override
 	public void forceClose() {
-		// ignore
+		isClosed.set(true);
 	}
 
 	public String getLogType() {

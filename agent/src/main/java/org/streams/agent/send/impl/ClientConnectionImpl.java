@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
@@ -25,8 +24,6 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.WriteCompletionEvent;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
-import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.send.ClientConnection;
@@ -36,7 +33,6 @@ import org.streams.agent.send.ServerException;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.CountdownLatchChannel;
-
 
 /**
  * 
@@ -75,7 +71,7 @@ public class ClientConnectionImpl implements ClientConnection {
 
 	long connectEstablishTimeout = 10000L;
 
-	long sendTimeOut = 10000L;
+	long sendTimeOut = 20000L;
 
 	InetSocketAddress inetAddress;
 
@@ -84,18 +80,14 @@ public class ClientConnectionImpl implements ClientConnection {
 	ExecutorService threadServiceExec;
 	ExecutorService threadServiceWorker;
 
-	Timer timeoutTimer = new HashedWheelTimer();
-
-	public ClientConnectionImpl() {
-		threadServiceExec = Executors.newCachedThreadPool();
-		threadServiceWorker = Executors.newCachedThreadPool();
-	}
-
+	Timer timeoutTimer;
+	
 	public ClientConnectionImpl(ExecutorService threadServiceExec,
-			ExecutorService threadServiceWorker) {
+			ExecutorService threadServiceWorker, Timer timeoutTimer) {
 		super();
 		this.threadServiceExec = threadServiceExec;
 		this.threadServiceWorker = threadServiceWorker;
+		this.timeoutTimer = timeoutTimer;
 	}
 
 	/**
@@ -130,10 +122,9 @@ public class ClientConnectionImpl implements ClientConnection {
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new ReadTimeoutHandler(timeoutTimer,
-						sendTimeOut, TimeUnit.MILLISECONDS),
-						new ClientMessageFrameDecoder(), countdownLatchChannel,
-						new ClientChannelHandler(clientHandlerContext));
+				return Channels.pipeline(new ClientMessageFrameDecoder(),
+						countdownLatchChannel, new ClientChannelHandler(
+								clientHandlerContext));
 			}
 		});
 
@@ -142,13 +133,13 @@ public class ClientConnectionImpl implements ClientConnection {
 		// Start the connection attempt.
 		ChannelFuture future = bootstrap.connect(inetAddress);
 
-		while(!future.isDone()){
+		while (!future.isDone()) {
 			try {
 				Thread.sleep(10);
 			} catch (InterruptedException e) {
 				Thread.currentThread().interrupt();
 			}
-			
+
 		}
 
 		if (future.isSuccess()) {
@@ -165,8 +156,6 @@ public class ClientConnectionImpl implements ClientConnection {
 			}
 
 		}
-
-		bootstrap.releaseExternalResources();
 
 		// complete io operations
 		// check error codes
@@ -197,7 +186,7 @@ public class ClientConnectionImpl implements ClientConnection {
 	}
 
 	public void close() {
-		timeoutTimer.stop();
+
 	}
 
 	public long getConnectEstablishTimeout() {
@@ -342,7 +331,7 @@ public class ClientConnectionImpl implements ClientConnection {
 					long fileLinePointer = in.readLong();
 					if (fileLinePointer < 0) {
 						throw new ServerException(
-								"Server send 409 by fileLinePointer is not valid",
+								"Server send 409 by fileLinePointer is not valid. Collector send pointer: " + fileLinePointer + ". Please check the coordination service",
 								ClientHandlerContext.STATUS_CONFLICT);
 					}
 					clientHandlerContext

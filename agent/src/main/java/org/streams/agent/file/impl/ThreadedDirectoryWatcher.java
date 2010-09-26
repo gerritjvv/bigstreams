@@ -1,8 +1,7 @@
 package org.streams.agent.file.impl;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.streams.agent.file.DirectoryWatchListener;
@@ -22,14 +21,13 @@ import org.streams.agent.file.FileTrackerMemory;
  */
 public class ThreadedDirectoryWatcher implements DirectoryWatcher {
 
-	ScheduledExecutorService pollService = null;
-
-	// 10 seconds
-	int pollingInterval = 10;
+	Timer timer = new Timer("AgentDirectoryWatcher");
 	
-	DirectoryPollingThread pollingThread = null;
+	// 20 seconds
+	int pollingInterval = 20000;
 	
-	public ThreadedDirectoryWatcher(){}
+	final DirectoryPollingThread pollingThread;
+	
 	public ThreadedDirectoryWatcher(String logType, FileTrackerMemory memory){
 		pollingThread = new DirectoryPollingThread(logType, memory);
 		
@@ -40,14 +38,15 @@ public class ThreadedDirectoryWatcher implements DirectoryWatcher {
 	}
 	
 	public void start() {
-		if(pollService == null){
-			pollService = Executors.newScheduledThreadPool(1);
-	
 			//setup polling to start after 10 seconds and poll at every pollingInterval
-			pollService.scheduleAtFixedRate(pollingThread, 0, pollingInterval,
-					TimeUnit.SECONDS);
+		timer.schedule(new TimerTask() {
 			
-		}
+			@Override
+			public void run() {
+				pollingThread.run();
+			}
+		}, 1000L, pollingInterval);
+	
 	}
 
 	public void setDirectory(String dir){
@@ -63,12 +62,14 @@ public class ThreadedDirectoryWatcher implements DirectoryWatcher {
 	
 
 	public void forceClose() {
-		pollService.shutdownNow();
+		timer.cancel();
+		pollingThread.close();
 	}
 
 	@Override
 	public void close() {
-		pollService.shutdown();
+		timer.cancel();
+		pollingThread.close();
 	}
 
 

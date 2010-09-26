@@ -1,14 +1,12 @@
 package org.streams.agent.agentcli.startup.service.impl;
 
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import javax.inject.Inject;
 
 import org.streams.agent.mon.impl.FileStatusCleanoutManager;
 import org.streams.commons.app.ApplicationService;
-
 
 /**
  * Responsible for cleaning out old DONE entries of the FileTrackingStatus.<br/>
@@ -20,15 +18,16 @@ import org.streams.commons.app.ApplicationService;
  */
 public class StatusCleanoutService implements ApplicationService {
 
-	ScheduledExecutorService service = null;
+	Timer timer = new Timer("StatusCleanoutService");
 
 	FileStatusCleanoutManager fileStatusCleanoutManager;
 
-	private int cleanoutInterval;
-	private int initialDelay;
-	
-	public StatusCleanoutService(){}
-	
+	private long cleanoutInterval;
+	private long initialDelay;
+
+	public StatusCleanoutService() {
+	}
+
 	/**
 	 * 
 	 * @param fileStatusCleanoutManager
@@ -38,7 +37,7 @@ public class StatusCleanoutService implements ApplicationService {
 	 */
 	public StatusCleanoutService(
 			FileStatusCleanoutManager fileStatusCleanoutManager,
-			int iniatialiDealy, int cleanoutInterval) {
+			long iniatialiDealy, long cleanoutInterval) {
 		super();
 		this.fileStatusCleanoutManager = fileStatusCleanoutManager;
 		this.initialDelay = iniatialiDealy;
@@ -50,39 +49,47 @@ public class StatusCleanoutService implements ApplicationService {
 	 */
 	@Override
 	public void start() throws Exception {
-		service = Executors.newSingleThreadScheduledExecutor();
-		service.scheduleAtFixedRate(fileStatusCleanoutManager, 
-				(long)initialDelay, (long)cleanoutInterval, TimeUnit.SECONDS);
+
+		timer.schedule(new TimerTask() {
+
+			@Override
+			public void run() {
+				fileStatusCleanoutManager.run();
+			}
+		}, initialDelay, cleanoutInterval);
+		
 	}
 
 	@Override
 	public void shutdown() {
-		service.shutdown();
+		timer.cancel();
+		fileStatusCleanoutManager.close();
+
 	}
 
 	public FileStatusCleanoutManager getFileStatusCleanoutManager() {
 		return fileStatusCleanoutManager;
 	}
-	
+
 	@Inject
 	public void setFileStatusCleanoutManager(
 			FileStatusCleanoutManager fileStatusCleanoutManager) {
 		this.fileStatusCleanoutManager = fileStatusCleanoutManager;
 	}
 
-	public int getCleanoutInterval() {
+	public long getCleanoutInterval() {
 		return cleanoutInterval;
 	}
 
-	public void setCleanoutInterval(int cleanoutInterval) {
+	public void setCleanoutInterval(long cleanoutInterval) {
 		this.cleanoutInterval = cleanoutInterval;
 	}
 
-	public int getInitialDelay() {
+	public long getInitialDelay() {
 		return initialDelay;
 	}
 
-	public void setInitialDelay(int initialDelay) {
+	public void setInitialDelay(long initialDelay) {
 		this.initialDelay = initialDelay;
 	}
 

@@ -2,11 +2,11 @@ package org.streams.agent.conf;
 
 public interface AgentProperties {
 	/**
-	 * The interval at which a directory is polled for new files.
+	 * The interval at which a directory is polled for new files. millis
 	 */
 	static final String DIRECTORY_WATCH_POLL_INTERVAL = "agent.dir.poll.interval";
 	/**
-	 * The interval at which the FileStatusCleanoutManager will be called
+	 * The interval at which the FileStatusCleanoutManager will be called millis
 	 */
 	static final String STATUS_CLEANOUT_INTERVAL = "agent.status.cleanout.interval";
 	/**

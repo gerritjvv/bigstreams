@@ -22,6 +22,7 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 	List<FileTrackingStatus> queue = new ArrayList<FileTrackingStatus>();
 
 	public FilesToSendQueueImpl() {
+		
 	}
 
 	/**
@@ -33,10 +34,11 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 		this.trackerMemory = trackerMemory;
 	}
 
+	
 	private FileTrackingStatus poll() {
 		return queue.size() == 0 ? null : queue.remove(0);
 	}
-
+	
 	/**
 	 * Will only return files that are in the ready state.<br/>
 	 * As soon as a FileTrackingStatus object leaves this class its status is

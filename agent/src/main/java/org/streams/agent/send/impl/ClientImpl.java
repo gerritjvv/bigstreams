@@ -9,16 +9,18 @@ import java.net.InetSocketAddress;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.nio.charset.CharsetDecoder;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.apache.commons.io.IOUtils;
+import org.jboss.netty.util.HashedWheelTimer;
+import org.jboss.netty.util.Timer;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.send.Client;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.FileStreamer;
 import org.streams.commons.io.Header;
-
 
 /**
  * 
@@ -40,11 +42,19 @@ public class ClientImpl implements Client {
 
 	long fileLength = 0;
 
+	final ExecutorService workerService;
+	final ExecutorService workerBossService;
+	final Timer timeoutTimer;
+
 	public ClientImpl() {
+		workerService = Executors.newCachedThreadPool();
+		workerBossService = Executors.newCachedThreadPool();
+		timeoutTimer = new HashedWheelTimer();
 	}
 
 	public ClientImpl(FileStreamer fileStreamer,
 			ClientConnectionFactory clientConnectionFactory) {
+		this();
 		this.fileStreamer = fileStreamer;
 		this.clientConnectionFactory = clientConnectionFactory;
 	}
@@ -68,6 +78,9 @@ public class ClientImpl implements Client {
 
 	public void close() {
 		IOUtils.closeQuietly(reader);
+		workerService.shutdown();
+		workerBossService.shutdown();
+		timeoutTimer.stop();
 	}
 
 	/**
@@ -98,14 +111,15 @@ public class ClientImpl implements Client {
 	public boolean sendCunk(long uniqueId, String logType) throws IOException {
 		boolean ret = false;
 
-		ClientConnection clientConnection = clientConnectionFactory.get();
+		ClientConnection clientConnection = clientConnectionFactory.get(
+				workerBossService, workerService, timeoutTimer);
 		try {
 			clientConnection.connect(address);
 
 			Header header = new Header(hostName, file.getAbsolutePath(),
 					logType, uniqueId, fileStreamer.getCodec().getClass()
 							.getName(), fileLinePointer.getFilePointer(),
-							file.length(), fileLinePointer.getLineReadPointer());
+					file.length(), fileLinePointer.getLineReadPointer());
 
 			ret = clientConnection.sendLines(fileLinePointer, header,
 					fileStreamer, reader);
@@ -166,8 +180,8 @@ public class ClientImpl implements Client {
 			randFile.seek(fileLinePointer.getFilePointer());
 		}
 		// return a channel reader
-		return new BufferedReader(
-				Channels.newReader(channel,Charset.defaultCharset().newDecoder(), -1));
+		return new BufferedReader(Channels.newReader(channel, Charset
+				.defaultCharset().newDecoder(), -1));
 
 	}
 
