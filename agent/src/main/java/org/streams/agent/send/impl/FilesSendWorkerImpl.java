@@ -1,0 +1,183 @@
+package org.streams.agent.send.impl;
+
+import java.io.File;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.apache.log4j.Logger;
+import org.streams.agent.file.FileTrackerMemory;
+import org.streams.agent.file.FileTrackingStatus;
+import org.streams.agent.mon.AgentStatus;
+import org.streams.agent.send.ClientException;
+import org.streams.agent.send.FileSendTask;
+import org.streams.agent.send.FilesToSendQueue;
+import org.streams.agent.send.ServerException;
+
+/**
+ * 
+ * The FileSendWorker is responsible for polling the FilesToSendQueue and when a
+ * file is available, stream the contents of that file to the collector.<br/>
+ * 
+ * Instances of this class is thread safe assuming that calls to FileSendTask is threadsafe.<br/>
+ * <b>Shutdown</b><br/>
+ * This class will shutdown when its current thread is interrupted.
+ */
+public class FilesSendWorkerImpl implements Runnable {
+
+	private static final Logger LOG = Logger.getLogger(FilesSendWorkerImpl.class);
+	
+	FilesToSendQueue queue;
+
+	AtomicBoolean isRunning = new AtomicBoolean(true);
+	AgentStatus agentStatus;
+	
+	FileTrackerMemory memory;
+	
+	/**
+	 * The time 
+	 */
+	long waitIfEmpty = 5000L;
+	
+	FileSendTask fileSendTask;
+
+	/**
+	 * 
+	 * @param queue
+	 * @param agentStatus
+	 * @param memory
+	 * @param fileSendTask
+	 */
+	public FilesSendWorkerImpl(FilesToSendQueue queue, AgentStatus agentStatus,
+			FileTrackerMemory memory, FileSendTask fileSendTask) {
+		super();
+		this.queue = queue;
+		this.agentStatus = agentStatus;
+		this.memory = memory;
+		this.fileSendTask = fileSendTask;
+	}
+
+	@Override
+	public void run() {
+
+		boolean interrupted = true;
+		
+		// run section
+		while (isRunning.get()) {
+		
+			FileTrackingStatus fileStatus = null;
+			File fileObj = null;
+			
+			try{
+				
+				fileStatus = pollInterruptibly();
+				fileObj = new File(fileStatus.getPath());
+				
+				//delegate the actual work of sending the file data to the FileSendTask.
+				fileSendTask.sendFileData(fileStatus);
+				
+				//sleep for a second between files
+				Thread.sleep(1000L);
+				
+				agentStatus.setStatus(AgentStatus.STATUS.OK, "Working");
+				
+			}catch(InterruptedException iexcp){
+				//this thread was interrupted
+				interrupted = true;
+				break;
+			}catch(Throwable t){
+				//any unexpected error in this method will result in the thread terminating
+				try{
+					handleFileError(fileStatus, fileObj, t);
+				}catch(RuntimeException rte){
+					LOG.error("Unexpected internal error, thread will terminate, gracefully", rte);
+					break;
+				}
+			}
+			
+			
+		}
+		
+
+		// cleanup section
+		destroy();
+		
+		if(interrupted){
+			Thread.interrupted();
+		}
+		
+	}
+
+	public void destroy() {
+		isRunning.set(false);
+	}
+
+	/**
+	 * Will poll the FilesToSendQueue until a non null FileTrackingStatus instance is available or the thread is interrupted
+	 * @return
+	 * @throws InterruptedException
+	 */
+	private FileTrackingStatus pollInterruptibly() throws InterruptedException{
+		FileTrackingStatus file = null;
+		
+		
+		while((file = queue.getNext()) == null){
+			Thread.sleep(waitIfEmpty);
+		}
+		
+		return file;
+	}
+	
+	/**
+	 * In case the file sending triggers an exception, this method will get called from the run method.<br/>
+	 * It is not expected to throw an exception and will only report on the status of a file.<br/>
+	 * 
+	 * Validates that the file exists, is a file, can be read and has a length > <br/>
+	 * 0. If any of the above fail the status of the file is marked with the<br/>
+	 * error DELETED or READ_ERROR.<br/>
+	 * 
+	 * @param status
+	 * @param file
+	 * @param t Throwable
+	 */
+	private void handleFileError(FileTrackingStatus fileStatus, File file, Throwable t) {
+
+		String errorMsg = null;
+		
+		if (!file.exists()) {
+			fileStatus.setStatus(FileTrackingStatus.STATUS.DELETED);
+			errorMsg = "The file " + file.getAbsolutePath() + " does not exist";
+		}
+
+		if (!(file.isFile() && file.canRead() && file.length() > 0)) {
+			fileStatus.setStatus(FileTrackingStatus.STATUS.READ_ERROR);
+			errorMsg = "Cannot read file or length is 0  for "
+					+ file.getAbsolutePath();
+		}
+
+		AgentStatus.STATUS status = null;
+		
+		if (t instanceof ClientException) {
+			status = AgentStatus.STATUS.CLIENT_ERROR;
+		} else if (t instanceof ServerException) {
+			status = AgentStatus.STATUS.SERVER_ERROR;
+		} else {
+			status = AgentStatus.STATUS.UNKOWN_ERROR;
+		}
+
+
+		
+		if (errorMsg != null) {
+			memory.updateFile(fileStatus);
+			agentStatus.setStatus(status, errorMsg);
+			//put status here.
+			LOG.error(errorMsg, t);
+		}else{
+			//another error appeared so we need to set the file tracking status to ready
+			fileStatus.setStatus(FileTrackingStatus.STATUS.READY);
+			memory.updateFile(fileStatus);
+			
+			LOG.error(t.toString(), t);
+			agentStatus.setStatus(status, t.toString());
+		}
+
+	}
+}

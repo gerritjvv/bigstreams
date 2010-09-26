@@ -485,6 +485,7 @@ public class AgentDI {
 				beanFactory.getBean(FileStreamer.class));
 	}
 
+	@Bean
 	public FileSendTask fileSendTask() throws MalformedURLException {
 
 		// get and parse the collector address
