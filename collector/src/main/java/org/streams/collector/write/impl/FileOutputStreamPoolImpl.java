@@ -166,7 +166,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			//these operations need to happend atomically so we must synch
 			if (file.length() > 0 && file.exists()) {
 				// if the file already exists it must be rolled before
-				closeLockedFile(key);
+				closeLockedFile(key, file);
 				
 				if(file.exists()){
 					// we never expect this condition to happen but the local OS
@@ -293,7 +293,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 				if (lockAcquired) {
 					try {
-						closeLockedFile(key);
+						closeLockedFile(key, openFiles.get(key));
 					} finally {
 						keyLock.releaseLock(key);
 					}
@@ -346,9 +346,22 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	 * @param key
 	 * @throws IOException
 	 */
-	private void closeLockedFile(String key) throws IOException {
+	private void closeLockedFile(String key, File file) throws IOException {
 		// remove from openFiles
-		File file = openFiles.remove(key);
+		File fileFound = openFiles.remove(key);
+		
+		if(file == null ){
+			LOG.info("No file found to roll for " + key);
+			return;
+		}
+		
+		if(fileFound == null){
+			LOG.info("The file " + file.getAbsolutePath() + " was not rolled previousely before shutdown. This file will be rolled now");
+		}
+		
+		
+		
+		
 		if (file != null) {
 			fileCreationTimes.remove(file);
 			FileLock fileLock = fileLocks.remove(key);
@@ -415,7 +428,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 		try {
 
-			closeLockedFile(key);
+			closeLockedFile(key, openFiles.get(key));
 
 		} finally {
 			keyLock.releaseLock(key);
