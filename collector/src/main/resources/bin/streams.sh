@@ -54,5 +54,5 @@ CLASSPATH=$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH
 
 
 
-exec "$JAVA" $JAVA_HEAP $JAVA_OPTS -Djava.library.path="$STREAMS_HOME/lib/native/Linux-amd64-64/" -classpath "$CLASSPATH" $CLASS "$@"
+exec "$JAVA" -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+DisableExplicitGC $JAVA_HEAP $JAVA_OPTS -Djava.library.path="$STREAMS_HOME/lib/native/Linux-amd64-64/" -classpath "$CLASSPATH" $CLASS "$@"
 

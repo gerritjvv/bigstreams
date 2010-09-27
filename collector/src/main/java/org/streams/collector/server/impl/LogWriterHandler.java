@@ -5,6 +5,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
@@ -169,6 +170,12 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			if (syncPointer != null) {
 				coordinationService.saveAndFreeLock(syncPointer);
 			}
+			if(compressInput != null){
+				IOUtils.closeQuietly(compressInput);
+				IOUtils.closeQuietly(datInput);
+				IOUtils.closeQuietly(channelInput);
+			}
+			
 		}
 
 		future.addListener(ChannelFutureListener.CLOSE);
