@@ -4,7 +4,7 @@ import javax.inject.Inject;
 
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
-import org.streams.agent.mon.AgentStatus;
+import org.streams.agent.mon.status.AgentStatus;
 
 /**
  */

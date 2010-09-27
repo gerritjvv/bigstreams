@@ -74,79 +74,83 @@ public class FileSendTaskImpl implements FileSendTask {
 		clientResource.open(collectorAddress, fileLinePointer, file);
 
 		boolean interrupted = false;
-
-		while (!(interrupted = Thread.interrupted())) {
-
-			long uniqueId = System.nanoTime();
-
-			boolean sentData = false;
-
-			// this is to add line recovery in case of a conflict
-			int prevLinePointer = fileLinePointer.getLineReadPointer();
-
-			sentData = clientResource.send(uniqueId, logType);
-
-			// -------- In case a conflict was detected we need
-			// -------- to close and open the client again with the correct
-			// conflict resolution pointer
-			if (fileLinePointer.hasConflictFilePointer()) {
-				LOG.info("Collector responded with conflict 409 response: reseting pointer on "
-						+ file.getAbsolutePath()
-						+ " from "
-						+ fileLinePointer.getFilePointer()
-						+ " to "
-						+ fileLinePointer.getConflictFilePointer());
-
-				FileLinePointer conflictResolvePointer = new FileLinePointer(
-						fileLinePointer.getConflictFilePointer(),
-						prevLinePointer);
-
-				// open file again to current line pointer which is the
-				// conflict file pointer i.e.
-				// the file pointer that the collectors have
-				clientResource.close();
-				clientResource.open(collectorAddress, conflictResolvePointer,
-						file);
-
-				fileLinePointer = conflictResolvePointer;
-
-			}
-
-			fileStatus.setFilePointer(fileLinePointer.getFilePointer());
-			fileStatus.setLinePointer(fileLinePointer.getLineReadPointer());
-
-			if (!sentData) {
-				// no more data was sent this means the file has been read
-				// completely
-				fileStatus.setStatus(FileTrackingStatus.STATUS.DONE);
-				memory.updateFile(fileStatus);
-				break;
-			} else {
-				// just update status and continue sending
-				memory.updateFile(fileStatus);
-			}
-
-			// every 100 batches refresh the status of the file
-			// make sure no other process has flagged this file as error.
-			if (statusRefreshCount++ > 100) {
-				statusRefreshCount = 0;
-				fileStatus = memory.getFileStatus(file);
-				if (fileStatus.getStatus().equals(
-						FileTrackingStatus.STATUS.READ_ERROR)) {
-					throw new IOException("File " + file
-							+ " another process marked this file as READ_ERROR");
+		try{
+			while (!(interrupted = Thread.interrupted())) {
+	
+				long uniqueId = System.nanoTime();
+	
+				boolean sentData = false;
+	
+				// this is to add line recovery in case of a conflict
+				int prevLinePointer = fileLinePointer.getLineReadPointer();
+	
+				sentData = clientResource.send(uniqueId, logType);
+	
+				// -------- In case a conflict was detected we need
+				// -------- to close and open the client again with the correct
+				// conflict resolution pointer
+				if (fileLinePointer.hasConflictFilePointer()) {
+					LOG.info("Collector responded with conflict 409 response: reseting pointer on "
+							+ file.getAbsolutePath()
+							+ " from "
+							+ fileLinePointer.getFilePointer()
+							+ " to "
+							+ fileLinePointer.getConflictFilePointer());
+	
+					FileLinePointer conflictResolvePointer = new FileLinePointer(
+							fileLinePointer.getConflictFilePointer(),
+							prevLinePointer);
+	
+					// open file again to current line pointer which is the
+					// conflict file pointer i.e.
+					// the file pointer that the collectors have
+					clientResource.close();
+					clientResource.open(collectorAddress, conflictResolvePointer,
+							file);
+	
+					fileLinePointer = conflictResolvePointer;
+	
 				}
-			}
+	
+				fileStatus.setFilePointer(fileLinePointer.getFilePointer());
+				fileStatus.setLinePointer(fileLinePointer.getLineReadPointer());
+	
+				if (!sentData) {
+					// no more data was sent this means the file has been read
+					// completely
+					fileStatus.setStatus(FileTrackingStatus.STATUS.DONE);
+					memory.updateFile(fileStatus);
+					break;
+				} else {
+					// just update status and continue sending
+					memory.updateFile(fileStatus);
+				}
+	
+				// every 100 batches refresh the status of the file
+				// make sure no other process has flagged this file as error.
+				if (statusRefreshCount++ > 100) {
+					statusRefreshCount = 0;
+					fileStatus = memory.getFileStatus(file);
+					if (fileStatus.getStatus().equals(
+							FileTrackingStatus.STATUS.READ_ERROR)) {
+						throw new IOException("File " + file
+								+ " another process marked this file as READ_ERROR");
+					}
+				}
+	
+				try {
+					Thread.sleep(500L);
+				} catch (InterruptedException e) {
+					interrupted = true;
+					break;
+				}
+	
+			}// eof while
 
-			try {
-				Thread.sleep(500L);
-			} catch (InterruptedException e) {
-				interrupted = true;
-				break;
-			}
-
-		}// eof while
-
+		}finally{
+			clientResource.close();
+		}
+		
 		if (interrupted) {
 			Thread.currentThread().interrupt();
 		}

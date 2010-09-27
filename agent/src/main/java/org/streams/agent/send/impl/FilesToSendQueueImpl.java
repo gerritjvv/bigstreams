@@ -17,6 +17,12 @@ import org.streams.agent.send.FilesToSendQueue;
  */
 public class FilesToSendQueueImpl implements FilesToSendQueue {
 
+	/**
+	 * When the List queue is empty this class will cask the FileTrackerMemory for files.<br/>
+	 * The maximum number of changed files to be retrieved is set by this default value. default == 10.<br/>
+	 */
+	private static final int DEFAULT_FILES_GET_MAX = 10;
+	
 	FileTrackerMemory trackerMemory;
 
 	List<FileTrackingStatus> queue = new ArrayList<FileTrackingStatus>();
@@ -57,7 +63,7 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 
 			// ask for changed files first
 			Collection<FileTrackingStatus> changedList = trackerMemory
-					.getFiles(FileTrackingStatus.STATUS.CHANGED);
+					.getFiles(FileTrackingStatus.STATUS.CHANGED, 0, DEFAULT_FILES_GET_MAX);
 
 			if (changedList != null)
 				queue.addAll(changedList);

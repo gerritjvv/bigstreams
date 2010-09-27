@@ -121,7 +121,7 @@ public class AgentCommandLineParser implements
 			} else if (line.hasOption("count")) {
 				processorName = "countCommand";
 			} else if (line.hasOption("agentStatus")) {
-				processorName = "agentStatus";
+				processorName = "agentStatusCommand";
 			} else {
 
 				HelpFormatter formatter = new HelpFormatter();

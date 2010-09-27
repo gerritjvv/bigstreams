@@ -147,9 +147,9 @@ public class Bootstrap {
 							.add("org.streams.agent.cli.impl");
 					break;
 				case AGENT:
-					DIClasses.add(AgentCommonDI.class);
 					DIPackages
 					.add("org.streams.agent.mon.impl");
+					DIClasses.add(AgentCommonDI.class);
 					DIClasses.add(AgentDI.class);
 					break;
 				}

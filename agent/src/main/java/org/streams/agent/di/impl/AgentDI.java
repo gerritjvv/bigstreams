@@ -30,7 +30,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.context.annotation.Scope;
 import org.streams.agent.agentcli.startup.check.impl.CodecCheck;
 import org.streams.agent.agentcli.startup.check.impl.ConfigCheck;
 import org.streams.agent.agentcli.startup.check.impl.FileTrackingStatusStartupCheck;
@@ -43,14 +42,13 @@ import org.streams.agent.file.DirectoryWatcher;
 import org.streams.agent.file.DirectoryWatcherFactory;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.impl.ThreadedDirectoryWatcher;
-import org.streams.agent.mon.AgentStatus;
 import org.streams.agent.mon.impl.AgentShutdownResource;
 import org.streams.agent.mon.impl.AgentStatusResource;
 import org.streams.agent.mon.impl.FileStatusCleanoutManager;
 import org.streams.agent.mon.impl.FileTrackingStatusCountResource;
 import org.streams.agent.mon.impl.FileTrackingStatusPathResource;
 import org.streams.agent.mon.impl.FileTrackingStatusResource;
-import org.streams.agent.send.Client;
+import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResourceFactory;
@@ -59,7 +57,6 @@ import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.FilesToSendQueue;
 import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
 import org.streams.agent.send.impl.ClientConnectionImpl;
-import org.streams.agent.send.impl.ClientImpl;
 import org.streams.agent.send.impl.ClientResourceFactoryImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.agent.send.impl.FileSendTaskImpl;
@@ -164,14 +161,13 @@ public class AgentDI {
 	}
 
 	@Bean
-	@Lazy
 	public FilesSendService filesSendService() throws Exception {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
 		int clientThreadCount = configuration.getInt(
 				AgentProperties.CLIENT_THREAD_COUNT, 5);
-
+		
 		return new FilesSendService(
 				beanFactory.getBean(ClientResourceFactory.class),
 				beanFactory.getBean(FileSendTask.class), clientThreadCount,
@@ -266,7 +262,8 @@ public class AgentDI {
 		final Router router = new Router();
 		router.attach("/files/list/{status}", finderStatus);
 		router.attach("/files/list", finderStatus);
-		router.attach("/agent/status", finderAgentStatus);
+		router.attach("/files/list/", finderStatus);
+		router.attach("/agent/status", finderAgentStatus, Template.MODE_STARTS_WITH);
 		router.attach("/files/count", finderStatusCount);
 		router.attach("/files/count/{status}", finderStatusCount);
 		// the match mode for this resource must be starts with because we
@@ -404,6 +401,8 @@ public class AgentDI {
 	 * ClientConnection instances are done per call to this method.<br/>
 	 * A client connection instance is meant to be used once and then thrown
 	 * away. For this reason a Factory pattern is used.
+	 * <p/>
+	 * Used by the ClientResourceFactory.
 	 * 
 	 * @return
 	 * @throws ClassNotFoundException
@@ -448,36 +447,13 @@ public class AgentDI {
 		return fact;
 	}
 
-	@SuppressWarnings("unchecked")
-	@Bean
-	@Scope("prototype")
-	@Lazy
-	public Client client() throws Exception {
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
-		String className = configuration
-				.getString(AgentProperties.CLIENT_CLASS);
-
-		Client client = null;
-		Class<? extends Client> clientClass = null;
-
-		if (className == null) {
-			client = new ClientImpl(beanFactory.getBean(FileStreamer.class),
-					beanFactory.getBean(ClientConnectionFactory.class));
-		} else {
-			clientClass = (Class<? extends Client>) Thread.currentThread()
-					.getContextClassLoader().loadClass(className);
-
-			client = clientClass.newInstance();
-			client.setClientConnectionFactory(beanFactory
-					.getBean(ClientConnectionFactory.class));
-			client.setFileStreamer(beanFactory.getBean(FileStreamer.class));
-
-		}
-
-		return client;
-	}
-
+	/**
+	 * Used by the FileSendTaskImpl to retreive a ClientResource for sending
+	 * file data.<br/>
+	 * Uses teh CilentConnectionFactory and FileStreamer.
+	 * 
+	 * @return
+	 */
 	@Bean
 	public ClientResourceFactory clientResourceFactory() {
 		return new ClientResourceFactoryImpl(
@@ -485,6 +461,13 @@ public class AgentDI {
 				beanFactory.getBean(FileStreamer.class));
 	}
 
+	/**
+	 * Used by the FileSendWorkerImpl to send file data. This class uses the
+	 * ClientResourceFactory.
+	 * 
+	 * @return
+	 * @throws MalformedURLException
+	 */
 	@Bean
 	public FileSendTask fileSendTask() throws MalformedURLException {
 

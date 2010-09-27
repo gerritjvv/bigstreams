@@ -24,7 +24,7 @@ import org.streams.commons.cli.CommandLineProcessorFactory;
  * Tests that the DirectoryPollingService works as expected when its start and
  * shutdown methods are called.
  */
-public class TestDirectoryPoliingService extends TestCase {
+public class TestDirectoryPollingService extends TestCase {
 
 	final AtomicInteger watcherStartCount = new AtomicInteger();
 	final AtomicInteger watcherCloseCount = new AtomicInteger();

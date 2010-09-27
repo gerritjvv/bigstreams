@@ -20,7 +20,7 @@ import org.streams.commons.cli.CommandLineProcessor;
  * Implements the count command
  * 
  */
-@Named("agentStatus")
+@Named("agentStatusCommand")
 public class AgentStatusCommand implements CommandLineProcessor {
 
 	private static final Logger LOG = Logger

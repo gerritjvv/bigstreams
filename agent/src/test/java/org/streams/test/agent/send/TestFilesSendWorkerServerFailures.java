@@ -23,8 +23,8 @@ import org.jboss.netty.util.Timer;
 import org.junit.Before;
 import org.junit.Test;
 import org.streams.agent.file.FileTrackingStatus;
-import org.streams.agent.mon.AgentStatus;
-import org.streams.agent.mon.impl.AgentStatusImpl;
+import org.streams.agent.mon.status.AgentStatus;
+import org.streams.agent.mon.status.impl.AgentStatusImpl;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResourceFactory;
@@ -46,7 +46,7 @@ import org.streams.commons.io.impl.ProtocolImpl;
 
 import com.hadoop.compression.lzo.LzoCodec;
 
-public class TestClientServerFailures extends TestCase {
+public class TestFilesSendWorkerServerFailures extends TestCase {
 
 	Configuration conf = null;
 	private File baseDir;
@@ -98,7 +98,10 @@ public class TestClientServerFailures extends TestCase {
 
 		AgentStatus agentStatus = new AgentStatusImpl();
 		FilesSendWorkerImpl worker = createWorker(memory, agentStatus, port);
-
+		worker.setWaitIfEmpty(10L);
+		worker.setWaitOnErrorTime(10L);
+		worker.setWaitBetweenFileSends(1L);
+		
 		try {
 
 			// start the clientSendThread
@@ -166,7 +169,7 @@ public class TestClientServerFailures extends TestCase {
 		// indicate something is wrong with the client sending logic.
 		// The value must be exact, as we are testing that we receive all of the
 		// file packets from the client.
-		assertEquals(167, serverUtil.getBagList().size());
+		assertEquals(18, serverUtil.getBagList().size());
 
 		// write out test bytes from the serverUtil.getBagList() and compare to
 		// the original test file.
@@ -251,7 +254,7 @@ public class TestClientServerFailures extends TestCase {
 		ccFact.setSendTimeOut(10000L);
 		ccFact.setProtocol(new ProtocolImpl());
 
-		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, 500L);
+		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, 5000L);
 
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
 				ccFact, fileLineStreamer);

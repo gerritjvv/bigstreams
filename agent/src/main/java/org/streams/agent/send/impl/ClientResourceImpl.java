@@ -40,7 +40,14 @@ public class ClientResourceImpl implements ClientResource{
 	BufferedReader reader;
 	String hostName;
 
+	/**
+	 * Created and opened in the open method
+	 */
 	RandomAccessFile randFile;
+	/**
+	 * Created and opened in the open method
+	 */
+	FileChannel channel;
 	
 	/**
 	 * 
@@ -61,6 +68,9 @@ public class ClientResourceImpl implements ClientResource{
 		this.fileStreamer = fileStreamer;
 	}
 	
+	/**
+	 * Opens a RandomAccessFile and a FileChannel, these are only closed when the close method is called.
+	 */
 	@Override
 	public void open(InetSocketAddress collectorAddress,
 			FileLinePointer fileLinePointer, File file) throws IOException {
@@ -74,12 +84,14 @@ public class ClientResourceImpl implements ClientResource{
 		InetAddress localMachine = null;
 		try{
 			localMachine = InetAddress.getLocalHost();
-			
 		}catch(UnknownHostException hostexp){
+			LOG.error(hostexp.toString(), hostexp);
 			localMachine = InetAddress.getByName("localhost");
 		}
 
 		hostName = localMachine.getHostName();
+		LOG.info("Using host address: " + hostName);
+		
 		reader = openFileToLine(file, fileLinePointer);
 
 	}
@@ -137,6 +149,14 @@ public class ClientResourceImpl implements ClientResource{
 				LOG.error(e.toString(), e);
 			}
 		}
+		
+		if(channel != null){
+			try {
+				channel.close();
+			} catch (IOException e) {
+				LOG.error(e.toString(), e);
+			}
+		}
 	}
 
 	/**
@@ -156,7 +176,7 @@ public class ClientResourceImpl implements ClientResource{
 		randFile = new RandomAccessFile(file, "r");
 		randFile.seek(fileLinePointer.getFilePointer());
 		
-		FileChannel channel = randFile.getChannel();
+		channel = randFile.getChannel();
 
 		// seek to the previous "byte to read" position in the file
 		if (fileLinePointer.getFilePointer() > 0) {

@@ -87,19 +87,19 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 			File directory = new File(dir);
 
 			IOFileFilter filter = null;
-
+			
 			// we need to check if wild cards are included in the file name
 			// if so create the filter
 			String name = directory.getName();
-			LOG.info("Directory " + directory + " name: " + name + " dir: "
+			LOG.debug("Directory " + directory + " name: " + name + " dir: "
 					+ dir);
 
 			if (name.contains("*") || name.contains("?")) {
 				directory = directory.getParentFile();
-				LOG.info("USING File Filter:" + name);
+				LOG.debug("USING File Filter:" + name);
 				filter = new WildcardFileFilter(name);
 			} else {
-				LOG.info("USING File Filter: *");
+				LOG.debug("USING File Filter: *");
 				filter = new WildcardFileFilter("*");
 			}
 
@@ -113,12 +113,7 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 			// find new files or updated
 			while (filesIt.hasNext() && !isClosed.get()) {
 				File file = (File) filesIt.next();
-
-				if (!filter.accept(file.getParentFile(), file.getName())) {
-					LOG.info("Skipping file " + file.getAbsolutePath());
-					continue;
-				}
-
+				
 				FileTrackingStatus status = fileTrackerMemory
 						.getFileStatus(file);
 				if (status == null) {

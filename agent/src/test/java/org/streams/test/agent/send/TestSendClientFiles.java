@@ -9,6 +9,7 @@ import java.io.FileWriter;
 import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import junit.framework.TestCase;
 
@@ -17,19 +18,19 @@ import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.main.Bootstrap;
-import org.streams.agent.send.Client;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
 import org.streams.agent.send.impl.ClientConnectionImpl;
-import org.streams.agent.send.impl.ClientImpl;
+import org.streams.agent.send.impl.ClientResourceImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.ServerUtil;
@@ -74,15 +75,25 @@ public class TestSendClientFiles extends TestCase {
 		ccFact.setProtocol(new ProtocolImpl());
 		ccFact.setProtocol(new ProtocolImpl());
 
-		ClientImpl client = new ClientImpl(fileLineStreamer, ccFact);
+		ExecutorService workerBossService = Executors.newCachedThreadPool();
+		ExecutorService workerService = Executors.newCachedThreadPool();
+		
+		org.jboss.netty.util.Timer timer = new HashedWheelTimer();
+		
+		ClientResourceImpl clientResource = new ClientResourceImpl(ccFact, workerBossService, workerService, timer, fileLineStreamer);
+		try{
+			runTest(clientResource);
 
-		runTest(client);
-
-		Client client2 = bootstrap.getBean(Client.class);
-		runTest(client2);
+		
+		}finally{
+			workerBossService.shutdown();
+			workerService.shutdown();
+			timer.stop();
+		}
+		
 	}
 
-	private void runTest(Client client) throws Exception {
+	private void runTest(ClientResourceImpl client) throws Exception {
 		// startup test server
 		ServerUtil serverUtil = new ServerUtil(testPort);
 		serverUtil.connect();
@@ -101,7 +112,7 @@ public class TestSendClientFiles extends TestCase {
 
 			try {
 				// send all server bytes
-				while (client.sendCunk(1L, "test1")) {
+				while (client.send(1L, "test1")) {
 					sendCounter++;
 				}
 			} finally {

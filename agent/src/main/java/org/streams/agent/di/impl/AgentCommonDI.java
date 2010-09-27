@@ -5,12 +5,13 @@ import java.util.Iterator;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.GzipCodec;
+import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.streams.agent.conf.AgentProperties;
-import org.streams.agent.mon.AgentStatus;
-import org.streams.agent.mon.impl.AgentStatusImpl;
+import org.streams.agent.mon.status.AgentStatus;
+import org.streams.agent.mon.status.impl.AgentStatusImpl;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
 
@@ -21,9 +22,9 @@ import org.streams.commons.io.impl.ProtocolImpl;
 @Configuration
 public class AgentCommonDI {
 
-	@Autowired(required = true)
-	org.apache.commons.configuration.Configuration configuration;
-
+	@Autowired(required=true)
+	BeanFactory beanFactory;
+	
 	@Bean
 	public AgentStatus agentStatus() {
 		return new AgentStatusImpl();
@@ -47,6 +48,9 @@ public class AgentCommonDI {
 	public CompressionCodec codec() throws InstantiationException,
 			IllegalAccessException, ClassNotFoundException, SecurityException,
 			NoSuchFieldException {
+
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
 
 		if (System.getenv("java.library.path") == null) {
 

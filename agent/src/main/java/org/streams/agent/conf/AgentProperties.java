@@ -35,7 +35,6 @@ public interface AgentProperties {
 
 	static final String CLIENT_THREAD_COUNT = "agent.send.thread.count";
 
-	static final String CLIENT_CLASS = "agent.send.client.class";
 	static final String COLLECTOR = "agent.send.collector";
 	static final String THREAD_WAIT_IFEMPTY = "agent.send.thread.waitifempty";
 	static final String THREAD_RETRIES = "agent.send.thread.retries";

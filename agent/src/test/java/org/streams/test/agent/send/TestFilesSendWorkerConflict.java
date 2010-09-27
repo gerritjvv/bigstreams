@@ -37,8 +37,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
-import org.streams.agent.mon.AgentStatus;
-import org.streams.agent.mon.impl.AgentStatusImpl;
+import org.streams.agent.mon.status.AgentStatus;
+import org.streams.agent.mon.status.impl.AgentStatusImpl;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResourceFactory;
@@ -93,6 +93,10 @@ public class TestFilesSendWorkerConflict extends TestCase {
 
 			FilesSendWorkerImpl worker = createWorker(memory, agentStatus);
 
+			worker.setWaitIfEmpty(10L);
+			worker.setWaitOnErrorTime(10L);
+			worker.setWaitBetweenFileSends(1L);
+			
 			Thread thread = new Thread(worker);
 			thread.start();
 

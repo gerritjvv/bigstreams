@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.log4j.Logger;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
-import org.streams.agent.mon.AgentStatus;
+import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.send.ClientException;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FilesToSendQueue;
@@ -33,9 +33,19 @@ public class FilesSendWorkerImpl implements Runnable {
 	FileTrackerMemory memory;
 	
 	/**
-	 * The time 
+	 * The time to wait when no files are available for sending
 	 */
 	long waitIfEmpty = 5000L;
+	
+	/**
+	 * Value for waiting when an error occurred.
+	 */
+	long waitOnErrorTime = 10000L;
+	
+	/**
+	 * Wait time between sending one file and another default ( 0.5 second );
+	 */
+	long waitBetweenFileSends = 500L;
 	
 	FileSendTask fileSendTask;
 
@@ -75,7 +85,7 @@ public class FilesSendWorkerImpl implements Runnable {
 				fileSendTask.sendFileData(fileStatus);
 				
 				//sleep for a second between files
-				Thread.sleep(1000L);
+				Thread.sleep(waitBetweenFileSends);
 				
 				agentStatus.setStatus(AgentStatus.STATUS.OK, "Working");
 				
@@ -89,6 +99,16 @@ public class FilesSendWorkerImpl implements Runnable {
 					handleFileError(fileStatus, fileObj, t);
 				}catch(RuntimeException rte){
 					LOG.error("Unexpected internal error, thread will terminate, gracefully", rte);
+					break;
+				}
+				
+				//we sleep 10 seconds here if any kind of error occurred.
+				//This is a safe value so that the agents do not overwelm the collector when there is a repeatable error
+				//e.g. the collector is down.
+				try {
+					Thread.sleep(waitOnErrorTime);
+				} catch (InterruptedException e) {
+					interrupted = true;
 					break;
 				}
 			}
@@ -179,5 +199,48 @@ public class FilesSendWorkerImpl implements Runnable {
 			agentStatus.setStatus(status, t.toString());
 		}
 
+	}
+
+	/**
+	 * The time to wait when no files are available for sending
+	 */
+	public long getWaitIfEmpty() {
+		return waitIfEmpty;
+	}
+
+	/**
+	 * The time to wait when no files are available for sending
+	 */
+	public void setWaitIfEmpty(long waitIfEmpty) {
+		this.waitIfEmpty = waitIfEmpty;
+	}
+
+	/**
+	 * Value for waiting when an error occurred.
+	 */
+	public long getWaitOnErrorTime() {
+		return waitOnErrorTime;
+	}
+
+	/**
+	 * Value for waiting when an error occurred.
+	 * @param waitOnErrorTime
+	 */
+	public void setWaitOnErrorTime(long waitOnErrorTime) {
+		this.waitOnErrorTime = waitOnErrorTime;
+	}
+
+	/**
+	 * Wait time between sending one file and another default ( 0.5 second );
+	 */
+	public long getWaitBetweenFileSends() {
+		return waitBetweenFileSends;
+	}
+
+	/**
+	 * Wait time between sending one file and another default ( 0.5 second );
+	 */
+	public void setWaitBetweenFileSends(long waitBetweenFileSends) {
+		this.waitBetweenFileSends = waitBetweenFileSends;
 	}
 }

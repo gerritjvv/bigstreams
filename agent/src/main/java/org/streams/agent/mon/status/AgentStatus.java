@@ -1,4 +1,4 @@
-package org.streams.agent.mon;
+package org.streams.agent.mon.status;
 
 /**
  * Describes the status and counters of an agent

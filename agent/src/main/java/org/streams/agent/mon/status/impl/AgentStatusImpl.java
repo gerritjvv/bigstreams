@@ -1,11 +1,10 @@
-package org.streams.agent.mon.impl;
+package org.streams.agent.mon.status.impl;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.streams.agent.mon.AgentStatus;
-
+import org.streams.agent.mon.status.AgentStatus;
 
 /**
  * 

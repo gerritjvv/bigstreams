@@ -3,11 +3,9 @@ package org.streams.agent.send.impl;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import javax.inject.Named;
-
 import org.apache.log4j.Logger;
 import org.streams.agent.file.FileTrackerMemory;
-import org.streams.agent.mon.AgentStatus;
+import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FilesToSendQueue;
@@ -18,7 +16,6 @@ import org.streams.commons.app.ApplicationService;
  * are placed in the file send queue, to the collector.
  * 
  */
-@Named
 public class FilesSendService implements ApplicationService {
 
 	private static final Logger LOG = Logger

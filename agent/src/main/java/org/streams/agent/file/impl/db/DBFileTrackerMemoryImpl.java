@@ -10,11 +10,9 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.NoResultException;
 import javax.persistence.Query;
 
-import org.apache.log4j.Logger;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.FileTrackingStatus.STATUS;
-
 
 /**
  * 
@@ -32,9 +30,6 @@ import org.streams.agent.file.FileTrackingStatus.STATUS;
  * A default value for max results is used and set at 1000.<br/>
  */
 public class DBFileTrackerMemoryImpl implements FileTrackerMemory {
-
-	private static final Logger LOG = Logger
-			.getLogger(DBFileTrackerMemoryImpl.class);
 
 	private static final int DEFAULT_MAX_RESULTS = 1000;
 

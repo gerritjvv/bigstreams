@@ -94,7 +94,7 @@ public class LSCommand implements CommandLineProcessor {
 					files = getFilesDBwithQuery(query, from, max);
 				} else {
 					LOG.info("Connecting via rest");
-					files = getFilesHttp("?query=" + query, from, max);
+					files = getFilesHttp(query, from, max);
 				}
 				writeOutput(files, writer, cmdLine);
 
@@ -139,12 +139,18 @@ public class LSCommand implements CommandLineProcessor {
 		LOG.info("Connecting client to " + clientPort);
 
 		String suffix = "/files/list";
+		
 		if(attribute != null && attribute.length() > 0){
+			
 			suffix += "/" + attribute;
+			
 		}
+
 		ClientResource clientResource = new ClientResource("http://localhost:"
 				+ clientPort + suffix);
 
+		
+		
 		StringWriter writer = new StringWriter();
 		if (from > -1) {
 			clientResource.setRanges(Arrays.asList(new Range(from, max)));

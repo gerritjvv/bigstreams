@@ -5,7 +5,6 @@ import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
 
-import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.commons.cli.CommandLine;

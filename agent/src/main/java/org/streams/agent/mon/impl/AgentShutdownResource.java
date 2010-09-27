@@ -23,6 +23,11 @@ public class AgentShutdownResource extends ServerResource {
 
 	AppLifeCycleManager appLifeCycleManager;
 
+	/**
+	 * When true (default) the System.exit(0) method will be called after the ApplicationLifeCycleManager shutdown method has been called.
+	 */
+	boolean callSystemExit = true;
+	
 	public AgentShutdownResource() {
 	}
 
@@ -50,7 +55,9 @@ public class AgentShutdownResource extends ServerResource {
 						e.printStackTrace();
 					}
 					appLifeCycleManager.shutdown();
-					System.exit(0);
+					if(callSystemExit){
+						System.exit(0);
+					}
 				}
 			}.start();
 
@@ -67,6 +74,18 @@ public class AgentShutdownResource extends ServerResource {
 	@Inject
 	public void setAppLifeCycleManager(AppLifeCycleManager appLifeCycleManager) {
 		this.appLifeCycleManager = appLifeCycleManager;
+	}
+
+	public boolean isCallSystemExit() {
+		return callSystemExit;
+	}
+
+	/**
+	 * If true (default) the System.exit(0) method is called after the ApplicationLifeCycle shutdown method has returned.
+	 * @param callSystemExit
+	 */
+	public void setCallSystemExit(boolean callSystemExit) {
+		this.callSystemExit = callSystemExit;
 	}
 
 }
