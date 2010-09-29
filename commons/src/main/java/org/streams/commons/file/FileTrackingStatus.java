@@ -68,6 +68,14 @@ public class FileTrackingStatus {
 		this.logType = logType;
 	}
 
+	public int getLinePointer() {
+		return linePointer;
+	}
+
+	public void setLinePointer(int linePointer) {
+		this.linePointer = linePointer;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -105,14 +113,6 @@ public class FileTrackingStatus {
 		} else if (!logType.equals(other.logType))
 			return false;
 		return true;
-	}
-
-	public int getLinePointer() {
-		return linePointer;
-	}
-
-	public void setLinePointer(int linePointer) {
-		this.linePointer = linePointer;
 	}
 
 }

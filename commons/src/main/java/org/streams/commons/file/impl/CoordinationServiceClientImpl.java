@@ -74,6 +74,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		if (!ret) {
 			throw new CoordinationException("Unable to unlock file");
 		}
+		
 
 	}
 

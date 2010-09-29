@@ -1,10 +1,12 @@
 package org.streams.commons.file.impl;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
 import java.net.InetSocketAddress;
 import java.nio.charset.Charset;
+import java.util.concurrent.Exchanger;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
@@ -28,7 +30,6 @@ import org.jboss.netty.util.Timer;
 import org.streams.commons.file.CoordinationException;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
-import org.streams.commons.io.impl.CountdownLatchChannel;
 
 /**
  * This class i a client connection helper.<br/>
@@ -85,7 +86,7 @@ public class ClientConnectionResource {
 			final String data = objMapper.writeValueAsString(syncPointer);
 
 			// in case of any error the msg == null
-			String msg = sendData(data);
+			String msg = sendData(data, "OK");
 
 			return (msg != null);
 		} catch (Throwable t) {
@@ -101,7 +102,7 @@ public class ClientConnectionResource {
 		try {
 
 			final String data = objMapper.writeValueAsString(status);
-			String msg = sendData(data);
+			String msg = sendData(data, null);
 
 			SyncPointer syncPointer = null;
 
@@ -111,7 +112,7 @@ public class ClientConnectionResource {
 
 			return syncPointer;
 		} catch (Throwable t) {
-			t.printStackTrace();
+			LOG.error(t.toString(), t);
 			CoordinationException exp = new CoordinationException();
 			exp.setStackTrace(t.getStackTrace());
 			throw exp;
@@ -121,12 +122,25 @@ public class ClientConnectionResource {
 	/**
 	 * Helper method for sending data.<br/>
 	 * Calling this method will open and close a connection to the server.
+	 * 
+	 * @param sendData
+	 *            The data to send
+	 * @param defaultResponse
+	 *            if no data was returned but no error was registered, this
+	 *            response is returned.
+	 * @return
+	 * @throws Throwable
 	 */
-	private String sendData(String sendData) throws Throwable {
+	private String sendData(String sendData, String defaultResponse)
+			throws Throwable {
 
-		final ClientChannelHandler handler = new ClientChannelHandler(sendData);
+		final Exchanger<ClientResourceMessage> exchanger = new Exchanger<ClientResourceMessage>();
 
-		final CountdownLatchChannel countdownLatchChannel = new CountdownLatchChannel();
+		final ClientChannelHandler handler = new ClientChannelHandler(sendData,
+				exchanger);
+
+		// final CountdownLatchChannel countdownLatchChannel = new
+		// CountdownLatchChannel();
 
 		bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(
 				threadWorkerBossService, threadServiceWorkerService));
@@ -136,8 +150,7 @@ public class ClientConnectionResource {
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new MessageFrameDecoder(), handler,
-						countdownLatchChannel);
+				return Channels.pipeline(new MessageFrameDecoder(), handler);
 			}
 		});
 
@@ -156,36 +169,35 @@ public class ClientConnectionResource {
 
 		if (future.isSuccess()) {
 
-			// only ever wait for channel close if the connection was successful
-			try {
-				// we wait twice the timeout to allow for timer inaccuracies. If
-				// a timeout the ReadTimeoutHandler should handle the timeout.
-				countdownLatchChannel.waitTillClose(sendTimeOut * 2,
-						TimeUnit.MILLISECONDS);
+			// this will wait for the message
+			ClientResourceMessage message = exchanger.exchange(null,
+					sendTimeOut * 2, TimeUnit.MILLISECONDS);
 
-			} catch (InterruptedException e) {
-				// this is called if the thread is to be closed by some shutdown
-				// process.
-				Thread.currentThread().interrupt();
+			// complete io operations
+			// check error codes
+
+			if (message.isHasError()) {
+				// if any error throw it
+				LOG.error(message.getMsg(), message.getError());
+				throw message.getError();
+			} else if (message.getCode() == 409) {
+				// conflict print message and return null
+				LOG.error(message.getMsg());
+				return null;
+			} else {
+				// we have a success here but the MSG sent by the coordination
+				// service might be null,
+				String msg = message.getMsg();
+				if (msg == null) {
+					LOG.warn("The message received from the server was null, returning "
+							+ defaultResponse);
+					return defaultResponse;
+				} else {
+					return msg;
+				}
 			}
-
-		}
-
-		// complete io operations
-		// check error codes
-
-		int code = handler.code;
-		String msg = handler.msg;
-
-		if (handler.hasError) {
-			// if any error throw it
-			throw handler.error;
-		} else if (code == 409) {
-			// conflict print message and return null
-			LOG.error(msg);
-			return null;
 		} else {
-			return msg;
+			throw new IOException("Failed to connect to: " + inetAddress);
 		}
 
 	}
@@ -213,21 +225,17 @@ public class ClientConnectionResource {
 	 */
 	class ClientChannelHandler extends SimpleChannelHandler {
 
-		volatile int code;
-		volatile String msg;
-
-		volatile boolean hasError;
-		volatile Throwable error;
-
-		volatile boolean messageReceived = false;
+		Exchanger<ClientResourceMessage> exchange;
 
 		/**
 		 * Data to send
 		 */
 		String sendData;
 
-		public ClientChannelHandler(String sendData) {
+		public ClientChannelHandler(String sendData,
+				Exchanger<ClientResourceMessage> exchange) {
 			this.sendData = sendData;
+			this.exchange = exchange;
 		}
 
 		/**
@@ -261,13 +269,16 @@ public class ClientConnectionResource {
 			// any client side exception in the IO pipeline is captured here.
 			// if this happens close the connection
 
-			msg = "Client Error: " + e.toString();
+			String msg = "Client Error: " + e.toString();
 			LOG.error(msg, e.getCause());
 
-			hasError = true;
-			error = e.getCause();
-
-			ctx.getChannel().close();
+			Throwable error = e.getCause();
+			try {
+				ctx.getChannel().close();
+			} finally {
+				exchange.exchange(new ClientResourceMessage(500, msg, true,
+						error));
+			}
 		}
 
 		@Override
@@ -280,13 +291,16 @@ public class ClientConnectionResource {
 				LOG.debug("Server response received");
 			}
 			ChannelBuffer buff = (ChannelBuffer) e.getMessage();
-			code = buff.readInt();
+			int code = buff.readInt();
 
-			msg = buff.toString(Charset.defaultCharset());
+			String msg = buff.toString(Charset.defaultCharset());
+			try {
+				super.messageReceived(ctx, e);
+			} finally {
+				exchange.exchange(new ClientResourceMessage(code, msg, false,
+						null));
+			}
 
-			messageReceived = true;
-
-			super.messageReceived(ctx, e);
 		}
 
 		@Override

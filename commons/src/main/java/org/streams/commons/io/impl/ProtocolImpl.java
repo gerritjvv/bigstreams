@@ -1,17 +1,24 @@
 package org.streams.commons.io.impl;
 
+import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.Reader;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.commons.configuration.Configuration;
+import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
+import org.apache.hadoop.io.compress.Decompressor;
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
@@ -25,12 +32,14 @@ import org.streams.commons.io.Protocol;
  */
 public class ProtocolImpl implements Protocol {
 
+	private static final Logger LOG = Logger.getLogger(ProtocolImpl.class);
+	
 	private static final ObjectMapper objectMapper = new ObjectMapper();
 
 	private org.apache.hadoop.conf.Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
 
 	private Map<String, CompressionCodec> codecMap = new ConcurrentHashMap<String, CompressionCodec>();
-
+	
 	/**
 	 * Reads the header part of a InputStream
 	 * 
@@ -78,20 +87,44 @@ public class ProtocolImpl implements Protocol {
 			}
 
 			// read header length
-			int headerLen = inputStream.readInt();
-			byte[] headerBytes = new byte[headerLen];
-			int ioBytesRead = inputStream.read(headerBytes, 0, headerLen);
+			final int headerLen = inputStream.readInt();
+			final byte[] headerBytes = new byte[headerLen];
+			final int ioBytesRead = inputStream.read(headerBytes, 0, headerLen);
 
 			if (ioBytesRead != headerLen) {
 				throw new RuntimeException(
 						"The bytes available in the input stream does not match the header length integer passed in the stream ("
 								+ headerLen + ")");
 			}
-			CompressionInputStream compressionInput = codec
-					.createInputStream(new ByteArrayInputStream(headerBytes));
-			// String headerString = IOUtils.toString(compressionInput);
+			
+			final ByteArrayInputStream byteInput = new ByteArrayInputStream(headerBytes);
+						
+			final CompressionInputStream compressionInput = codec
+					.createInputStream(byteInput);
+			
+			final Reader reader = new InputStreamReader(compressionInput);
+			try {
+				
+				//The jackson Object mapper does not read the stream completely
+				//thus causing OutOfMemory DirectMemory errors in the Decompressor.
+				//read whole stream here and pass as String to the jackson object mapper.
+				StringBuilder buff = new StringBuilder(headerBytes.length);
+				char chars[] = new char[256];
+				int len = 0;
+				
+				while( (len = reader.read(chars)) > 0 ){
+					buff.append(chars, 0, len);
+				}
+				
+				header = objectMapper.readValue(buff.toString(), Header.class);
+				
+			} finally {
+				IOUtils.closeQuietly(compressionInput);
+				IOUtils.closeQuietly(byteInput);
+				IOUtils.closeQuietly(reader);
+			}
+			
 
-			header = objectMapper.readValue(compressionInput, Header.class);
 		} catch (Throwable t) {
 			IOException ioExcp = new IOException(t.toString(), t);
 			ioExcp.setStackTrace(t.getStackTrace());

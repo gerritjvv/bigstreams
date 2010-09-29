@@ -7,17 +7,19 @@ package org.streams.commons.file;
  */
 public class SyncPointer implements Comparable<SyncPointer>{
 
-	long lockId;
+	int lockId;
 	long filePointer;
 	int linePointer;
 	long fileSize;
 	
-	public long getLockId() {
+	public int getLockId() {
 		return lockId;
 	}
-	public void setLockId(long lockId) {
+	
+	public void setLockId(int lockId) {
 		this.lockId = lockId;
 	}
+	
 	public long getFilePointer() {
 		return filePointer;
 	}
