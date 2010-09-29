@@ -29,6 +29,7 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
 import org.streams.agent.agentcli.startup.check.impl.CodecCheck;
 import org.streams.agent.agentcli.startup.check.impl.ConfigCheck;
@@ -69,12 +70,15 @@ import org.streams.commons.app.impl.AppLifeCycleManagerImpl;
 import org.streams.commons.app.impl.RestletService;
 import org.streams.commons.cli.AppStartCommand;
 import org.streams.commons.io.Protocol;
+import org.streams.commons.metrics.CounterMetric;
+import org.streams.commons.metrics.impl.MetricsAppService;
 
 /**
  * Injects the AppLifeCycleManager and all of its dependencies
  * 
  */
 @Configuration
+@Import(MetricsDI.class)
 public class AgentDI {
 
 	@Autowired(required = true)
@@ -137,7 +141,8 @@ public class AgentDI {
 		List<ApplicationService> serviceList = Arrays.asList(
 				beanFactory.getBean(DirectoryPollingService.class),
 				beanFactory.getBean(RestletService.class),
-				beanFactory.getBean(FilesSendService.class));
+				beanFactory.getBean(FilesSendService.class),
+				beanFactory.getBean(MetricsAppService.class));
 
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				null);
@@ -490,7 +495,8 @@ public class AgentDI {
 
 		return new FileSendTaskImpl(
 				beanFactory.getBean(ClientResourceFactory.class),
-				collectorAddress, beanFactory.getBean(FileTrackerMemory.class));
+				collectorAddress, beanFactory.getBean(FileTrackerMemory.class),
+				beanFactory.getBean("fileKilobytesReadMetric", CounterMetric.class));
 
 	}
 

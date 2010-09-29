@@ -58,6 +58,8 @@ import org.streams.agent.send.utils.MessageFrameDecoder;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
+import org.streams.commons.metrics.impl.IntegerCounterPerSecondMetric;
+import org.streams.commons.status.Status;
 
 import com.hadoop.compression.lzo.LzoCodec;
 
@@ -145,7 +147,13 @@ public class TestFilesSendWorkerConflict extends TestCase {
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
 				ccFact, fileLineStreamer);
 		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
-				new InetSocketAddress("localhost", testPort), memory);
+				new InetSocketAddress("localhost", testPort), memory, new IntegerCounterPerSecondMetric("TEST", new Status() {
+					
+					@Override
+					public void setCounter(String status, int counter) {
+						
+					}
+				}));
 
 		FilesSendWorkerImpl worker = new FilesSendWorkerImpl(queue,
 				agentStatus, memory, fileSendTask);

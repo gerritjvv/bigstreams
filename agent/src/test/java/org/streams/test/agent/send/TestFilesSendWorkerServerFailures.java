@@ -43,6 +43,8 @@ import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.ServerUtil;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.impl.ProtocolImpl;
+import org.streams.commons.metrics.impl.IntegerCounterPerSecondMetric;
+import org.streams.commons.status.Status;
 
 import com.hadoop.compression.lzo.LzoCodec;
 
@@ -259,7 +261,13 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
 				ccFact, fileLineStreamer);
 		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
-				new InetSocketAddress("localhost", port), memory);
+				new InetSocketAddress("localhost", port), memory, new IntegerCounterPerSecondMetric("TEST", new Status() {
+					
+					@Override
+					public void setCounter(String status, int counter) {
+						
+					}
+				}));
 
 		FilesSendWorkerImpl worker = new FilesSendWorkerImpl(queue,
 				agentStatus, memory, fileSendTask);

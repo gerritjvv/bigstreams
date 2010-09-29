@@ -22,6 +22,7 @@ public interface AgentProperties {
 	static final String FILE_STREAMER_CLASS = "agent.send.filestreamer.class";
 	static final String FILE_STREAMER_BUFFERSIZE = "agent.send.filestreamer.buffersize";
 
+	static final String METRIC_REFRESH_PERIOD = "metric.refresh.period";
 	/**
 	 * Files that are removed from the memory can also be removed from the local file system if this property is set to true 
 	 */

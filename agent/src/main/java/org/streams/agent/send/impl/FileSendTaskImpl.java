@@ -11,6 +11,7 @@ import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.send.ClientResource;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
+import org.streams.commons.metrics.CounterMetric;
 
 /**
  * 
@@ -38,6 +39,8 @@ public class FileSendTaskImpl implements FileSendTask {
 	 */
 	FileTrackerMemory memory;
 
+	CounterMetric fileKilobytesReadMetric;
+	
 	/**
 	 * 
 	 * @param clientResourceFactory
@@ -45,11 +48,12 @@ public class FileSendTaskImpl implements FileSendTask {
 	 * @param memory
 	 */
 	public FileSendTaskImpl(ClientResourceFactory clientResourceFactory,
-			InetSocketAddress collectorAddress, FileTrackerMemory memory) {
+			InetSocketAddress collectorAddress, FileTrackerMemory memory, CounterMetric fileKilobytesReadMetric) {
 		super();
 		this.clientResourceFactory = clientResourceFactory;
 		this.collectorAddress = collectorAddress;
 		this.memory = memory;
+		this.fileKilobytesReadMetric = fileKilobytesReadMetric;
 	}
 
 	/**
@@ -74,6 +78,8 @@ public class FileSendTaskImpl implements FileSendTask {
 		clientResource.open(collectorAddress, fileLinePointer, file);
 
 		boolean interrupted = false;
+		LOG.info("FILE SEND START " + fileStatus.getPath());
+		
 		try{
 			while (!(interrupted = Thread.interrupted())) {
 	
@@ -83,7 +89,8 @@ public class FileSendTaskImpl implements FileSendTask {
 	
 				// this is to add line recovery in case of a conflict
 				int prevLinePointer = fileLinePointer.getLineReadPointer();
-	
+				int prevFilePointer = fileLinePointer.getLineReadPointer();
+				
 				sentData = clientResource.send(uniqueId, logType);
 	
 				// -------- In case a conflict was detected we need
@@ -110,6 +117,11 @@ public class FileSendTaskImpl implements FileSendTask {
 	
 					fileLinePointer = conflictResolvePointer;
 	
+				}else{
+					//set metrics only if no conflict
+					fileKilobytesReadMetric.incrementCounter(
+							(fileLinePointer.getFilePointer() - prevFilePointer)/1024
+							);
 				}
 	
 				fileStatus.setFilePointer(fileLinePointer.getFilePointer());
@@ -147,6 +159,8 @@ public class FileSendTaskImpl implements FileSendTask {
 	
 			}// eof while
 
+			LOG.info("FILE SEND DONE " + fileStatus.getPath());
+			
 		}finally{
 			clientResource.close();
 		}

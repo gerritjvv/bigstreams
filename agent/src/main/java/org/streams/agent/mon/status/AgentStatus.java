@@ -1,9 +1,11 @@
 package org.streams.agent.mon.status;
 
+import org.streams.commons.status.Status;
+
 /**
  * Describes the status and counters of an agent
  */
-public interface AgentStatus {
+public interface AgentStatus extends Status{
 
 	enum STATUS {
 		SERVER_ERROR, CLIENT_ERROR, UNKOWN_ERROR, OK

@@ -14,7 +14,7 @@ import org.streams.agent.mon.status.AgentStatus;
 public class AgentStatusImpl implements AgentStatus {
 
 	STATUS status = STATUS.OK;
-	String msg = "Running";
+	String msg = "Working";
 
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
@@ -63,6 +63,11 @@ public class AgentStatusImpl implements AgentStatus {
 			counterMap.put(name, counter);
 		}
 		return counter;
+	}
+
+	@Override
+	public void setCounter(String status, int counter) {
+		getSetCounter(status).set(counter);
 	}
 
 }
