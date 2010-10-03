@@ -55,6 +55,8 @@ import org.streams.agent.send.impl.FilesToSendQueueImpl;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.MessageFrameDecoder;
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
@@ -78,6 +80,11 @@ public class TestFilesSendWorkerConflict extends TestCase {
 
 	private final List<MessageEventBag> bagList = new ArrayList<MessageEventBag>();
 
+
+	CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
+			new AgentStatusImpl());
+
+
 	CompressionCodec codec;
 
 	@Test
@@ -98,7 +105,7 @@ public class TestFilesSendWorkerConflict extends TestCase {
 			worker.setWaitIfEmpty(10L);
 			worker.setWaitOnErrorTime(10L);
 			worker.setWaitBetweenFileSends(1L);
-			
+
 			Thread thread = new Thread(worker);
 			thread.start();
 
@@ -138,20 +145,23 @@ public class TestFilesSendWorkerConflict extends TestCase {
 			}
 
 		};
+
 		ccFact.setConnectEstablishTimeout(10000L);
 		ccFact.setSendTimeOut(10000L);
-		ccFact.setProtocol(new ProtocolImpl());
+		ccFact.setProtocol(new ProtocolImpl(pf));
 
-		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, 500L);
+		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
+				500L);
 
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
 				ccFact, fileLineStreamer);
 		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
-				new InetSocketAddress("localhost", testPort), memory, new IntegerCounterPerSecondMetric("TEST", new Status() {
-					
+				new InetSocketAddress("localhost", testPort), memory,
+				new IntegerCounterPerSecondMetric("TEST", new Status() {
+
 					@Override
 					public void setCounter(String status, int counter) {
-						
+
 					}
 				}));
 
@@ -281,7 +291,7 @@ public class TestFilesSendWorkerConflict extends TestCase {
 			bag.setBytes(e);
 			bagList.add(bag);
 
-			Protocol p = new ProtocolImpl();
+			Protocol p = new ProtocolImpl(pf);
 			Header header = p.read(conf, new DataInputStream(
 					new ByteArrayInputStream(bag.getBytes())));
 

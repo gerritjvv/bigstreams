@@ -13,6 +13,7 @@ import java.util.concurrent.Executors;
 
 import junit.framework.TestCase;
 
+import org.apache.commons.configuration.PropertiesConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
@@ -55,6 +56,8 @@ import org.streams.agent.send.impl.FilesToSendQueueImpl;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.MessageFrameDecoder;
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.impl.ProtocolImpl;
 import org.streams.commons.metrics.impl.IntegerCounterPerSecondMetric;
@@ -68,9 +71,11 @@ import com.hadoop.compression.lzo.LzoCodec;
  * <p/>
  * Behaviours tested are:<br/>
  * <ul>
- *  <li>Normal thread send</li>
- *  <li>Agent file pointer is out of sync with the collector, a 409 response is sent.</li>
- *  <li>Agent file pointer is out of sync with the collector but collector sends a faulty line pointer, a 409 response is sent.</li>
+ * <li>Normal thread send</li>
+ * <li>Agent file pointer is out of sync with the collector, a 409 response is
+ * sent.</li>
+ * <li>Agent file pointer is out of sync with the collector but collector sends
+ * a faulty line pointer, a 409 response is sent.</li>
  * </ul>
  */
 public class TestFilesSendWorker extends TestCase {
@@ -84,6 +89,9 @@ public class TestFilesSendWorker extends TestCase {
 
 	private final List<MessageEventBag> bagList = new ArrayList<MessageEventBag>();
 
+	private final CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
+			new AgentStatusImpl());
+
 	CompressionCodec codec;
 
 	@Test
@@ -91,7 +99,7 @@ public class TestFilesSendWorker extends TestCase {
 
 		ServerBootstrap bootstrap = connectServer(false);
 		try {
-
+			
 			MapTrackerMemory memory = new MapTrackerMemory();
 
 			FileTrackingStatus fileToSendStatus = createFileTrackingStatus();
@@ -99,11 +107,11 @@ public class TestFilesSendWorker extends TestCase {
 
 			AgentStatus agentStatus = new AgentStatusImpl();
 			FilesSendWorkerImpl worker = createWorker(memory, agentStatus);
-			
+
 			worker.setWaitIfEmpty(1L);
 			worker.setWaitOnErrorTime(1L);
 			worker.setWaitBetweenFileSends(1L);
-			
+
 			Thread thread = new Thread(worker);
 			thread.start();
 
@@ -132,7 +140,6 @@ public class TestFilesSendWorker extends TestCase {
 
 			);
 
-			
 		} finally {
 			bootstrap.releaseExternalResources();
 		}
@@ -141,6 +148,7 @@ public class TestFilesSendWorker extends TestCase {
 
 	/**
 	 * Test normal execution of sending file data.
+	 * 
 	 * @throws Exception
 	 */
 	@Test
@@ -155,11 +163,11 @@ public class TestFilesSendWorker extends TestCase {
 
 			AgentStatus agentStatus = new AgentStatusImpl();
 			FilesSendWorkerImpl worker = createWorker(memory, agentStatus);
-			
+
 			worker.setWaitIfEmpty(10L);
 			worker.setWaitOnErrorTime(10L);
 			worker.setWaitBetweenFileSends(1L);
-			
+
 			Thread thread = new Thread(worker);
 			thread.start();
 
@@ -179,7 +187,7 @@ public class TestFilesSendWorker extends TestCase {
 			assertEquals(AgentStatus.STATUS.OK, agentStatus.getStatus());
 
 			worker.destroy();
-			
+
 		} finally {
 			bootstrap.releaseExternalResources();
 		}
@@ -196,13 +204,16 @@ public class TestFilesSendWorker extends TestCase {
 	public void testThreadAgentConflictCollectorError() throws Exception {
 
 		// this will cause the server to send conflict responses every 10
-		// iterations plus an invalid file pointer, we expect an exception to be thrown from the agent but 
+		// iterations plus an invalid file pointer, we expect an exception to be
+		// thrown from the agent but
 		// not to affect the agents operation.
-		// because this is a random simulated error the agent would recover from the error and continue sending from where it last left off.
-		// this simulates if a collector send a conflict code but for some network error the response file pointer got corrupted.
+		// because this is a random simulated error the agent would recover from
+		// the error and continue sending from where it last left off.
+		// this simulates if a collector send a conflict code but for some
+		// network error the response file pointer got corrupted.
 		ServerBootstrap bootstrap = connectServer(true, true);
 		try {
-			
+
 			MapTrackerMemory memory = new MapTrackerMemory();
 
 			FileTrackingStatus fileToSendStatus = createFileTrackingStatus();
@@ -213,7 +224,7 @@ public class TestFilesSendWorker extends TestCase {
 			worker.setWaitIfEmpty(10L);
 			worker.setWaitOnErrorTime(10L);
 			worker.setWaitBetweenFileSends(1L);
-			
+
 			Thread thread = new Thread(worker);
 			thread.start();
 
@@ -225,7 +236,6 @@ public class TestFilesSendWorker extends TestCase {
 				Thread.sleep(1000L);
 			}
 
-			
 			FileTrackingStatus status = memory.getFileStatus(fileToStream);
 
 			assertNotNull(status);
@@ -234,7 +244,7 @@ public class TestFilesSendWorker extends TestCase {
 			assertEquals(AgentStatus.STATUS.OK, agentStatus.getStatus());
 
 			worker.destroy();
-			
+
 		} finally {
 			bootstrap.releaseExternalResources();
 		}
@@ -246,7 +256,8 @@ public class TestFilesSendWorker extends TestCase {
 	 * conflict message.<br/>
 	 * The agent is expected to read the file pointer sent by the collector and
 	 * restart reading from this file pointer position.<br/>
-	 * @param agentStatus2 
+	 * 
+	 * @param agentStatus2
 	 * 
 	 * @throws Exception
 	 */
@@ -267,7 +278,7 @@ public class TestFilesSendWorker extends TestCase {
 			worker.setWaitIfEmpty(10L);
 			worker.setWaitOnErrorTime(10L);
 			worker.setWaitBetweenFileSends(1L);
-			
+
 			Thread thread = new Thread(worker);
 			thread.start();
 
@@ -293,51 +304,58 @@ public class TestFilesSendWorker extends TestCase {
 
 	}
 
-	private FilesSendWorkerImpl createWorker(FileTrackerMemory memory, AgentStatus agentStatus){
+	private FilesSendWorkerImpl createWorker(FileTrackerMemory memory,
+			AgentStatus agentStatus) {
 		FilesToSendQueue queue = new FilesToSendQueueImpl(memory);
 
 		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl() {
 
-			protected ClientConnection createConnection(ExecutorService workerBossService, ExecutorService workerService, Timer timeoutTimer){
-				return new ClientConnectionImpl(workerBossService, workerService, timeoutTimer);
+			protected ClientConnection createConnection(
+					ExecutorService workerBossService,
+					ExecutorService workerService, Timer timeoutTimer) {
+				return new ClientConnectionImpl(workerBossService,
+						workerService, timeoutTimer);
 			}
 
 		};
+
 		ccFact.setConnectEstablishTimeout(10000L);
 		ccFact.setSendTimeOut(10000L);
-		ccFact.setProtocol(new ProtocolImpl());
+		ccFact.setProtocol(new ProtocolImpl(pf));
 
-		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec,
+		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
 				10000L);
-		
-		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(ccFact, fileLineStreamer);  
-		FileSendTask fileSendTask = new FileSendTaskImpl(
-				clientResourceFactory, new InetSocketAddress("localhost", testPort), memory, new IntegerCounterPerSecondMetric("TEST", new Status() {
-					
+
+		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
+				ccFact, fileLineStreamer);
+		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
+				new InetSocketAddress("localhost", testPort), memory,
+				new IntegerCounterPerSecondMetric("TEST", new Status() {
+
 					@Override
 					public void setCounter(String status, int counter) {
-						
+
 					}
 				}));
-		
-		FilesSendWorkerImpl worker = new FilesSendWorkerImpl(queue, agentStatus, memory, fileSendTask);
+
+		FilesSendWorkerImpl worker = new FilesSendWorkerImpl(queue,
+				agentStatus, memory, fileSendTask);
 
 		return worker;
 	}
-	
-	private FileTrackingStatus createFileTrackingStatus(){
+
+	private FileTrackingStatus createFileTrackingStatus() {
 
 		FileTrackingStatus fileToSendStatus = new FileTrackingStatus();
 		fileToSendStatus.setPath(fileToStream.getAbsolutePath());
 		fileToSendStatus.setFileSize(fileToStream.length());
 		fileToSendStatus.setLogType("Test");
 		fileToSendStatus.setStatus(FileTrackingStatus.STATUS.READY);
-		fileToSendStatus.setLastModificationTime(fileToStream
-				.lastModified());
-		
+		fileToSendStatus.setLastModificationTime(fileToStream.lastModified());
+
 		return fileToSendStatus;
 	}
-	
+
 	@Before
 	public void setUp() throws Exception {
 
@@ -382,10 +400,12 @@ public class TestFilesSendWorker extends TestCase {
 		FileUtils.deleteDirectory(baseDir);
 	}
 
-	private ServerBootstrap connectServer(boolean simulateConflict){
+	private ServerBootstrap connectServer(boolean simulateConflict) {
 		return connectServer(simulateConflict, false);
 	}
-	private ServerBootstrap connectServer(boolean simulateConflict, boolean simulateConflictErrorPointer) {
+
+	private ServerBootstrap connectServer(boolean simulateConflict,
+			boolean simulateConflictErrorPointer) {
 
 		ServerBootstrap bootstrap = new ServerBootstrap(
 				new NioServerSocketChannelFactory(
@@ -418,9 +438,13 @@ public class TestFilesSendWorker extends TestCase {
 
 		/**
 		 * 
-		 * @param bagList	
-		 * @param simulateConflict	if true every 10 iterations this class will send a 409 error to the client.
-		 * @param simulateConflictErrorPointer if true the file pointer for the above 409 error will be -1
+		 * @param bagList
+		 * @param simulateConflict
+		 *            if true every 10 iterations this class will send a 409
+		 *            error to the client.
+		 * @param simulateConflictErrorPointer
+		 *            if true the file pointer for the above 409 error will be
+		 *            -1
 		 */
 		public MessageEventBagHandler(List<MessageEventBag> bagList,
 				boolean simulateConflict, boolean simulateConflictErrorPointer) {
@@ -428,8 +452,6 @@ public class TestFilesSendWorker extends TestCase {
 			this.simulateConflict = simulateConflict;
 		}
 
-		
-		
 		@Override
 		public void channelConnected(ChannelHandlerContext ctx,
 				ChannelStateEvent e) throws Exception {
@@ -459,21 +481,23 @@ public class TestFilesSendWorker extends TestCase {
 			ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
 
 			if (simulateConflict) {
-				Header header = new ProtocolImpl().read(
-						null,
+				Header header = new ProtocolImpl(pf).read(
+						new PropertiesConfiguration(),
 						new DataInputStream(new ByteArrayInputStream(bag
 								.getBytes())));
 
-				//only add the message bag to the list if no status conflict sent
-				//this will make sure that if the agent does not act as expected the message bag list
-				//will be wrong length.
+				// only add the message bag to the list if no status conflict
+				// sent
+				// this will make sure that if the agent does not act as
+				// expected the message bag list
+				// will be wrong length.
 				if (counter++ == 10) {
 					counter = 0;
 					buffer.writeInt(ClientHandlerContext.STATUS_CONFLICT);
-					if(simulateConflictErrorPointer){
-						//simulate collector error in sending wrong pointer
+					if (simulateConflictErrorPointer) {
+						// simulate collector error in sending wrong pointer
 						buffer.writeLong(-1);
-					}else{
+					} else {
 						buffer.writeLong(filePointer);
 					}
 				} else {

@@ -25,6 +25,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.main.Bootstrap;
+import org.streams.agent.mon.status.impl.AgentStatusImpl;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.FileStreamer;
@@ -35,6 +36,8 @@ import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.ServerUtil;
 import org.streams.commons.cli.CommandLineProcessorFactory;
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
@@ -63,34 +66,41 @@ public class TestSendClientFiles extends TestCase {
 	 */
 	@Test
 	public void testSendFile() throws Exception {
-		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, 5000);
+
+		CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
+				new AgentStatusImpl());
+
+		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
+				5000);
 
 		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl() {
 
-			protected ClientConnection createConnection(ExecutorService workerBossService, ExecutorService workerService, Timer timeoutTimer){
-				return new ClientConnectionImpl(workerBossService, workerService, timeoutTimer);
+			protected ClientConnection createConnection(
+					ExecutorService workerBossService,
+					ExecutorService workerService, Timer timeoutTimer) {
+				return new ClientConnectionImpl(workerBossService,
+						workerService, timeoutTimer);
 			}
 
 		};
-		ccFact.setProtocol(new ProtocolImpl());
-		ccFact.setProtocol(new ProtocolImpl());
+		ccFact.setProtocol(new ProtocolImpl(pf));
 
 		ExecutorService workerBossService = Executors.newCachedThreadPool();
 		ExecutorService workerService = Executors.newCachedThreadPool();
-		
+
 		org.jboss.netty.util.Timer timer = new HashedWheelTimer();
-		
-		ClientResourceImpl clientResource = new ClientResourceImpl(ccFact, workerBossService, workerService, timer, fileLineStreamer);
-		try{
+
+		ClientResourceImpl clientResource = new ClientResourceImpl(ccFact,
+				workerBossService, workerService, timer, fileLineStreamer);
+		try {
 			runTest(clientResource);
 
-		
-		}finally{
+		} finally {
 			workerBossService.shutdown();
 			workerService.shutdown();
 			timer.stop();
 		}
-		
+
 	}
 
 	private void runTest(ClientResourceImpl client) throws Exception {
@@ -129,12 +139,16 @@ public class TestSendClientFiles extends TestCase {
 
 		FileWriter testFileWriter = new FileWriter(testFile);
 		try {
+			CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
+					new AgentStatusImpl());
+
 			for (MessageEventBag bag : serverUtil.getBagList()) {
 				ByteArrayInputStream inputStream = new ByteArrayInputStream(
 						bag.getBytes());
 				DataInputStream datInput = new DataInputStream(inputStream);
 				// read header
-				Protocol protocol = new ProtocolImpl();
+
+				Protocol protocol = new ProtocolImpl(pf);
 				Header header = protocol.read(conf, datInput);
 
 				assertEquals(fileToStream.getAbsolutePath(),

@@ -40,4 +40,9 @@ public interface AgentProperties {
 	static final String THREAD_WAIT_IFEMPTY = "agent.send.thread.waitifempty";
 	static final String THREAD_RETRIES = "agent.send.thread.retries";
 
+	/**
+	 * The amount of compressors to create for sending compressed data. This value should be equal to agent.send.thread.count
+	 */
+	static final String COMPRESSOR_POOLSIZE = "agent.send.compressor.poolsize";
+	
 }

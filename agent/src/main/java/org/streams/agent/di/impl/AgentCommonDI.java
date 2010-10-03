@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Configuration;
 import org.streams.agent.conf.AgentProperties;
 import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.mon.status.impl.AgentStatusImpl;
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
 
@@ -32,7 +34,7 @@ public class AgentCommonDI {
 
 	@Bean
 	public Protocol protocol() {
-		return new ProtocolImpl();
+		return new ProtocolImpl(beanFactory.getBean(CompressionPoolFactory.class));
 	}
 
 	/**
@@ -93,6 +95,24 @@ public class AgentCommonDI {
 		}
 
 		return codec;
+	}
+	
+	
+	@Bean
+	public CompressionPoolFactory compressionPoolFactory() {
+
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		int decompressorPoolSize = 1;
+		
+		int agentSendThreadCount = configuration.getInt(AgentProperties.CLIENT_THREAD_COUNT, 1);
+		
+		int compressorPoolSize = configuration.getInt(AgentProperties.COMPRESSOR_POOLSIZE,agentSendThreadCount);
+
+		return new CompressionPoolFactoryImpl(decompressorPoolSize,
+				compressorPoolSize, beanFactory.getBean(AgentStatus.class));
+
 	}
 
 }

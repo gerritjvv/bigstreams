@@ -30,10 +30,12 @@ import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.junit.Test;
 import org.streams.agent.file.FileLinePointer;
+import org.streams.agent.mon.status.impl.AgentStatusImpl;
 import org.streams.agent.send.ClientException;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.ServerException;
 import org.streams.agent.send.impl.ClientConnectionImpl;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.impl.ProtocolImpl;
 
@@ -86,7 +88,7 @@ public class TestClientConnectionImpl extends TestCase {
 
 			ClientConnectionImpl binClient = new ClientConnectionImpl(service,
 					service, timeoutTimer);
-			binClient.setProtocol(new ProtocolImpl());
+			binClient.setProtocol(new ProtocolImpl(new CompressionPoolFactoryImpl(10, 10, new AgentStatusImpl())));
 
 			// create a good inputStream
 			ByteArrayInputStream inputStream = new ByteArrayInputStream(
@@ -223,7 +225,7 @@ public class TestClientConnectionImpl extends TestCase {
 
 			ClientConnectionImpl binClient = new ClientConnectionImpl(service,
 					service, timeoutTimer);
-			binClient.setProtocol(new ProtocolImpl());
+			binClient.setProtocol(new ProtocolImpl(new CompressionPoolFactoryImpl(10, 10, new AgentStatusImpl())));
 
 			// create a good inputStream
 			ByteArrayInputStream inputStream = new ByteArrayInputStream(

@@ -69,6 +69,7 @@ import org.streams.commons.app.StartupCheck;
 import org.streams.commons.app.impl.AppLifeCycleManagerImpl;
 import org.streams.commons.app.impl.RestletService;
 import org.streams.commons.cli.AppStartCommand;
+import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricsAppService;
@@ -171,8 +172,8 @@ public class AgentDI {
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
 		int clientThreadCount = configuration.getInt(
-				AgentProperties.CLIENT_THREAD_COUNT, 5);
-		
+				AgentProperties.CLIENT_THREAD_COUNT, 1);
+
 		return new FilesSendService(
 				beanFactory.getBean(ClientResourceFactory.class),
 				beanFactory.getBean(FileSendTask.class), clientThreadCount,
@@ -268,7 +269,8 @@ public class AgentDI {
 		router.attach("/files/list/{status}", finderStatus);
 		router.attach("/files/list", finderStatus);
 		router.attach("/files/list/", finderStatus);
-		router.attach("/agent/status", finderAgentStatus, Template.MODE_STARTS_WITH);
+		router.attach("/agent/status", finderAgentStatus,
+				Template.MODE_STARTS_WITH);
 		router.attach("/files/count", finderStatusCount);
 		router.attach("/files/count/{status}", finderStatusCount);
 		// the match mode for this resource must be starts with because we
@@ -389,7 +391,9 @@ public class AgentDI {
 				AgentProperties.FILE_STREAMER_BUFFERSIZE, 1024 * 100);
 
 		if (fileStreamerClass == null) {
-			fileStreamer = new FileLineStreamerImpl(codec, bufferSize);
+			fileStreamer = new FileLineStreamerImpl(codec,
+					beanFactory.getBean(CompressionPoolFactory.class),
+					bufferSize);
 		} else {
 			fileStreamer = (FileStreamer) Thread.currentThread()
 					.getContextClassLoader().loadClass(fileStreamerClass)
@@ -496,7 +500,8 @@ public class AgentDI {
 		return new FileSendTaskImpl(
 				beanFactory.getBean(ClientResourceFactory.class),
 				collectorAddress, beanFactory.getBean(FileTrackerMemory.class),
-				beanFactory.getBean("fileKilobytesReadMetric", CounterMetric.class));
+				beanFactory.getBean("fileKilobytesReadMetric",
+						CounterMetric.class));
 
 	}
 

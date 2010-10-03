@@ -26,6 +26,7 @@ public class MessageFrameDecoder extends ReplayingDecoder<MessageFrameDecoderSta
 		case READ_LENGTH:
 			length = buffer.readInt();
 			checkpoint(MessageFrameDecoderState.READ_CONTENT);
+			return null;
 		case READ_CONTENT:
 			ChannelBuffer frame = buffer.readBytes(length);
 			checkpoint(MessageFrameDecoderState.READ_LENGTH);

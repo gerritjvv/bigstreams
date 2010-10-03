@@ -11,8 +11,10 @@ import org.apache.commons.configuration.Configuration;
 import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
+import org.streams.agent.mon.status.impl.AgentStatusImpl;
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.impl.ProtocolImpl;
-
 
 /**
  * Test Protocol
@@ -42,7 +44,9 @@ public class TestProtocolImpl extends TestCase {
 			output.close();
 		}
 
-		ProtocolImpl p = new ProtocolImpl();
+		CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
+				new AgentStatusImpl());
+		ProtocolImpl p = new ProtocolImpl(pf);
 
 		Configuration conf = new SystemConfiguration();
 
@@ -71,7 +75,10 @@ public class TestProtocolImpl extends TestCase {
 			output.close();
 		}
 
-		ProtocolImpl p = new ProtocolImpl();
+		CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
+				new AgentStatusImpl());
+
+		ProtocolImpl p = new ProtocolImpl(pf);
 
 		Configuration conf = new SystemConfiguration();
 

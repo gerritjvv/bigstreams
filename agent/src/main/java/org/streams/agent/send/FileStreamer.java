@@ -26,10 +26,11 @@ public interface FileStreamer {
 	 *            the stream to send the compressed data to
 	 * @return boolean true if lines were read, false if none were read because
 	 *         of EOF.
+	 * @throws InterruptedException 
 	 */
 	public boolean streamContent(FileLinePointer fileLinePointer,
 			BufferedReader input,
-			OutputStream output) throws IOException;
+			OutputStream output) throws IOException, InterruptedException;
 	
 	public CompressionCodec getCodec();
 	

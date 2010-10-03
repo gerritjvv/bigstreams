@@ -41,6 +41,8 @@ import org.streams.agent.send.impl.FilesToSendQueueImpl;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.ServerUtil;
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.impl.ProtocolImpl;
 import org.streams.commons.metrics.impl.IntegerCounterPerSecondMetric;
@@ -58,6 +60,10 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 
 	CompressionCodec codec;
 
+
+	CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
+			new AgentStatusImpl());
+	
 	/**
 	 * This test should test what happens if the server goes down while the
 	 * client is sending.<br/>
@@ -103,7 +109,7 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 		worker.setWaitIfEmpty(10L);
 		worker.setWaitOnErrorTime(10L);
 		worker.setWaitBetweenFileSends(1L);
-		
+
 		try {
 
 			// start the clientSendThread
@@ -183,6 +189,7 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 		if (file.exists()) {
 			file.delete();
 		}
+
 		file.createNewFile();
 		FileWriter testFileWriter = new FileWriter(file);
 		try {
@@ -192,7 +199,7 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 				DataInputStream datInput = new DataInputStream(inputStream);
 				// read header
 
-				Header header = new ProtocolImpl().read(conf, datInput);
+				Header header = new ProtocolImpl(pf).read(conf, datInput);
 
 				assertEquals(fileToStream.getAbsolutePath(),
 						header.getFileName());
@@ -252,20 +259,23 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 			}
 
 		};
+
 		ccFact.setConnectEstablishTimeout(10000L);
 		ccFact.setSendTimeOut(10000L);
-		ccFact.setProtocol(new ProtocolImpl());
+		ccFact.setProtocol(new ProtocolImpl(pf));
 
-		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, 5000L);
+		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
+				5000L);
 
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
 				ccFact, fileLineStreamer);
 		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
-				new InetSocketAddress("localhost", port), memory, new IntegerCounterPerSecondMetric("TEST", new Status() {
-					
+				new InetSocketAddress("localhost", port), memory,
+				new IntegerCounterPerSecondMetric("TEST", new Status() {
+
 					@Override
 					public void setCounter(String status, int counter) {
-						
+
 					}
 				}));
 
