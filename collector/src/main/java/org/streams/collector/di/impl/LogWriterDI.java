@@ -23,6 +23,8 @@ import org.streams.collector.write.impl.FileOutputStreamPoolFactoryImpl;
 import org.streams.collector.write.impl.LocalLogFileWriter;
 import org.streams.collector.write.impl.SimpleLogRollover;
 import org.streams.collector.write.impl.SimpleLogRolloverCheck;
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
 
@@ -30,7 +32,7 @@ import org.streams.commons.io.impl.ProtocolImpl;
 public class LogWriterDI {
 
 	private static final Logger LOG = Logger.getLogger(LogWriterDI.class);
-	
+
 	@Inject
 	BeanFactory beanFactory;
 
@@ -78,7 +80,7 @@ public class LogWriterDI {
 		localFileWriter.setBaseDir(file);
 
 		localFileWriter.init();
-		
+
 		return localFileWriter;
 
 	}
@@ -97,21 +99,20 @@ public class LogWriterDI {
 				CollectorProperties.WRITER.LOG_ROTATE_TIME.toString(),
 				(Long) CollectorProperties.WRITER.LOG_ROTATE_TIME
 						.getDefaultValue());
-		
 
 		long inactiveTime = conf.getLong(
 				CollectorProperties.WRITER.LOG_ROTATE_INACTIVE_TIME.toString(),
 				(Long) CollectorProperties.WRITER.LOG_ROTATE_INACTIVE_TIME
 						.getDefaultValue());
-		
+
 		long logSizeMb = conf
 				.getLong(CollectorProperties.WRITER.LOG_SIZE_MB.toString(),
 						(Long) CollectorProperties.WRITER.LOG_SIZE_MB
 								.getDefaultValue());
 
+		LOG.info("Using LogRollover: inactiveTime: " + inactiveTime
+				+ " rolloverTime: " + rolloverTime + " logSizeMb: " + logSizeMb);
 
-		LOG.info("Using LogRollover: inactiveTime: " + inactiveTime + " rolloverTime: " + rolloverTime + " logSizeMb: " + logSizeMb);
-		
 		return new SimpleLogRolloverCheck(rolloverTime, logSizeMb, inactiveTime);
 
 	}
@@ -132,7 +133,8 @@ public class LogWriterDI {
 		// different files.
 		return new FileOutputStreamPoolFactoryImpl(
 				beanFactory.getBean(LogRollover.class), 10000L, openFileLimit,
-				beanFactory.getBean(CollectorStatus.class), 16);
+				beanFactory.getBean(CollectorStatus.class), 16,
+				beanFactory.getBean(CompressionPoolFactory.class));
 	}
 
 	/**
@@ -197,7 +199,30 @@ public class LogWriterDI {
 
 	@Bean
 	public Protocol protocol() {
-		return new ProtocolImpl();
+		return new ProtocolImpl(
+				beanFactory.getBean(CompressionPoolFactory.class));
+	}
+
+	@Bean
+	public CompressionPoolFactory compressionPoolFactory() {
+
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		int decompressorPoolSize = configuration
+				.getInt(CollectorProperties.WRITER.COLLECTOR_DECOMPRESSOR_POOLSIZE
+						.toString(),
+						(Integer) CollectorProperties.WRITER.COLLECTOR_DECOMPRESSOR_POOLSIZE
+								.getDefaultValue());
+		int compressorPoolSize = configuration
+				.getInt(CollectorProperties.WRITER.COLLECTOR_COMPRESSOR_POOLSIZE
+						.toString(),
+						(Integer) CollectorProperties.WRITER.COLLECTOR_COMPRESSOR_POOLSIZE
+								.getDefaultValue());
+
+		return new CompressionPoolFactoryImpl(decompressorPoolSize,
+				compressorPoolSize, beanFactory.getBean(CollectorStatus.class));
+
 	}
 
 }

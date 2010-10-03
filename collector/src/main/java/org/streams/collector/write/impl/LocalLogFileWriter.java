@@ -3,7 +3,6 @@ package org.streams.collector.write.impl;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -15,6 +14,8 @@ import org.streams.collector.write.FileOutputStreamPoolFactory;
 import org.streams.collector.write.LogFileNameExtractor;
 import org.streams.collector.write.LogFileWriter;
 import org.streams.collector.write.LogRolloverCheck;
+import org.streams.collector.write.PostWriteAction;
+import org.streams.collector.write.RollBackOutputStream;
 import org.streams.collector.write.WriterException;
 import org.streams.commons.file.FileTrackingStatus;
 
@@ -91,52 +92,95 @@ public class LocalLogFileWriter implements LogFileWriter {
 		return baseDir;
 	}
 
-	/**
-	 * @return the number of bytes written
-	 */
 	public int write(FileTrackingStatus fileStatus, InputStream input)
 			throws WriterException {
+		return write(fileStatus, input, null);
+	}
+
+	/**
+	 * 
+	 * @return the number of bytes written
+	 */
+	@Override
+	public int write(FileTrackingStatus fileStatus, InputStream input,
+			PostWriteAction postWriteAction) throws WriterException {
 
 		String key = logFileNameExtractor.getFileName(fileStatus);
 		int wasWritten = 0;
 
+		FileOutputStreamPool fileOutputStreamPool = fileOutputStreamPoolFactory
+				.getPoolForKey(key);
+		RollBackOutputStream outputStream = null;
+		File file = null;
 		try {
+			file = getOutputFile(key);
+			lastWrittenFile = file;
 
-			FileOutputStreamPool fileOutputStreamPool = fileOutputStreamPoolFactory
-					.getPoolForKey(key);
-			try {
-				File file = getOutputFile(key);
-				lastWrittenFile = file;
+			outputStream = fileOutputStreamPool.open(key, compressionCodec,
+					file, true);
 
-				OutputStream outputStream = fileOutputStreamPool.open(key,
-						compressionCodec, file, true);
+			// we need to mark the current stream
+			outputStream.mark();
 
-				// we don't need to synchronise here. The FileOutputStreamPool
-				// will lock the output stream for use only by this thread
-				// until the releaseFile method is called
-				wasWritten = IOUtils.copy(input, outputStream);
-
-			} finally {
-				// make sure to releaseFile after writing
-				// this line throws an IOException for this its embedded
-				// inside
-				// the
-				// try catch.
-				fileOutputStreamPool.releaseFile(key);
+			// we don't need to synchronise here. The FileOutputStreamPool
+			// will lock the output stream for use only by this thread
+			// until the releaseFile method is called
+			wasWritten = IOUtils.copy(input, outputStream);
+			
+			if (postWriteAction != null) {
+				postWriteAction.run(wasWritten);
 			}
 
-		} catch (IOException e) {
+		} catch (Throwable t) {
 
-			WriterException exp = new WriterException(e.toString(), e);
-			exp.setStackTrace(e.getStackTrace());
-			throw exp;
+			LOG.error(t.toString(), t);
+			if (outputStream != null && wasWritten > 0) {
+				LOG.error("Rolling back file " + file.getAbsolutePath());
+				// in case of any error we must roll back
+				try {
+					outputStream.rollback();
+				} catch (IOException e) {
+					throwException(e);
+				}
+			}
 
+			throwException(t);
+
+		} finally {
+			// make sure to releaseFile after writing
+			// this line throws an IOException for this its embedded
+			// inside
+			// the
+			// try catch.
+			try {
+				fileOutputStreamPool.releaseFile(key);
+			} catch (IOException e) {
+				throwException(e);
+			}
 		}
 
 		return wasWritten;
 
 	}
 
+	/**
+	 * Helper method to throw an exception with a correct stack trace.
+	 */
+	private static final void throwException(Throwable t)
+			throws WriterException {
+		WriterException writerException = new WriterException(t.toString(), t);
+		writerException.setStackTrace(t.getStackTrace());
+		throw writerException;
+	}
+
+	/**
+	 * Get the file name based on the CompressionCodec.<br/>
+	 * If a CompressionCodec is present the getDefaultExtension() method will be
+	 * called and its return value used as the file extension.
+	 * 
+	 * @param key
+	 * @return
+	 */
 	private final File getOutputFile(String key) {
 		return (compressionCodec == null) ? new File(baseDir, key) : new File(
 				baseDir, key + compressionCodec.getDefaultExtension());
@@ -165,7 +209,7 @@ public class LocalLogFileWriter implements LogFileWriter {
 
 	}
 
-	class RolloverChecker extends TimerTask {
+	static class RolloverChecker extends TimerTask {
 
 		final FileOutputStreamPoolFactory fileOutputStreamPoolFactory;
 		final LogRolloverCheck logRolloverCheck;

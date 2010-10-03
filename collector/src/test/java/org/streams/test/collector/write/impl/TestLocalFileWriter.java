@@ -7,29 +7,157 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.concurrent.Callable;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import junit.framework.TestCase;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
+import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.log4j.Logger;
 import org.streams.collector.main.Bootstrap;
 import org.streams.collector.write.LogFileWriter;
+import org.streams.collector.write.PostWriteAction;
 import org.streams.collector.write.impl.LocalLogFileWriter;
 import org.streams.commons.cli.CommandLineProcessorFactory;
+import org.streams.commons.file.CoordinationException;
 import org.streams.commons.file.FileTrackingStatus;
 
-
+/**
+ * Tests the LocalLogFileWriter features
+ * 
+ */
 public class TestLocalFileWriter extends TestCase {
 
 	private static final Logger LOG = Logger
 			.getLogger(TestLocalFileWriter.class);
 
 	File baseDir;
+
+	/**
+	 * Test that the LocalLogFileWriter does rollback a compressed file as
+	 * expected.
+	 * 
+	 * @throws Exception
+	 */
+	public void testFileWriteRollBack() throws Exception {
+
+		Bootstrap bootstrap = new Bootstrap();
+		bootstrap.loadProfiles(CommandLineProcessorFactory.PROFILE.DB,
+				CommandLineProcessorFactory.PROFILE.REST_CLIENT,
+				CommandLineProcessorFactory.PROFILE.COLLECTOR);
+
+		final LocalLogFileWriter writer = (LocalLogFileWriter) bootstrap
+				.getBean(LogFileWriter.class);
+
+		GzipCodec codec = new GzipCodec();
+
+		writer.init();
+		writer.setCompressionCodec(codec);
+		File fileInput = new File(baseDir, "testFileWriteRollBack/input");
+		fileInput.mkdirs();
+		File fileOutput = new File(baseDir, "testFileWriteRollBack/output");
+		fileOutput.mkdirs();
+
+		// all files written to disk by the writer will be in the
+		// testWriteOneFile/output directory
+		writer.setBaseDir(fileOutput);
+
+		int fileCount = 10;
+		int lineCount = 100;
+		final int rollbackLimit = 90;
+
+		File[] inputFiles = createInput(fileInput, fileCount, lineCount);
+
+		// for each file Write out the file contents line, by line
+		// when lineCount == rollbackLimit throw an CoordinationException at
+		// every line,
+		// this will cause 10 roll backs per input file to be performed.
+		final CountDownLatch latch = new CountDownLatch(inputFiles.length);
+		ExecutorService exec = Executors.newFixedThreadPool(fileCount);
+
+		for (final File file : inputFiles) {
+
+			exec.submit(new Callable<Boolean>() {
+
+				public Boolean call() throws Exception {
+
+					FileTrackingStatus status = new FileTrackingStatus(0, file
+							.length(), 0, "agent1", file.getName(), "type1");
+
+					BufferedReader reader = new BufferedReader(new FileReader(
+							file));
+					try {
+
+						String line = null;
+						int lineCount = 0;
+						final AtomicBoolean doRollback = new AtomicBoolean(
+								false);
+
+						while ((line = reader.readLine()) != null) {
+							if (lineCount++ == rollbackLimit) {
+								doRollback.set(true);
+							}
+
+							writer.write(status, new ByteArrayInputStream(
+									(line + "\n").getBytes()),
+									new PostWriteAction() {
+
+										@Override
+										public void run(int bytesWritten)
+												throws Exception {
+											if (doRollback.get()) {
+												throw new CoordinationException(
+														"Induced error");
+											}
+										}
+									});
+						}
+
+					} finally {
+						IOUtils.closeQuietly(reader);
+						latch.countDown();
+
+					}
+					return true;
+				}
+			});
+
+		}
+
+		latch.await();
+
+		writer.close();
+		// read in the output lines using the compression codec
+		File[] files = fileOutput.listFiles();
+		assertNotNull(files);
+		assertEquals(1, files.length);
+
+		CompressionInputStream cin = codec
+				.createInputStream(new FileInputStream(files[0]));
+		BufferedReader reader = new BufferedReader(new InputStreamReader(cin));
+		int inputLineCount = 0;
+		try {
+
+			while (reader.readLine() != null) {
+				inputLineCount++;
+			}
+
+		} finally {
+			cin.close();
+			reader.close();
+		}
+
+		assertEquals(fileCount * rollbackLimit, inputLineCount);
+
+	}
 
 	public void testWriteThreadsNoCompression() throws Exception {
 
@@ -54,25 +182,7 @@ public class TestLocalFileWriter extends TestCase {
 
 		int fileCount = 100;
 		int lineCount = 100;
-		final File[] inputFiles = new File[fileCount];
-
-		for (int i = 0; i < fileCount; i++) {
-			File file = new File(fileInput, "test_" + i);
-			FileWriter fileWriter = new FileWriter(file);
-
-			try {
-				for (int a = 0; a < lineCount; a++) {
-					fileWriter.append("A_" + a + "\tB_" + a + "\n");
-				}
-			} finally {
-				fileWriter.close();
-			}
-
-			inputFiles[i] = file;
-
-		}
-
-		final AtomicInteger threadCount = new AtomicInteger(fileCount);
+		File[] inputFiles = createInput(fileInput, fileCount, lineCount);
 
 		// the objective is to test to some degree the thread safety of the
 		// write method in the LocalFileWriter.
@@ -82,6 +192,7 @@ public class TestLocalFileWriter extends TestCase {
 		// forcing the write method to block (if correctly written) on the
 		// writes to the file.
 		ExecutorService exec = Executors.newFixedThreadPool(fileCount);
+		final CountDownLatch latch = new CountDownLatch(fileCount);
 
 		for (int i = 0; i < fileCount; i++) {
 			final File file = inputFiles[i];
@@ -107,7 +218,7 @@ public class TestLocalFileWriter extends TestCase {
 						IOUtils.closeQuietly(reader);
 					}
 					LOG.info("Thread[" + count + "] completed ");
-					threadCount.decrementAndGet();
+					latch.countDown();
 					return true;
 				}
 
@@ -115,10 +226,7 @@ public class TestLocalFileWriter extends TestCase {
 
 		}
 
-		while (threadCount.get() > 0) {
-			Thread.sleep(1000L);
-//			LOG.info("Waiting for threads [ " + threadCount.get() + " ] to complete");
-		}
+		latch.await();
 		exec.shutdown();
 
 		LOG.info("Shutdown thread service");
@@ -128,7 +236,7 @@ public class TestLocalFileWriter extends TestCase {
 		File[] outputFiles = fileOutput.listFiles();
 
 		assertNotNull(outputFiles);
-		
+
 		// create files for comparison
 		// create input combined file
 		File testCombinedInput = new File(baseDir, "combinedInfile.txt");
@@ -165,6 +273,29 @@ public class TestLocalFileWriter extends TestCase {
 		// compare contents
 		FileUtils.contentEquals(testCombinedInput, testCombinedOutput);
 
+	}
+
+	private File[] createInput(File fileInput, int fileCount, int lineCount)
+			throws IOException {
+		final File[] inputFiles = new File[fileCount];
+
+		for (int i = 0; i < fileCount; i++) {
+			File file = new File(fileInput, "test_" + i);
+			FileWriter fileWriter = new FileWriter(file);
+
+			try {
+				for (int a = 0; a < lineCount; a++) {
+					fileWriter.append("A_" + a + "\tB_" + a + "\n");
+				}
+			} finally {
+				fileWriter.close();
+			}
+
+			inputFiles[i] = file;
+
+		}
+
+		return inputFiles;
 	}
 
 	/**

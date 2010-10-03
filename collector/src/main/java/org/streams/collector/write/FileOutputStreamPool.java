@@ -2,7 +2,6 @@ package org.streams.collector.write;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.OutputStream;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
 
@@ -15,10 +14,11 @@ import org.apache.hadoop.io.compress.CompressionCodec;
  */
 public interface FileOutputStreamPool {
 
-	OutputStream open(String key, File file, boolean append) throws IOException;
+	RollBackOutputStream open(String key, File file, boolean append)
+			throws IOException;
 
-	OutputStream open(String key, CompressionCodec compressionCodec, File file,
-			boolean append) throws IOException;
+	RollBackOutputStream open(String key, CompressionCodec compressionCodec,
+			File file, boolean append) throws IOException;
 
 	void checkFilesForRollover(LogRolloverCheck rolloverCheck)
 			throws IOException;

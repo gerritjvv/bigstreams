@@ -5,7 +5,7 @@ import java.io.IOException;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.FilenameUtils;
-import org.mortbay.log.Log;
+import org.apache.log4j.Logger;
 import org.streams.collector.write.LogRollover;
 
 
@@ -20,6 +20,7 @@ import org.streams.collector.write.LogRollover;
  */
 public class SimpleLogRollover implements LogRollover{
 
+	private static final Logger LOG = Logger.getLogger(SimpleLogRollover.class);
 	
 	/**
 	 * 
@@ -49,7 +50,7 @@ public class SimpleLogRollover implements LogRollover{
 		if(file.exists())
 			FileUtils.forceDelete(file);
 		
-		Log.info("Rolled file: " + file.getAbsolutePath() + " to " + fileNew.getAbsolutePath());
+		LOG.info("Rolled file: " + file.getAbsolutePath() + " to " + fileNew.getAbsolutePath());
 		
 		
 		return fileNew;

@@ -8,6 +8,7 @@ import java.nio.channels.FileLock;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.io.FileUtils;
@@ -19,6 +20,9 @@ import org.streams.collector.mon.CollectorStatus;
 import org.streams.collector.write.FileOutputStreamPool;
 import org.streams.collector.write.LogRollover;
 import org.streams.collector.write.LogRolloverCheck;
+import org.streams.collector.write.RollBackOutputStream;
+import org.streams.commons.compression.CompressionPool;
+import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.util.concurrent.KeyLock;
 
 /**
@@ -49,7 +53,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	/**
 	 * Used to lock individual operations on a key
 	 */
-	final Map<String, OutputStream> fileHandleMap = new ConcurrentHashMap<String, OutputStream>();
+	final Map<String, RollBackOutputStream> fileHandleMap = new ConcurrentHashMap<String, RollBackOutputStream>();
 	final Map<String, File> openFiles = new ConcurrentHashMap<String, File>();
 
 	/**
@@ -86,21 +90,35 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 	CollectorStatus collectorStatus;
 
+	CompressionPoolFactory compressionPoolFactory;
+	// used to keep track of which CompressionPool belongs to which OutputStream
+	Map<CompressionOutputStream, CompressionPool> compressionPoolMap = new ConcurrentHashMap<CompressionOutputStream, CompressionPool>();
+
+	/**
+	 * Time that this class will wait for a compression resource to become
+	 * available. Default 10000L
+	 */
+	private long waitForCompressionResource = 10000L;
+
 	public FileOutputStreamPoolImpl(LogRollover logRollover,
-			CollectorStatus collectorStatus) {
+			CollectorStatus collectorStatus,
+			CompressionPoolFactory compressionPoolFactory) {
 		this.logRollover = logRollover;
 		this.collectorStatus = collectorStatus;
 		if (openFileLimit.get() == 0)
 			openFileLimit.set(defaultOpenFileLimit);
+		this.compressionPoolFactory = compressionPoolFactory;
 	}
 
 	public FileOutputStreamPoolImpl(LogRollover logRollover,
 			long acquireLockTimeout, long openFileLimit,
-			CollectorStatus collectorStatus) {
+			CollectorStatus collectorStatus,
+			CompressionPoolFactory compressionPoolFactory) {
 		this.logRollover = logRollover;
 		this.acquireLockTimeout = acquireLockTimeout;
 		this.openFileLimit.set(openFileLimit);
 		this.collectorStatus = collectorStatus;
+		this.compressionPoolFactory = compressionPoolFactory;
 	}
 
 	/**
@@ -115,8 +133,9 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	 * @param append
 	 * @return
 	 */
-	public OutputStream open(String key, CompressionCodec compressionCodec,
-			File file, boolean append) throws IOException {
+	public RollBackOutputStream open(String key,
+			CompressionCodec compressionCodec, File file, boolean append)
+			throws IOException {
 
 		// if interrupted the exception will be thrown and nothing will be done
 		// this lock is kept until the file has been released.
@@ -153,34 +172,39 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	 * @return
 	 * @throws IOException
 	 */
-	private OutputStream getOutputStream(String key, File file,
+	private RollBackOutputStream getOutputStream(String key, File file,
 			CompressionCodec compressionCodec) throws IOException {
 
-		OutputStream out = fileHandleMap.get(key);
+		RollBackOutputStream out = fileHandleMap.get(key);
+
 		if (out == null) {
 			if (fileHandleMap.size() >= openFileLimit.get()) {
 				throw new IOException("Open File Limit reached limit is "
 						+ openFileLimit.get());
 			}
 
-			//these operations need to happend atomically so we must synch
+			// these operations need to happend atomically so we must synch
 			if (file.length() > 0 && file.exists()) {
 				// if the file already exists it must be rolled before
 				closeLockedFile(key, file);
-				
-				if(file.exists()){
+
+				if (file.exists()) {
 					// we never expect this condition to happen but the local OS
-					// might be out of file handlers causing this condition to be
+					// might be out of file handlers causing this condition to
+					// be
 					// true
-					throw new IOException("The file " + file.getAbsolutePath()
-							+ " was rolled over but the OS failed to move the file");
+					throw new IOException(
+							"The file "
+									+ file.getAbsolutePath()
+									+ " was rolled over but the OS failed to move the file");
 				}
-				
+
 			}
 
-
 			FileUtils.forceMkdir(file.getParentFile());
-			file.createNewFile();
+			if(! file.createNewFile() && ! file.createNewFile()){
+				throw new IOException("Error creating file " + file.getAbsolutePath());
+			}
 
 			// wait for file creation. This is needed if the file is stored
 			// via NFS or other.
@@ -196,7 +220,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			if (!fileCreated)
 				throw new IOException("Failed to create file " + file);
 
-			fileCreationTimes.put(file, new Long(System.currentTimeMillis()));
+			fileCreationTimes.put(file, Long.valueOf(System.currentTimeMillis()));
 
 			openFiles.put(key, file);
 
@@ -208,8 +232,41 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 			FileOutputStream fout = new FileOutputStream(file.getAbsolutePath());
 
-			out = (compressionCodec == null) ? fout : compressionCodec
-					.createOutputStream(fout);
+			try {
+				if (compressionCodec == null) {
+					out = new RollBackOutputStream(file, fout,
+							new TextFileStreamCreator(), 0L);
+				} else {
+
+					// get a compressor resource
+					CompressionPool pool = compressionPoolFactory
+							.get(compressionCodec);
+					CompressionOutputStream cout = pool.create(fout,
+							waitForCompressionResource, TimeUnit.MILLISECONDS);
+
+					if (cout == null) {
+
+						throw new IOException(
+								"No compression resource available for "
+										+ compressionCodec);
+
+					}
+					// remember the pool that locked the resource for the
+					// CompressionOutputStream
+					// this resource will be released when this class
+					// (FileOutputStreamPoolImpl) closes the
+					// CompressionOutputStream
+					compressionPoolMap.put(cout, pool);
+					out = new RollBackOutputStream(file, cout,
+							new CompressedStreamCreator(compressionCodec, pool,
+									waitForCompressionResource), 0L);
+				}
+
+			} catch (InterruptedException e) {
+				Thread.interrupted();
+				throw new IOException("No compression resource available for "
+						+ compressionCodec);
+			}
 
 			// try to acquire a file lock on the resource
 			FileLock lock = fout.getChannel().tryLock();
@@ -217,7 +274,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			long start = System.currentTimeMillis();
 
 			while (lock == null) {
-
+				
 				lock = fout.getChannel().tryLock();
 
 				if (acquireLockTimeout > (System.currentTimeMillis() - start)) {
@@ -349,19 +406,18 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	private void closeLockedFile(String key, File file) throws IOException {
 		// remove from openFiles
 		File fileFound = openFiles.remove(key);
-		
-		if(file == null ){
+
+		if (file == null) {
 			LOG.info("No file found to roll for " + key);
 			return;
 		}
-		
-		if(fileFound == null){
-			LOG.info("The file " + file.getAbsolutePath() + " was not rolled previousely before shutdown. This file will be rolled now");
+
+		if (fileFound == null) {
+			LOG.info("The file "
+					+ file.getAbsolutePath()
+					+ " was not rolled previousely before shutdown. This file will be rolled now");
 		}
-		
-		
-		
-		
+
 		if (file != null) {
 			fileCreationTimes.remove(file);
 			FileLock fileLock = fileLocks.remove(key);
@@ -379,6 +435,11 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 						.getClass())) {
 					CompressionOutputStream compOut = (CompressionOutputStream) out;
 					compOut.finish();
+
+					// release the decompressor resource used for this output
+					// stream.
+					compressionPoolMap.remove(compOut).closeAndRelease(compOut);
+
 				}
 
 				IOUtils.closeQuietly(out);
@@ -437,9 +498,26 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	}
 
 	@Override
-	public OutputStream open(String key, File file, boolean append)
+	public RollBackOutputStream open(String key, File file, boolean append)
 			throws IOException {
 		return open(key, null, file, append);
+	}
+
+	public CompressionPoolFactory getCompressionPoolFactory() {
+		return compressionPoolFactory;
+	}
+
+	public void setCompressionPoolFactory(
+			CompressionPoolFactory compressionPoolFactory) {
+		this.compressionPoolFactory = compressionPoolFactory;
+	}
+
+	public long getWaitForCompressionResource() {
+		return waitForCompressionResource;
+	}
+
+	public void setWaitForCompressionResource(long waitForCompressionResource) {
+		this.waitForCompressionResource = waitForCompressionResource;
 	}
 
 }

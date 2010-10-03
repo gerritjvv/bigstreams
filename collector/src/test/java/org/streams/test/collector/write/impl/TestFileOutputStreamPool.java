@@ -21,7 +21,9 @@ import org.streams.collector.write.FileOutputStreamPool;
 import org.streams.collector.write.LogRollover;
 import org.streams.collector.write.impl.FileOutputStreamPoolImpl;
 import org.streams.collector.write.impl.SimpleLogRollover;
-
+import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
+import org.streams.commons.status.Status;
 
 public class TestFileOutputStreamPool extends TestCase {
 
@@ -35,8 +37,20 @@ public class TestFileOutputStreamPool extends TestCase {
 
 		CollectorStatus collectorStatus = new CollectorStatusImpl();
 
+		Status status = new Status() {
+
+			@Override
+			public void setCounter(String status, int counter) {
+
+			}
+		};
+
+		CompressionPoolFactory compressionPoolFactory = new CompressionPoolFactoryImpl(
+				12, 12, status);
+
 		FileOutputStreamPoolImpl pool = new FileOutputStreamPoolImpl(
-				new SimpleLogRollover(), 100L, 10L, collectorStatus);
+				new SimpleLogRollover(), 100L, 10L, collectorStatus,
+				compressionPoolFactory);
 		List<String> keys = new ArrayList<String>(11);
 		for (int i = 0; i < 11; i++) {
 			keys.add(String.valueOf(i));
@@ -91,9 +105,19 @@ public class TestFileOutputStreamPool extends TestCase {
 
 		};
 
+		Status status = new Status() {
+
+			@Override
+			public void setCounter(String status, int counter) {
+
+			}
+		};
+
+		CompressionPoolFactory compressionPoolFactory = new CompressionPoolFactoryImpl(
+				2, 2, status);
 		CollectorStatus collectorStatus = new CollectorStatusImpl();
 		FileOutputStreamPool pool = new FileOutputStreamPoolImpl(rollover,
-				collectorStatus);
+				collectorStatus, compressionPoolFactory);
 
 		OutputStream out = pool.open("test", file, true);
 
@@ -149,9 +173,20 @@ public class TestFileOutputStreamPool extends TestCase {
 
 		};
 
+		Status status = new Status() {
+
+			@Override
+			public void setCounter(String status, int counter) {
+
+			}
+		};
+
+		CompressionPoolFactory compressionPoolFactory = new CompressionPoolFactoryImpl(
+				10, 10, status);
+
 		CollectorStatus collectorStatus = new CollectorStatusImpl();
 		FileOutputStreamPoolImpl pool = new FileOutputStreamPoolImpl(rollover,
-				collectorStatus);
+				collectorStatus, compressionPoolFactory);
 		CompressionCodec codec = (CompressionCodec) ReflectionUtils
 				.newInstance(GzipCodec.class, conf);
 

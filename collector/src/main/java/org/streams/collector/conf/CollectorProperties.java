@@ -43,7 +43,14 @@ public interface CollectorProperties {
 		//only used if thread pool is type MEMORY default 1 meg
 		COLLECTOR_CHANNEL_MAX_MEMORY_SIZE("collector.worker.channel.memorysize", 1048576L),
 		//only used if thread pool is type MEMORY default 1 gig
-		COLLECTOR_TOTAL_MEMORY_SIZE("collector.worker.total.memorysize", 1073741824L);
+		COLLECTOR_TOTAL_MEMORY_SIZE("collector.worker.total.memorysize", 1073741824L),
+		
+		METRIC_REFRESH_PERIOD("metric.refresh.period", 10000L),
+		
+		
+		COLLECTOR_COMPRESSOR_POOLSIZE("collector.compressor.poolsize", 100),
+		COLLECTOR_DECOMPRESSOR_POOLSIZE("collector.decompressor.poolsize", 100);
+		
 		
 		String name;
 		Object defaultValue;

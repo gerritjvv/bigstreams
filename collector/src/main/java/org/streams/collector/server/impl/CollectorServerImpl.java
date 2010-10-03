@@ -34,6 +34,7 @@ public class CollectorServerImpl implements CollectorServer {
 	int port;
 
 	ChannelHandler channelHandler;
+	ChannelHandler metricsHandler;
 
 	CoordinationServiceClient coordinationServiceClient;
 
@@ -43,12 +44,13 @@ public class CollectorServerImpl implements CollectorServer {
 
 	public CollectorServerImpl(int port, ChannelHandler channelHandler,
 			CoordinationServiceClient coordinationServiceClient,
-			Configuration conf) {
+			Configuration conf, ChannelHandler metricHandler) {
 		super();
 		this.port = port;
 		this.channelHandler = channelHandler;
 		this.coordinationServiceClient = coordinationServiceClient;
 		this.conf = conf;
+		this.metricsHandler = metricHandler;
 	}
 
 	@Override
@@ -66,8 +68,14 @@ public class CollectorServerImpl implements CollectorServer {
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new MessageFrameDecoder(),
-						channelHandler);
+//				ChannelPipeline p = Channels.pipeline();
+//				p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
+//				p.addLast("MetricsHandler", metricsHandler);
+//				p.addLast("ChannelHandler", channelHandler);
+//				return p;
+				 return Channels.pipeline(new MessageFrameDecoder(),
+				 metricsHandler,
+				 channelHandler);
 			}
 		});
 

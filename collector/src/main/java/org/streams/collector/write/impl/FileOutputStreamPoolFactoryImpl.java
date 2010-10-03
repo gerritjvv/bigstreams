@@ -7,6 +7,7 @@ import org.streams.collector.write.FileOutputStreamPool;
 import org.streams.collector.write.FileOutputStreamPoolFactory;
 import org.streams.collector.write.LogRollover;
 import org.streams.collector.write.LogRolloverCheck;
+import org.streams.commons.compression.CompressionPoolFactory;
 
 /**
  *
@@ -19,10 +20,10 @@ public class FileOutputStreamPoolFactoryImpl implements
 
 	public FileOutputStreamPoolFactoryImpl(LogRollover logRollover,
 			long acquireLockTimeout, long openFileLimit,
-			CollectorStatus collectorStatus, int bucketSize) {
+			CollectorStatus collectorStatus, int bucketSize, CompressionPoolFactory compressionPoolFactory) {
 
 		pool = new FileOutputStreamPoolImpl(logRollover, acquireLockTimeout,
-				openFileLimit, collectorStatus);
+				openFileLimit, collectorStatus, compressionPoolFactory);
 
 	}
 

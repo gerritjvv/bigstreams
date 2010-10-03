@@ -7,6 +7,7 @@ import javax.inject.Named;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
+import org.streams.collector.conf.CollectorProperties;
 import org.streams.commons.app.AbstractStartupCheck;
 
 
@@ -46,6 +47,26 @@ public class ConfigCheck extends AbstractStartupCheck {
 			String key = it.next();
 			LOG.info(key + " = " + configuration.getProperty(key));
 		}
+		
+		//check that the compression and decompression codecs are at least equal to that of the Thread counts
+		int workerThreadCount = configuration.getInt(CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT.toString(),
+				(Integer)CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT.getDefaultValue());
+		int compressorCount = configuration.getInt(CollectorProperties.WRITER.COLLECTOR_COMPRESSOR_POOLSIZE.toString(),
+				(Integer)CollectorProperties.WRITER.COLLECTOR_COMPRESSOR_POOLSIZE.getDefaultValue());
+		
+		int decompressorCount = configuration.getInt(CollectorProperties.WRITER.COLLECTOR_DECOMPRESSOR_POOLSIZE.toString(),
+				(Integer)CollectorProperties.WRITER.COLLECTOR_DECOMPRESSOR_POOLSIZE.getDefaultValue());
+		
+		
+		checkTrue(workerThreadCount > 0, "The property " + CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT + " must be configured to be bigger than 0");
+		
+		checkTrue( compressorCount >= workerThreadCount, "The " + CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT + "(" + workerThreadCount + ") is larger than " 
+				+ CollectorProperties.WRITER.COLLECTOR_COMPRESSOR_POOLSIZE + "(" + compressorCount + ") this is not allowed and will cause the server to run out of compressor resources");
+		
+		checkTrue( decompressorCount >= workerThreadCount, "The " + CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT + "(" + workerThreadCount + ") is larger than " 
+				+ CollectorProperties.WRITER.COLLECTOR_DECOMPRESSOR_POOLSIZE + "(" + decompressorCount + ") this is not allowed and will cause the server to run out of decompressor resources");
+		
+
 		
 		LOG.info("DONE");
 

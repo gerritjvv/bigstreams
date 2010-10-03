@@ -14,7 +14,7 @@ import org.streams.collector.mon.CollectorStatus;
 public class CollectorStatusImpl implements CollectorStatus{
 
 	STATUS status = STATUS.OK;
-	String msg = "";
+	String msg = "Working";
 
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
@@ -32,6 +32,12 @@ public class CollectorStatusImpl implements CollectorStatus{
 		return status;
 	}
 
+
+	@Override
+	public void setCounter(String name, int value){
+		getSetCounter(name).set(value);
+	}
+	
 	@Override
 	public void incCounter(String name, int value) {
 		getSetCounter(name).addAndGet(value);

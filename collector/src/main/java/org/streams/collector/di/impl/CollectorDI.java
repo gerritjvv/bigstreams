@@ -19,6 +19,7 @@ import org.restlet.routing.Template;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.streams.collector.cli.startup.check.impl.CodecCheck;
 import org.streams.collector.cli.startup.check.impl.ConfigCheck;
 import org.streams.collector.cli.startup.check.impl.PingCheck;
@@ -39,17 +40,21 @@ import org.streams.commons.app.impl.AppLifeCycleManagerImpl;
 import org.streams.commons.app.impl.AppShutdownResource;
 import org.streams.commons.app.impl.RestletService;
 import org.streams.commons.cli.AppStartCommand;
+import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.impl.CoordinationServiceClientImpl;
 import org.streams.commons.io.Protocol;
+import org.streams.commons.metrics.CounterMetric;
+import org.streams.commons.metrics.impl.MetricChannel;
+import org.streams.commons.metrics.impl.MetricsAppService;
 import org.streams.coordination.cli.startup.service.impl.CollectorServerService;
 
-
 @Configuration
+@Import(MetricsDI.class)
 public class CollectorDI {
 
 	private static final Logger LOG = Logger.getLogger(CollectorDI.class);
-	
+
 	@Inject
 	BeanFactory beanFactory;
 
@@ -72,7 +77,8 @@ public class CollectorDI {
 				new RestletService((Component) beanFactory
 						.getBean("restletPingComponent")), new RestletService(
 						(Component) beanFactory.getBean("restletComponent")),
-				beanFactory.getBean(CollectorServerService.class));
+				beanFactory.getBean(CollectorServerService.class), beanFactory
+						.getBean(MetricsAppService.class));
 
 		List<? extends StartupCheck> postStartupList = Arrays
 				.asList(beanFactory.getBean(PingCheck.class));
@@ -95,7 +101,7 @@ public class CollectorDI {
 		return new CollectorServerImpl(port,
 				beanFactory.getBean(LogWriterHandler.class),
 				beanFactory.getBean(CoordinationServiceClient.class),
-				configuration);
+				configuration, beanFactory.getBean(MetricChannel.class));
 	}
 
 	@Bean
@@ -107,7 +113,9 @@ public class CollectorDI {
 				new org.apache.hadoop.conf.Configuration(), beanFactory
 						.getBean(LogFileWriter.class), beanFactory
 						.getBean(CoordinationServiceClient.class), beanFactory
-						.getBean(CollectorStatus.class));
+						.getBean(CollectorStatus.class), beanFactory.getBean(
+						"fileKilobytesWrittenMetric", CounterMetric.class),
+						beanFactory.getBean(CompressionPoolFactory.class));
 	}
 
 	@Bean
@@ -207,16 +215,13 @@ public class CollectorDI {
 		Component component = new Component();
 
 		int port = configuration.getInt(
-				CollectorProperties.WRITER.COLLECTOR_MON_PORT
-				.toString(),
-		(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
-				.getDefaultValue());
-		
+				CollectorProperties.WRITER.COLLECTOR_MON_PORT.toString(),
+				(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
+						.getDefaultValue());
+
 		LOG.info("Using collector monitoring port: " + port);
-		
-		component.getServers().add(
-				org.restlet.data.Protocol.HTTP,
-				port);
+
+		component.getServers().add(org.restlet.data.Protocol.HTTP, port);
 		component.getDefaultHost().attach(restApplication());
 
 		return component;
