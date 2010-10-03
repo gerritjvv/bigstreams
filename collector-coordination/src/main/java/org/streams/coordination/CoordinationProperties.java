@@ -11,7 +11,12 @@ public interface CoordinationProperties {
 		STATUS_CLEANOUT_INTERVAL("coordination.status.cleanout.interval", 86400),
 		
 		COORDINATION_LOCK_PORT ("coordination.lock.port", 5420),
-		COORDINATION_UNLOCK_PORT ("coordination.unlock.port", 5430);
+		COORDINATION_UNLOCK_PORT ("coordination.unlock.port", 5430),
+		
+		COORDINATION_LOCK_TIMEOUT("coordination.lock.timeout", 120000L),
+		COORDINATION_LOCK_TIMEOUTCHECK_PERIOD("coordination.lock.timeoutcheck.period", 240000L),
+		
+		METRIC_REFRESH_PERIOD("metric.refresh.period", 10000L);
 		
 		String name;
 		Object defaultValue;

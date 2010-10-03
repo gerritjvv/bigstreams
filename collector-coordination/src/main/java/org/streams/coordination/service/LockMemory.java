@@ -14,18 +14,44 @@ public interface LockMemory {
 	 * 
 	 * @param syncPointer
 	 * @return FileTrackingStatus return null if no lock was set
+	 * @throws InterruptedException
 	 */
-	FileTrackingStatus removeLock(SyncPointer syncPointer);
+	FileTrackingStatus removeLock(SyncPointer syncPointer)
+			throws InterruptedException;
 
-	boolean contains(FileTrackingStatus fileStatus);
+	/**
+	 * Remove locks that have timed-out. This method must not lock unless a lock is removed.
+	 * @param lockTimeout
+	 * @throws InterruptedException 
+	 */
+	void removeTimedOutLocks(long lockTimeout) throws InterruptedException;
+	
+	boolean contains(FileTrackingStatus fileStatus) throws InterruptedException;
 
 	/**
 	 * Stores the lock for the SyncPointer and the FileTrackingStatus
 	 * 
 	 * @param fileStatus
 	 * @return
+	 * @throws InterruptedException
 	 */
-	SyncPointer setLock(FileTrackingStatus fileStatus);
+	SyncPointer setLock(FileTrackingStatus fileStatus)
+			throws InterruptedException;
 
-	long lockTimeStamp(FileTrackingStatus fileStatus);
+	/**
+	 * Stores the lock for the SyncPointer and the FileTrackingStatus
+	 * 
+	 * @param fileStatus
+	 * @param lockTimeOut
+	 *            in milliseconds. If the time stamp held for the lock has
+	 *            passed this value i.e. the different between the timestamp
+	 *            held and the current time in milliseconds.
+	 * @return
+	 * @throws InterruptedException
+	 */
+	public SyncPointer setLock(FileTrackingStatus fileStatus, long lockTimeOut)
+			throws InterruptedException;
+
+	long lockTimeStamp(FileTrackingStatus fileStatus)
+			throws InterruptedException;
 }

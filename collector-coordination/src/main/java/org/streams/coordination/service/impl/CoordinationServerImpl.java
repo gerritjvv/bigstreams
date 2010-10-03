@@ -12,7 +12,6 @@ import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.streams.commons.file.impl.MessageFrameDecoder;
 import org.streams.coordination.service.CoordinationServer;
 
-
 /**
  * Starts and stops the main coordination server for handling lock and release
  * requests
@@ -28,14 +27,17 @@ public class CoordinationServerImpl implements CoordinationServer {
 
 	ChannelHandler lockHandler;
 	ChannelHandler unlockHandler;
+	ChannelHandler metricHandler;
 
 	public CoordinationServerImpl(int lockPort, int releaseLockPort,
-			ChannelHandler lockHandler, ChannelHandler unlockHandler) {
+			ChannelHandler lockHandler, ChannelHandler unlockHandler,
+			ChannelHandler metricHandler) {
 		super();
 		this.lockPort = lockPort;
 		this.releaseLockPort = releaseLockPort;
 		this.lockHandler = lockHandler;
 		this.unlockHandler = unlockHandler;
+		this.metricHandler = metricHandler;
 	}
 
 	public void connect() {
@@ -62,8 +64,13 @@ public class CoordinationServerImpl implements CoordinationServer {
 		lockBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels
-						.pipeline(new MessageFrameDecoder(), lockHandler);
+//				ChannelPipeline p = Channels.pipeline();
+//				p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
+//				p.addLast("MetricHandler", metricHandler);
+//				p.addLast("LockHandler", lockHandler);
+				return Channels.pipeline(new MessageFrameDecoder(), metricHandler,
+				 lockHandler);
+//				return p;
 			}
 		});
 
@@ -86,8 +93,12 @@ public class CoordinationServerImpl implements CoordinationServer {
 		unlockBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new MessageFrameDecoder(),
-						unlockHandler);
+//				ChannelPipeline p = Channels.pipeline();
+//				p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
+//				p.addLast("UnLockHandler", unlockHandler);
+//				return p;
+				 return Channels.pipeline(new MessageFrameDecoder(),
+				 unlockHandler);
 			}
 		});
 

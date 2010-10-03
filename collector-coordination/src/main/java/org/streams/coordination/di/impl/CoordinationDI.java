@@ -17,6 +17,7 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Lazy;
 import org.streams.commons.app.AppLifeCycleManager;
 import org.streams.commons.app.ApplicationService;
@@ -25,6 +26,8 @@ import org.streams.commons.app.impl.AppLifeCycleManagerImpl;
 import org.streams.commons.app.impl.AppShutdownResource;
 import org.streams.commons.app.impl.RestletService;
 import org.streams.commons.cli.AppStartCommand;
+import org.streams.commons.metrics.impl.MetricChannel;
+import org.streams.commons.metrics.impl.MetricsAppService;
 import org.streams.coordination.CoordinationProperties;
 import org.streams.coordination.cli.startup.check.impl.ConfigCheck;
 import org.streams.coordination.cli.startup.check.impl.PersistenceCheck;
@@ -46,10 +49,11 @@ import org.streams.coordination.service.LockMemory;
 import org.streams.coordination.service.impl.CoordinationLockHandler;
 import org.streams.coordination.service.impl.CoordinationServerImpl;
 import org.streams.coordination.service.impl.CoordinationUnLockHandler;
+import org.streams.coordination.service.impl.LockTimeoutCheckAppService;
 import org.streams.coordination.service.impl.SimpleLockMemory;
 
-
 @Configuration
+@Import(MetricsDI.class)
 public class CoordinationDI {
 
 	@Autowired
@@ -73,7 +77,9 @@ public class CoordinationDI {
 		List<? extends ApplicationService> serviceList = Arrays.asList(
 				beanFactory.getBean(CoordinationServerService.class),
 				beanFactory.getBean(StatusCleanoutService.class),
-				beanFactory.getBean(RestletService.class));
+				beanFactory.getBean(RestletService.class),
+				beanFactory.getBean(MetricsAppService.class),
+				beanFactory.getBean(LockTimeoutCheckAppService.class));
 
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				null);
@@ -165,6 +171,30 @@ public class CoordinationDI {
 	}
 
 	@Bean
+	public LockTimeoutCheckAppService lockTimeoutCheckAppService() {
+
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		long lockTimeoutPeriod = configuration
+				.getLong(
+						CoordinationProperties.PROP.COORDINATION_LOCK_TIMEOUTCHECK_PERIOD
+								.toString(),
+						(Long) CoordinationProperties.PROP.COORDINATION_LOCK_TIMEOUTCHECK_PERIOD
+								.getDefaultValue());
+
+		long lockTimeout = configuration.getLong(
+				CoordinationProperties.PROP.COORDINATION_LOCK_TIMEOUT
+						.toString(),
+				(Long) CoordinationProperties.PROP.COORDINATION_LOCK_TIMEOUT
+						.getDefaultValue());
+
+		return new LockTimeoutCheckAppService(lockTimeoutPeriod, lockTimeout,
+				beanFactory.getBean(LockMemory.class));
+
+	}
+
+	@Bean
 	public CoordinationServer coordinationServer() {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
@@ -184,7 +214,8 @@ public class CoordinationDI {
 				(ChannelHandler) beanFactory
 						.getBean(CoordinationLockHandler.class),
 				(ChannelHandler) beanFactory
-						.getBean(CoordinationUnLockHandler.class));
+						.getBean(CoordinationUnLockHandler.class),
+				beanFactory.getBean(MetricChannel.class));
 	}
 
 	@Bean
@@ -199,10 +230,17 @@ public class CoordinationDI {
 				(Integer) CoordinationProperties.PROP.LOCK_HOLDER_PING_PORT
 						.getDefaultValue());
 
+		long lockTimeout = configuration.getLong(
+				CoordinationProperties.PROP.COORDINATION_LOCK_TIMEOUT
+						.toString(),
+				(Long) CoordinationProperties.PROP.COORDINATION_LOCK_TIMEOUT
+						.getDefaultValue());
+
 		return new CoordinationLockHandler(
 				beanFactory.getBean(CoordinationStatus.class),
 				beanFactory.getBean(LockMemory.class),
-				beanFactory.getBean(CollectorFileTrackerMemory.class), port);
+				beanFactory.getBean(CollectorFileTrackerMemory.class), port,
+				lockTimeout);
 
 	}
 

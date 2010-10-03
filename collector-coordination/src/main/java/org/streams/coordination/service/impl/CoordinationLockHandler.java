@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Inject;
 
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferInputStream;
@@ -23,7 +24,6 @@ import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.CoordinationStatus.STATUS;
 import org.streams.coordination.service.LockMemory;
 
-
 /**
  * A netty handler to recieve file lock requests<br/>
  * The protocol expected is mesg len, FileTrackingStatus json.<br/>
@@ -36,37 +36,37 @@ import org.streams.coordination.service.LockMemory;
  */
 public class CoordinationLockHandler extends SimpleChannelHandler {
 
+	private final static Logger LOG = Logger.getLogger(CoordinationLockHandler.class);
+	
 	private static final byte[] CONFLICT_MESSAGE = "The resource is already locked"
 			.getBytes();
 
 	private static final ObjectMapper objMapper = new ObjectMapper();
 
-	long lockTimeOut = 10000L;
-	
+	long lockTimeOut;
+
 	CoordinationStatus coordinationStatus;
 	LockMemory lockMemory;
 	CollectorFileTrackerMemory memory;
+
 	/**
 	 * The port to use for pinging for lock holders
 	 */
 	int pingPort;
 
 	Map<FileTrackingStatus, String> lockHolders = new ConcurrentHashMap<FileTrackingStatus, String>();
-	
-    
-	public CoordinationLockHandler() {
-	}
 
 	public CoordinationLockHandler(CoordinationStatus coordinationStatus,
 			LockMemory lockMemory, CollectorFileTrackerMemory memory,
-			int pingPort) {
-		super();
+			int pingPort, long lockTimeout) {
 		this.coordinationStatus = coordinationStatus;
 		this.lockMemory = lockMemory;
 		this.memory = memory;
 		this.pingPort = pingPort;
-	}
+		this.lockTimeOut = lockTimeout;
 
+	}
+	
 	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
 			throws Exception {
@@ -75,41 +75,55 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		ChannelBufferInputStream channelInput = new ChannelBufferInputStream(
 				buff);
 
-		FileTrackingStatus fileStatus = objMapper.readValue(channelInput,
+		final FileTrackingStatus fileStatus = objMapper.readValue(channelInput,
 				FileTrackingStatus.class);
 
-		SyncPointer syncPointer = getAndLockResource(fileStatus,
+		// NOTE: Correct usage for thread correctness is important here.
+		// The first thing we MUST do here is try to attain a SyncPointer Lock
+		// before doing anything else.
+		final SyncPointer syncPointer = getAndLockResource(fileStatus,
 				(InetSocketAddress) e.getRemoteAddress());
 
-		ChannelBuffer buffer = null;
+		try {
+			ChannelBuffer buffer = null;
 
-		if (syncPointer == null) {
-			// if the sync pointer is null the resource is already locked
-			buffer = ChannelBuffers.buffer(CONFLICT_MESSAGE.length + 8);
+			if (syncPointer == null) {
+				// if the sync pointer is null the resource is already locked
+				buffer = ChannelBuffers.buffer(CONFLICT_MESSAGE.length + 8);
 
-			buffer.writeInt(CONFLICT_MESSAGE.length + 4);
-			buffer.writeInt(409); // conflict code
-			buffer.writeBytes(CONFLICT_MESSAGE);
+				buffer.writeInt(CONFLICT_MESSAGE.length + 4);
+				buffer.writeInt(409); // conflict code
+				buffer.writeBytes(CONFLICT_MESSAGE);
+				
+				
+			} else {
+				// if a syncpointer is returned the resource was not locked and
+				// is
+				// now locked for the current caller.
 
-		} else {
-			// if a syncpointer is returned the resource was not locked and is
-			// now locked for the current caller.
+				String msg = objMapper.writeValueAsString(syncPointer);
+				byte[] msgBytes = msg.getBytes();
 
-			String msg = objMapper.writeValueAsString(syncPointer);
-			byte[] msgBytes = msg.getBytes();
+				int msgLen = msgBytes.length + 4;
 
-			int msgLen = msgBytes.length + 4;
+				// 4 bytes == code, 4 bytes content length, rest is the message
+				buffer = ChannelBuffers.dynamicBuffer(msgLen);
+				buffer.writeInt(msgLen);
+				buffer.writeInt(200);
+				buffer.writeBytes(msgBytes, 0, msgBytes.length);
 
-			// 4 bytes == code, 4 bytes content length, rest is the message
-			buffer = ChannelBuffers.dynamicBuffer(msgLen);
-			buffer.writeInt(msgLen);
-			buffer.writeInt(200);
-			buffer.writeBytes(msgBytes, 0, msgBytes.length);
+				LOG.info("LOCK( " + syncPointer.getLockId() + ") - " + fileStatus.getAgentName() + "." + fileStatus.getLogType() + "." + fileStatus.getFileName());
+			}
 
+			ChannelFuture future = e.getChannel().write(buffer);
+			future.addListener(ChannelFutureListener.CLOSE);
+		}catch (Exception t) {
+			// we catch any exception here to ensure that in case of an error we
+			// do release the lock held if any optained
+			LOG.info("ERROR MAKING LOCK " + fileStatus.getAgentName() + "." + fileStatus.getLogType() + "." + fileStatus.getFileName());
+			// re-throw the error
+			throw t;
 		}
-
-		ChannelFuture future = e.getChannel().write(buffer);
-		future.addListener(ChannelFutureListener.CLOSE);
 	}
 
 	/**
@@ -118,19 +132,29 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 	 * @param requestFileStatus
 	 * @param remoteAddress
 	 * @return
+	 * @throws InterruptedException
 	 */
 	private SyncPointer getAndLockResource(
 			FileTrackingStatus requestFileStatus,
-			InetSocketAddress remoteAddress) {
+			InetSocketAddress remoteAddress) throws InterruptedException {
 
-		if (lockMemory.contains(requestFileStatus)
-				&& isLockValid(requestFileStatus)) {
-			// return null
+		// NOTE: Correct usage for thread correctness is important here.
+		// The first thing we MUST do here is try to attain a SyncPointer Lock
+		// before doing anything else.
+		// If a SyncPointer Lock cannot be attained we return an error to the
+		// client.
+
+		// ---------- This line uses a semi lock free algorithm
+		final SyncPointer pointer = lockMemory.setLock(requestFileStatus,
+				lockTimeOut);
+		// ---------- lock released. At this stage we either have a SyncPointer
+		// lock or a null reference if the resource was locked already.
+
+		if (pointer == null) {
 			coordinationStatus.incCounter("LOCK_CONFLICT_BLOCKED", 1);
-
 			return null;
 		} else {
-			
+
 			FileTrackingStatus fileStatus = memory.getStatus(
 					requestFileStatus.getAgentName(),
 					requestFileStatus.getLogType(),
@@ -141,13 +165,6 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 				memory.setStatus(fileStatus);
 			}
-
-			
-			SyncPointer pointer = null;
-			// set lock
-			// we synchronize here to be absolutelly sure that no other thread
-			// has sneaked to this line.
-			pointer = lockMemory.setLock(fileStatus);
 
 			// save the address for the holder
 			lockHolders.put(fileStatus, remoteAddress.getHostName());
@@ -164,71 +181,54 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
 		coordinationStatus.setStatus(STATUS.UNKOWN_ERROR, e.toString());
+		Throwable error = e.getCause();
+		LOG.error(e.toString(), error);
+		
 		e.getChannel().close();
 	}
 
-	private boolean isLockValid(FileTrackingStatus requestFileStatus) {
-
-		boolean isValid = false;
-		
-		try {
-			
-			long timeStamp = lockMemory.lockTimeStamp(requestFileStatus);
-			
-			isValid = ! (timeStamp == 0L || (System.currentTimeMillis()-timeStamp) > lockTimeOut );
-			
-
-		} catch (Exception e) {
-			RuntimeException rte = new RuntimeException(e.toString(), e);
-			rte.setStackTrace(e.getStackTrace());
-			throw rte;
-		}
-
-		return isValid;
-	}
-
-//	/**
-//	 * Pings the lock holder on the address /lockPing and checks the response
-//	 * code.<br/>
-//	 * If the code is ok then true is returned else false is returned.
-//	 * 
-//	 * @param requestFileStatus
-//	 * @return
-//	 * @throws Exception
-//	 */
-//	private boolean _pingLockHolder(FileTrackingStatus requestFileStatus)
-//			throws Exception {
-//
-//		boolean ret = false;
-//		String msg = null;
-//
-//		String holderAddress = lockHolders.get(requestFileStatus);
-//
-//		if (holderAddress != null) {
-//			holderAddress = "http://" + holderAddress + ":" + pingPort + "/";
-//
-//			// do a simple get operation
-//			// and check status
-//			Client client = new Client(Protocol.HTTP);
-//			try {
-//				client.start();
-//				Response rep = client.get(new Reference(holderAddress));
-//
-//				ret = rep.getStatus().isSuccess();
-//				msg = rep.getEntityAsText();
-//
-//			} catch (Throwable t) {
-//				t.printStackTrace();
-//				// ignore any exceptions
-//				msg = "failed " + t.toString();
-//			} finally {
-//				client.stop();
-//			}
-//		}
-//
-//		Log.info("Lock holder " + holderAddress + " ping " + msg);
-//		return ret;
-//	}
+	// /**
+	// * Pings the lock holder on the address /lockPing and checks the response
+	// * code.<br/>
+	// * If the code is ok then true is returned else false is returned.
+	// *
+	// * @param requestFileStatus
+	// * @return
+	// * @throws Exception
+	// */
+	// private boolean _pingLockHolder(FileTrackingStatus requestFileStatus)
+	// throws Exception {
+	//
+	// boolean ret = false;
+	// String msg = null;
+	//
+	// String holderAddress = lockHolders.get(requestFileStatus);
+	//
+	// if (holderAddress != null) {
+	// holderAddress = "http://" + holderAddress + ":" + pingPort + "/";
+	//
+	// // do a simple get operation
+	// // and check status
+	// Client client = new Client(Protocol.HTTP);
+	// try {
+	// client.start();
+	// Response rep = client.get(new Reference(holderAddress));
+	//
+	// ret = rep.getStatus().isSuccess();
+	// msg = rep.getEntityAsText();
+	//
+	// } catch (Throwable t) {
+	// t.printStackTrace();
+	// // ignore any exceptions
+	// msg = "failed " + t.toString();
+	// } finally {
+	// client.stop();
+	// }
+	// }
+	//
+	// Log.info("Lock holder " + holderAddress + " ping " + msg);
+	// return ret;
+	// }
 
 	public CoordinationStatus getCoordinationStatus() {
 		return coordinationStatus;

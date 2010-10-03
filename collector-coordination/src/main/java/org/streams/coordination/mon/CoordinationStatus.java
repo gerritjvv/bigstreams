@@ -1,10 +1,12 @@
 package org.streams.coordination.mon;
 
+import org.streams.commons.status.Status;
+
 /**
  * 
  * Status of the coordination service
  */
-public interface CoordinationStatus {
+public interface CoordinationStatus extends Status{
 
 	enum STATUS {
 		SHUTDOWN, OK, UNKOWN_ERROR

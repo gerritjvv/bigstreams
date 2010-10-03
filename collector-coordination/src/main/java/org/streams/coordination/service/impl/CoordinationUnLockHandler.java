@@ -1,5 +1,6 @@
 package org.streams.coordination.service.impl;
 
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferInputStream;
@@ -18,17 +19,19 @@ import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.CoordinationStatus.STATUS;
 import org.streams.coordination.service.LockMemory;
 
-
 /**
  * A netty handler to recieve file unlock requests<br/>
  * The protocol expected is mesg len, SyncPointer json.<br/>
  * the msg length is read by the Frame Decoder.<br/>
  * <p/>
  * Response:<br/>
- * 4 bytes msg length + 4 bytes from code | 4 bytes code  | msg string
+ * 4 bytes msg length + 4 bytes from code | 4 bytes code | msg string
  * 
  */
 public class CoordinationUnLockHandler extends SimpleChannelHandler {
+
+	private final static Logger LOG = Logger
+			.getLogger(CoordinationUnLockHandler.class);
 
 	private static final byte[] CONFLICT_MESSAGE = "The resource was not locked"
 			.getBytes();
@@ -58,15 +61,15 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 		ChannelBufferInputStream channelInput = new ChannelBufferInputStream(
 				buff);
 
-		
-		SyncPointer syncPointer = objMapper.readValue(channelInput,
+		final SyncPointer syncPointer = objMapper.readValue(channelInput,
 				SyncPointer.class);
 
-		if(syncPointer == null){
-			throw new RuntimeException("Please send a SyncPointer object: SyncPointer is null");
+		if (syncPointer == null) {
+			throw new RuntimeException(
+					"Please send a SyncPointer object: SyncPointer is null");
 		}
-		
-		boolean ok = saveAndeleaseLock(syncPointer);
+
+		final boolean ok = saveAndReleaseLock(syncPointer);
 
 		ChannelBuffer buffer = null;
 
@@ -101,40 +104,46 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 	 * @param syncPointer
 	 * @return false if the resource wasn't locked true if the resource was
 	 *         locked and is now released
+	 * @throws InterruptedException
 	 */
 	@Put("json")
-	public boolean saveAndeleaseLock(SyncPointer syncPointer) {
-		try {
-			FileTrackingStatus fileStatus = lockMemory.removeLock(syncPointer);
+	public boolean saveAndReleaseLock(SyncPointer syncPointer)
+			throws InterruptedException {
 
-			if (fileStatus == null) {
-				return false;
-			} else {
-				fileStatus.setFilePointer(syncPointer.getFilePointer());
-				fileStatus.setFileSize(syncPointer.getFileSize());
-				fileStatus.setLinePointer(syncPointer.getLinePointer());
+		// NOTE: Correct usage for thread correctness is important here.
+		// The first thing we MUST do here is try to release a SyncPointer Lock
+		// before doing anything else.
+		FileTrackingStatus fileStatus = lockMemory.removeLock(syncPointer);
 
-				memory.setStatus(fileStatus);
+		if (fileStatus == null) {
+			LOG.info("ERROR UNLOCK(" + syncPointer.getLockId() + ")");
+			return false;
+		} else {
+			LOG.info("UNLOCK(" + syncPointer.getLockId() + ") - "
+					+ fileStatus.getAgentName() + "." + fileStatus.getLogType()
+					+ "." + fileStatus.getFileName());
+			fileStatus.setFilePointer(syncPointer.getFilePointer());
+			fileStatus.setFileSize(syncPointer.getFileSize());
+			fileStatus.setLinePointer(syncPointer.getLinePointer());
 
-			}
+			memory.setStatus(fileStatus);
 
 			coordinationStatus.decCounter("LOCKS", 1);
-			coordinationStatus.setStatus(STATUS.OK, "running");
-
-			return true;
-		} catch (Throwable t) {
-			coordinationStatus.setStatus(STATUS.UNKOWN_ERROR, t.toString());
-			RuntimeException tre = new RuntimeException(t.toString(), t);
-			tre.setStackTrace(t.getStackTrace());
-			throw tre;
 		}
+
+		coordinationStatus.setStatus(STATUS.OK, "running");
+
+		return true;
 
 	}
 
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
+		LOG.error(e.toString(), e.getCause());
+
 		coordinationStatus.setStatus(STATUS.UNKOWN_ERROR, e.toString());
+
 		e.getChannel().close();
 	}
 

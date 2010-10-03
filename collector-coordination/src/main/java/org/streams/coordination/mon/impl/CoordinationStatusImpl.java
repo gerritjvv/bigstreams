@@ -14,7 +14,7 @@ import org.streams.coordination.mon.CoordinationStatus;
 public class CoordinationStatusImpl implements CoordinationStatus{
 
 	STATUS status = STATUS.OK;
-	String msg = "Running";
+	String msg = "Working";
 
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
@@ -80,6 +80,11 @@ public class CoordinationStatusImpl implements CoordinationStatus{
 
 	public void setMsg(String msg) {
 		this.msg = msg;
+	}
+
+	@Override
+	public void setCounter(String status, int counter) {
+		getSetCounter(status).set(counter);
 	}
 
 
