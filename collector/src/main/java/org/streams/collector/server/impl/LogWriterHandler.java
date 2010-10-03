@@ -238,7 +238,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			// on any error event with coordination these resources must be
 			// released
 			fileStatusMap.remove(fileStatus);
-			if (compressInputWasReleased) {
+			if (!compressInputWasReleased) {
 				pool.closeAndRelease(compressInput);
 			}
 

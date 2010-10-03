@@ -68,7 +68,7 @@ fi
 
 echo "Date $daydate Hour $hour LogType: $logType Upload Name $uploadFileName"
 
-if ! $HADOOP_HOME/bin/hadoop fs -test -d "$HDFS_DIR/$logtype/$daydate/hour=$hour" ; then
+if ! $HADOOP_HOME/bin/hadoop fs -test -d "$HDFS_DIR/$logtype/$daydate/hour=$hour" &> /dev/null ; then
 
     if ! $HADOOP_HOME/bin/hadoop fs -mkdir "$HDFS_DIR/$logtype/$daydate/hour=$hour" ; then
        echo "could not create directory $HDFS_DIR/$logtype/$daydate/hour=$hour"
