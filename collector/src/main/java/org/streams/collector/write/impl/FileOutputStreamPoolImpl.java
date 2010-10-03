@@ -426,14 +426,15 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 				fileLock.release();
 			}
 
-			OutputStream out = fileHandleMap.remove(key);
+			RollBackOutputStream out = fileHandleMap.remove(key);
 
 			// locks must be released before closing files
 
 			if (out != null) {
-				if (CompressionOutputStream.class.isAssignableFrom(out
+				OutputStream fout = out.getOut();
+				if (CompressionOutputStream.class.isAssignableFrom(fout
 						.getClass())) {
-					CompressionOutputStream compOut = (CompressionOutputStream) out;
+					CompressionOutputStream compOut = (CompressionOutputStream) fout;
 					compOut.finish();
 
 					// release the decompressor resource used for this output
