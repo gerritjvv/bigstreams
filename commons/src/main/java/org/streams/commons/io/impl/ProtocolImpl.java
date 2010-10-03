@@ -1,30 +1,29 @@
 package org.streams.commons.io.impl;
 
-import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.commons.io.IOUtils;
-import org.apache.hadoop.conf.Configurable;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
-import org.apache.hadoop.io.compress.Decompressor;
-import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
 import org.jboss.netty.buffer.ChannelBuffers;
+import org.streams.commons.compression.CompressionPool;
+import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
+import org.streams.commons.util.CompressionCodecLoader;
 
 /**
  * Implements the writing and reading of the start of a send stream.
@@ -32,14 +31,24 @@ import org.streams.commons.io.Protocol;
  */
 public class ProtocolImpl implements Protocol {
 
-	private static final Logger LOG = Logger.getLogger(ProtocolImpl.class);
-	
+	// private static final Logger LOG = Logger.getLogger(ProtocolImpl.class);
+
 	private static final ObjectMapper objectMapper = new ObjectMapper();
 
-	private org.apache.hadoop.conf.Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
+	private ConcurrentMap<String, CompressionCodec> codecMap = new ConcurrentHashMap<String, CompressionCodec>();
 
-	private Map<String, CompressionCodec> codecMap = new ConcurrentHashMap<String, CompressionCodec>();
-	
+	private CompressionPoolFactory compressionPoolFactory;
+
+	/**
+	 * Time that this class will wait for a compression resource to become available. Default 10000L
+	 */
+	private long waitForCompressionResource = 10000L;
+
+	public ProtocolImpl(CompressionPoolFactory compressionPoolFactory) {
+		super();
+		this.compressionPoolFactory = compressionPoolFactory;
+	}
+
 	/**
 	 * Reads the header part of a InputStream
 	 * 
@@ -48,7 +57,6 @@ public class ProtocolImpl implements Protocol {
 	 * @return
 	 * @throws IOException
 	 */
-	@SuppressWarnings("unchecked")
 	public Header read(Configuration conf, DataInputStream inputStream)
 			throws IOException {
 		Header header = null;
@@ -68,22 +76,10 @@ public class ProtocolImpl implements Protocol {
 
 			// we don't synchronise here because we do not care if the codec is
 			// created more than once.
-			CompressionCodec codec = codecMap.get(codecName);
+			CompressionCodec codec = codecMap.putIfAbsent(codecName, CompressionCodecLoader.loadCodec(conf, codecName));
 
 			if (codec == null) {
-				Class<? extends CompressionCodec> compressionCodecClass = (Class<? extends CompressionCodec>) Thread
-						.currentThread().getContextClassLoader()
-						.loadClass(codecName);
-
-				codec = compressionCodecClass.newInstance();
-
-				if (codec instanceof Configurable) {
-
-					((Configurable) codec).setConf(hadoopConf);
-				}
-
-				codecMap.put(codecName, codec);
-
+				codec = codecMap.get(codecName);
 			}
 
 			// read header length
@@ -96,34 +92,42 @@ public class ProtocolImpl implements Protocol {
 						"The bytes available in the input stream does not match the header length integer passed in the stream ("
 								+ headerLen + ")");
 			}
-			
-			final ByteArrayInputStream byteInput = new ByteArrayInputStream(headerBytes);
-						
-			final CompressionInputStream compressionInput = codec
-					.createInputStream(byteInput);
-			
-			final Reader reader = new InputStreamReader(compressionInput);
+
+			ByteArrayInputStream byteInput = new ByteArrayInputStream(
+					headerBytes);
+
+			CompressionPool pool = compressionPoolFactory.get(codec);
+			CompressionInputStream compressionInput = pool.create(byteInput,
+					waitForCompressionResource, TimeUnit.MILLISECONDS);
+
+			if (compressionInput == null) {
+				throw new IOException("No decompression resource available for "
+						+ codec);
+			}
+
+			Reader reader = new InputStreamReader(compressionInput);
 			try {
-				
-				//The jackson Object mapper does not read the stream completely
-				//thus causing OutOfMemory DirectMemory errors in the Decompressor.
-				//read whole stream here and pass as String to the jackson object mapper.
+
+				// The jackson Object mapper does not read the stream completely
+				// thus causing OutOfMemory DirectMemory errors in the
+				// Decompressor.
+				// read whole stream here and pass as String to the jackson
+				// object mapper.
 				StringBuilder buff = new StringBuilder(headerBytes.length);
 				char chars[] = new char[256];
 				int len = 0;
-				
-				while( (len = reader.read(chars)) > 0 ){
+
+				while ((len = reader.read(chars)) > 0) {
 					buff.append(chars, 0, len);
 				}
-				
+
 				header = objectMapper.readValue(buff.toString(), Header.class);
-				
+
 			} finally {
-				IOUtils.closeQuietly(compressionInput);
+				pool.closeAndRelease(compressionInput);
 				IOUtils.closeQuietly(byteInput);
 				IOUtils.closeQuietly(reader);
 			}
-			
 
 		} catch (Throwable t) {
 			IOException ioExcp = new IOException(t.toString(), t);
@@ -145,7 +149,7 @@ public class ProtocolImpl implements Protocol {
 
 		ChannelBuffer headerBuffer = writeCompressedHeaderBytes(header, codec);
 
-		byte[] headerBytes = headerBuffer.array();
+		byte[] headerBytes = headerBuffer.toByteBuffer().array();
 
 		byte[] compressCodecNameBytes = codec.getClass().getName().getBytes();
 
@@ -183,6 +187,14 @@ public class ProtocolImpl implements Protocol {
 		compressionOut.close();
 
 		return channelBuffer;
+	}
+
+	public long getWaitForCompressionResource() {
+		return waitForCompressionResource;
+	}
+
+	public void setWaitForCompressionResource(long waitForCompressionResource) {
+		this.waitForCompressionResource = waitForCompressionResource;
 	}
 
 }

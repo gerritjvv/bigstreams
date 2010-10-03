@@ -2,10 +2,11 @@ package org.streams.commons.file.impl;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
+import java.io.Reader;
 import java.io.Writer;
 import java.net.InetSocketAddress;
-import java.nio.charset.Charset;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -14,6 +15,7 @@ import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
+import org.jboss.netty.buffer.ChannelBufferInputStream;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
@@ -143,14 +145,18 @@ public class ClientConnectionResource {
 		// CountdownLatchChannel();
 
 		bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(
-				threadWorkerBossService, threadServiceWorkerService));
+				threadWorkerBossService, threadServiceWorkerService, 1));
 
 		// we set the ReadTimeoutHandler to timeout if no response is received
 		// from the server after default 10 seconds
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new MessageFrameDecoder(), handler);
+//				ChannelPipeline p = Channels.pipeline();
+//				p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
+//				p.addLast("Handler", handler);
+//				return p;
+				 return Channels.pipeline(new MessageFrameDecoder(), handler);
 			}
 		});
 
@@ -293,7 +299,20 @@ public class ClientConnectionResource {
 			ChannelBuffer buff = (ChannelBuffer) e.getMessage();
 			int code = buff.readInt();
 
-			String msg = buff.toString(Charset.defaultCharset());
+			Reader reader = new InputStreamReader(new ChannelBufferInputStream(
+					buff));
+			char[] chbuff = new char[200];
+			StringBuilder builder = new StringBuilder(200);
+			int len = 0;
+			try{
+				while ((len = reader.read(chbuff)) > 0) {
+					builder.append(chbuff, 0, len);
+				}
+			}finally{
+				reader.close();
+			}
+
+			final String msg = builder.toString();
 			try {
 				super.messageReceived(ctx, e);
 			} finally {

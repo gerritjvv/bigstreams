@@ -35,7 +35,8 @@ public class CompressionCodecLoader {
 			IllegalAccessException, ClassNotFoundException, SecurityException,
 			NoSuchFieldException {
 
-		if (System.getenv("java.library.path") == null) {
+		
+		if (System.getenv("java.library.path") == null && System.getProperty("java.library.path") == null) {
 
 			String path = configuration.getString("java.library.path");
 			if (path != null) {
