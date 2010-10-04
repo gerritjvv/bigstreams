@@ -8,7 +8,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Exchanger;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
@@ -55,11 +54,12 @@ public class ClientConnectionResource {
 
 	final Timer timeoutTimer;
 
-	public ClientConnectionResource(ClientSocketChannelFactory socketChannelFactory,
+	public ClientConnectionResource(
+			ClientSocketChannelFactory socketChannelFactory,
 			final Timer timeoutTimer) {
 		this.timeoutTimer = timeoutTimer;
 		bootstrap = new ClientBootstrap(socketChannelFactory);
-		
+
 	}
 
 	/**
@@ -141,7 +141,7 @@ public class ClientConnectionResource {
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				 return Channels.pipeline(new MessageFrameDecoder(), handler);
+				return Channels.pipeline(new MessageFrameDecoder(), handler);
 			}
 		});
 
@@ -289,11 +289,11 @@ public class ClientConnectionResource {
 			char[] chbuff = new char[200];
 			StringBuilder builder = new StringBuilder(200);
 			int len = 0;
-			try{
+			try {
 				while ((len = reader.read(chbuff)) > 0) {
 					builder.append(chbuff, 0, len);
 				}
-			}finally{
+			} finally {
 				reader.close();
 			}
 
