@@ -1,7 +1,6 @@
 package org.streams.agent.send.impl;
 
-import java.util.concurrent.ExecutorService;
-
+import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.util.Timer;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
@@ -12,17 +11,30 @@ import org.streams.commons.io.Protocol;
  */
 public class ClientConnectionFactoryImpl implements ClientConnectionFactory {
 
+	ClientSocketChannelFactory socketChannelFactory;
+
 	long connectEstablishTimeout = -1L;
 	long sendTimeOut = -1L;
 
 	Protocol protocol;
 
-	@Override
-	public ClientConnection get(ExecutorService workerBossService,
-			ExecutorService workerService, Timer timeoutTimer) {
+	Timer timeoutTimer;
 
-		ClientConnection conn = createConnection(workerBossService,
-				workerService, timeoutTimer);
+	public ClientConnectionFactoryImpl(Timer timeoutTimer,
+			ClientSocketChannelFactory socketChannelFactory,
+			long connectEstablishTimeout, long sendTimeOut, Protocol protocol) {
+		super();
+		this.timeoutTimer = timeoutTimer;
+		this.socketChannelFactory = socketChannelFactory;
+		this.connectEstablishTimeout = connectEstablishTimeout;
+		this.sendTimeOut = sendTimeOut;
+		this.protocol = protocol;
+	}
+
+	@Override
+	public ClientConnection get() {
+
+		ClientConnection conn = createConnection();
 
 		if (connectEstablishTimeout > 0L)
 			conn.setConnectEstablishTimeout(connectEstablishTimeout);
@@ -40,11 +52,8 @@ public class ClientConnectionFactoryImpl implements ClientConnectionFactory {
 	 * 
 	 * @return
 	 */
-	protected ClientConnection createConnection(
-			ExecutorService workerBossService, ExecutorService workerService,
-			Timer timeoutTimer) {
-		return new ClientConnectionImpl(workerBossService, workerService,
-				timeoutTimer);
+	protected ClientConnection createConnection() {
+		return new ClientConnectionImpl(socketChannelFactory, timeoutTimer);
 	}
 
 	public long getConnectEstablishTimeout() {
@@ -69,6 +78,11 @@ public class ClientConnectionFactoryImpl implements ClientConnectionFactory {
 
 	public void setProtocol(Protocol protocol) {
 		this.protocol = protocol;
+	}
+
+	@Override
+	public void close() {
+		socketChannelFactory.releaseExternalResources();
 	}
 
 }

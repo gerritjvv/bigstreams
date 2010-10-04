@@ -10,11 +10,9 @@ import java.net.UnknownHostException;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.charset.Charset;
-import java.util.concurrent.ExecutorService;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
-import org.jboss.netty.util.Timer;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
@@ -22,16 +20,13 @@ import org.streams.agent.send.ClientResource;
 import org.streams.agent.send.FileStreamer;
 import org.streams.commons.io.Header;
 
-public class ClientResourceImpl implements ClientResource{
+public class ClientResourceImpl implements ClientResource {
 
-	private static final Logger LOG = Logger.getLogger(ClientResourceImpl.class);
-	
+	private static final Logger LOG = Logger
+			.getLogger(ClientResourceImpl.class);
+
 	ClientConnectionFactory connectionFactory;
-	
-	ExecutorService workerBossService;
-	ExecutorService workerService;
-	Timer timer;
-	
+
 	FileStreamer fileStreamer;
 
 	FileLinePointer fileLinePointer;
@@ -48,7 +43,7 @@ public class ClientResourceImpl implements ClientResource{
 	 * Created and opened in the open method
 	 */
 	FileChannel channel;
-	
+
 	/**
 	 * 
 	 * @param connectionFactory
@@ -58,18 +53,15 @@ public class ClientResourceImpl implements ClientResource{
 	 * @param fileStreamer
 	 */
 	public ClientResourceImpl(ClientConnectionFactory connectionFactory,
-			ExecutorService workerBossService, ExecutorService workerService,
-			Timer timer, FileStreamer fileStreamer) {
+			FileStreamer fileStreamer) {
 		super();
 		this.connectionFactory = connectionFactory;
-		this.workerBossService = workerBossService;
-		this.workerService = workerService;
-		this.timer = timer;
 		this.fileStreamer = fileStreamer;
 	}
-	
+
 	/**
-	 * Opens a RandomAccessFile and a FileChannel, these are only closed when the close method is called.
+	 * Opens a RandomAccessFile and a FileChannel, these are only closed when
+	 * the close method is called.
 	 */
 	@Override
 	public void open(InetSocketAddress collectorAddress,
@@ -82,16 +74,16 @@ public class ClientResourceImpl implements ClientResource{
 		this.fileLinePointer = fileLinePointer;
 
 		InetAddress localMachine = null;
-		try{
+		try {
 			localMachine = InetAddress.getLocalHost();
-		}catch(UnknownHostException hostexp){
+		} catch (UnknownHostException hostexp) {
 			LOG.error(hostexp.toString(), hostexp);
 			localMachine = InetAddress.getByName("localhost");
 		}
 
 		hostName = localMachine.getHostName();
 		LOG.info("Using host address: " + hostName);
-		
+
 		reader = openFileToLine(file, fileLinePointer);
 
 	}
@@ -110,7 +102,8 @@ public class ClientResourceImpl implements ClientResource{
 	 * FileLinePointer:<br/>
 	 * The pointers on the FileLinePointer will be updated with each sendChunk
 	 * method call.
-	 * @throws IOException 
+	 * 
+	 * @throws IOException
 	 * 
 	 */
 	@Override
@@ -118,8 +111,8 @@ public class ClientResourceImpl implements ClientResource{
 
 		boolean ret = false;
 
-		ClientConnection clientConnection = connectionFactory.get(
-				workerBossService, workerService, timer);
+		ClientConnection clientConnection = connectionFactory.get();
+
 		try {
 			clientConnection.connect(collectorAddress);
 
@@ -142,15 +135,15 @@ public class ClientResourceImpl implements ClientResource{
 	@Override
 	public void close() {
 		IOUtils.closeQuietly(reader);
-		if(randFile != null){
+		if (randFile != null) {
 			try {
 				randFile.close();
 			} catch (IOException e) {
 				LOG.error(e.toString(), e);
 			}
 		}
-		
-		if(channel != null){
+
+		if (channel != null) {
 			try {
 				channel.close();
 			} catch (IOException e) {
@@ -175,14 +168,14 @@ public class ClientResourceImpl implements ClientResource{
 
 		randFile = new RandomAccessFile(file, "r");
 		randFile.seek(fileLinePointer.getFilePointer());
-		
+
 		channel = randFile.getChannel();
 
 		// seek to the previous "byte to read" position in the file
 		if (fileLinePointer.getFilePointer() > 0) {
 			channel.position(fileLinePointer.getFilePointer());
 		}
-		
+
 		// return a channel reader
 		return new BufferedReader(Channels.newReader(channel, Charset
 				.defaultCharset().newDecoder(), -1));
@@ -191,6 +184,7 @@ public class ClientResourceImpl implements ClientResource{
 
 	/**
 	 * Validate that a file exists before sending.
+	 * 
 	 * @param file
 	 * @throws IOException
 	 */

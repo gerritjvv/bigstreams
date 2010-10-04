@@ -10,11 +10,14 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManagerFactory;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.restlet.Application;
 import org.restlet.Component;
@@ -50,14 +53,12 @@ import org.streams.agent.mon.impl.FileTrackingStatusCountResource;
 import org.streams.agent.mon.impl.FileTrackingStatusPathResource;
 import org.streams.agent.mon.impl.FileTrackingStatusResource;
 import org.streams.agent.mon.status.AgentStatus;
-import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.FilesToSendQueue;
 import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
-import org.streams.agent.send.impl.ClientConnectionImpl;
 import org.streams.agent.send.impl.ClientResourceFactoryImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.agent.send.impl.FileSendTaskImpl;
@@ -436,24 +437,19 @@ public class AgentDI {
 		long connectionEstablishTimeout = configuration.getLong(
 				AgentProperties.CLIENTCONNECTION_ESTABLISH_TIMEOUT, 20000L);
 
+		Timer timer = new HashedWheelTimer();
+		ExecutorService workerBossService = Executors.newCachedThreadPool();
+		ExecutorService workerService = Executors.newCachedThreadPool();
+		
 		// create factory passing the connection class to the factory.
 		// the factory class will take charge or creating the connection
 		// instances
-		ClientConnectionFactoryImpl fact = new ClientConnectionFactoryImpl() {
-			protected ClientConnection createConnection(
-					ExecutorService workerBossService,
-					ExecutorService workerService, Timer timeoutTimer) {
-				return new ClientConnectionImpl(workerBossService,
-						workerService, timeoutTimer);
-			}
-		};
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(timer, 
+				new NioClientSocketChannelFactory(workerBossService, workerService), connectionEstablishTimeout, sendTimeout,
+				protocol);
+		
 
-		fact.setConnectEstablishTimeout(connectionEstablishTimeout);
-		fact.setSendTimeOut(sendTimeout);
-
-		fact.setProtocol(protocol);
-
-		return fact;
+		return ccFact;
 	}
 
 	/**

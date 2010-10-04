@@ -3,7 +3,6 @@ package org.streams.agent.send.impl;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
@@ -23,7 +22,7 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.WriteCompletionEvent;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.util.Timer;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.send.ClientConnection;
@@ -77,16 +76,14 @@ public class ClientConnectionImpl implements ClientConnection {
 
 	Protocol protocol = null;
 
-	ExecutorService threadServiceExec;
-	ExecutorService threadServiceWorker;
-
 	Timer timeoutTimer;
-	
-	public ClientConnectionImpl(ExecutorService threadServiceExec,
-			ExecutorService threadServiceWorker, Timer timeoutTimer) {
+
+	final ClientSocketChannelFactory socketChannelFactory;
+
+	public ClientConnectionImpl(
+			ClientSocketChannelFactory socketChannelFactory, Timer timeoutTimer) {
 		super();
-		this.threadServiceExec = threadServiceExec;
-		this.threadServiceWorker = threadServiceWorker;
+		this.socketChannelFactory = socketChannelFactory;
 		this.timeoutTimer = timeoutTimer;
 	}
 
@@ -114,8 +111,7 @@ public class ClientConnectionImpl implements ClientConnection {
 		final ClientHandlerContext clientHandlerContext = new ClientHandlerContext(
 				header, input, fileLineStreamer);
 
-		bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(
-				threadServiceExec, threadServiceWorker));
+		bootstrap = new ClientBootstrap(socketChannelFactory);
 
 		// we set the ReadTimeoutHandler to timeout if no response is received
 		// from the server after default 10 seconds
@@ -331,7 +327,9 @@ public class ClientConnectionImpl implements ClientConnection {
 					long fileLinePointer = in.readLong();
 					if (fileLinePointer < 0) {
 						throw new ServerException(
-								"Server send 409 by fileLinePointer is not valid. Collector send pointer: " + fileLinePointer + ". Please check the coordination service",
+								"Server send 409 by fileLinePointer is not valid. Collector send pointer: "
+										+ fileLinePointer
+										+ ". Please check the coordination service",
 								ClientHandlerContext.STATUS_CONFLICT);
 					}
 					clientHandlerContext

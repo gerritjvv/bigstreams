@@ -10,6 +10,7 @@ import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 import java.util.Collection;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import junit.framework.TestCase;
 
@@ -19,20 +20,19 @@ import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.jboss.netty.util.Timer;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.junit.Before;
 import org.junit.Test;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.mon.status.impl.AgentStatusImpl;
-import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.FilesToSendQueue;
 import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
-import org.streams.agent.send.impl.ClientConnectionImpl;
 import org.streams.agent.send.impl.ClientResourceFactoryImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.agent.send.impl.FileSendTaskImpl;
@@ -249,20 +249,10 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 			AgentStatus agentStatus, int port) {
 		FilesToSendQueue queue = createFilesToSendQueue(memory);
 
-		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl() {
-
-			protected ClientConnection createConnection(
-					ExecutorService workerBossService,
-					ExecutorService workerService, Timer timeoutTimer) {
-				return new ClientConnectionImpl(workerBossService,
-						workerService, timeoutTimer);
-			}
-
-		};
-
-		ccFact.setConnectEstablishTimeout(10000L);
-		ccFact.setSendTimeOut(10000L);
-		ccFact.setProtocol(new ProtocolImpl(pf));
+		ExecutorService service = Executors.newCachedThreadPool();
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(
+				new HashedWheelTimer(), new NioClientSocketChannelFactory(
+						service, service), 10000L, 10000L, new ProtocolImpl(pf));
 
 		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
 				5000L);

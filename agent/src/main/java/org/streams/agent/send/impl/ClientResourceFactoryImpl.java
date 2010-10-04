@@ -1,10 +1,5 @@
 package org.streams.agent.send.impl;
 
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResource;
 import org.streams.agent.send.ClientResourceFactory;
@@ -17,28 +12,18 @@ import org.streams.agent.send.FileStreamer;
  */
 public class ClientResourceFactoryImpl implements ClientResourceFactory {
 
-	ExecutorService workerBossService;
-	ExecutorService workerService;
-	Timer timer;
-
 	FileStreamer fileStreamer;
 	ClientConnectionFactory connectionFactory;
 
-	public ClientResourceFactoryImpl(ClientConnectionFactory connectionFactory, FileStreamer fileStreamer) {
+	public ClientResourceFactoryImpl(ClientConnectionFactory connectionFactory,
+			FileStreamer fileStreamer) {
 		this.connectionFactory = connectionFactory;
 		this.fileStreamer = fileStreamer;
-		
-		workerBossService = Executors.newCachedThreadPool();
-		workerService = Executors.newCachedThreadPool();
-
-		timer = new HashedWheelTimer();
-		
 	}
 
 	@Override
 	public ClientResource get() {
-		return new ClientResourceImpl(connectionFactory, workerBossService,
-				workerService, timer, fileStreamer);
+		return new ClientResourceImpl(connectionFactory, fileStreamer);
 	}
 
 	/**
@@ -49,10 +34,7 @@ public class ClientResourceFactoryImpl implements ClientResourceFactory {
 	@Override
 	public void destroy() {
 		// destroy all the executor services
-		workerBossService.shutdown();
-		workerService.shutdown();
-		timer.stop();
-
+		connectionFactory.close();
 	}
 
 }

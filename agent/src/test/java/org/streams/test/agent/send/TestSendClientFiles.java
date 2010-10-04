@@ -18,19 +18,17 @@ import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.main.Bootstrap;
 import org.streams.agent.mon.status.impl.AgentStatusImpl;
-import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
-import org.streams.agent.send.impl.ClientConnectionImpl;
 import org.streams.agent.send.impl.ClientResourceImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.agent.send.utils.MessageEventBag;
@@ -73,25 +71,18 @@ public class TestSendClientFiles extends TestCase {
 		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
 				5000);
 
-		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl() {
-
-			protected ClientConnection createConnection(
-					ExecutorService workerBossService,
-					ExecutorService workerService, Timer timeoutTimer) {
-				return new ClientConnectionImpl(workerBossService,
-						workerService, timeoutTimer);
-			}
-
-		};
-		ccFact.setProtocol(new ProtocolImpl(pf));
-
 		ExecutorService workerBossService = Executors.newCachedThreadPool();
 		ExecutorService workerService = Executors.newCachedThreadPool();
 
 		org.jboss.netty.util.Timer timer = new HashedWheelTimer();
 
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(timer,
+				new NioClientSocketChannelFactory(workerBossService,
+						workerService), 10000L, 10000L, new ProtocolImpl(pf));
+
 		ClientResourceImpl clientResource = new ClientResourceImpl(ccFact,
-				workerBossService, workerService, timer, fileLineStreamer);
+				fileLineStreamer);
+
 		try {
 			runTest(clientResource);
 

@@ -25,6 +25,7 @@ import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
@@ -86,9 +87,12 @@ public class TestClientConnectionImpl extends TestCase {
 			InetSocketAddress socketAddress = new InetSocketAddress(
 					"localhost", testPort);
 
-			ClientConnectionImpl binClient = new ClientConnectionImpl(service,
-					service, timeoutTimer);
-			binClient.setProtocol(new ProtocolImpl(new CompressionPoolFactoryImpl(10, 10, new AgentStatusImpl())));
+			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					new NioClientSocketChannelFactory(service, service),
+					timeoutTimer);
+			binClient.setProtocol(new ProtocolImpl(
+					new CompressionPoolFactoryImpl(10, 10,
+							new AgentStatusImpl())));
 
 			// create a good inputStream
 			ByteArrayInputStream inputStream = new ByteArrayInputStream(
@@ -173,8 +177,9 @@ public class TestClientConnectionImpl extends TestCase {
 			InetSocketAddress socketAddress = new InetSocketAddress(
 					"localhost", testPort);
 
-			ClientConnectionImpl binClient = new ClientConnectionImpl(service,
-					service, timeoutTimer);
+			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					new NioClientSocketChannelFactory(service, service),
+					timeoutTimer);
 
 			// create a good inputStream
 			ByteArrayInputStream inputStream = new ByteArrayInputStream(
@@ -223,9 +228,12 @@ public class TestClientConnectionImpl extends TestCase {
 			InetSocketAddress socketAddress = new InetSocketAddress(
 					"localhost", testPort);
 
-			ClientConnectionImpl binClient = new ClientConnectionImpl(service,
-					service, timeoutTimer);
-			binClient.setProtocol(new ProtocolImpl(new CompressionPoolFactoryImpl(10, 10, new AgentStatusImpl())));
+			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					new NioClientSocketChannelFactory(service, service),
+					timeoutTimer);
+			binClient.setProtocol(new ProtocolImpl(
+					new CompressionPoolFactoryImpl(10, 10,
+							new AgentStatusImpl())));
 
 			// create a good inputStream
 			ByteArrayInputStream inputStream = new ByteArrayInputStream(
@@ -299,8 +307,9 @@ public class TestClientConnectionImpl extends TestCase {
 			InetSocketAddress socketAddress = new InetSocketAddress(
 					"localhost", testPort);
 
-			ClientConnectionImpl binClient = new ClientConnectionImpl(service,
-					service, timeoutTimer);
+			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					new NioClientSocketChannelFactory(service, service),
+					timeoutTimer);
 
 			try {
 				binClient.connect(socketAddress);

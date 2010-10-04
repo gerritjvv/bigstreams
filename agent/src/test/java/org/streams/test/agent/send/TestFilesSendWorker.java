@@ -30,8 +30,9 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
-import org.jboss.netty.util.Timer;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,14 +40,12 @@ import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.mon.status.impl.AgentStatusImpl;
-import org.streams.agent.send.ClientConnection;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.FilesToSendQueue;
 import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
-import org.streams.agent.send.impl.ClientConnectionImpl;
 import org.streams.agent.send.impl.ClientHandlerContext;
 import org.streams.agent.send.impl.ClientResourceFactoryImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
@@ -89,8 +88,8 @@ public class TestFilesSendWorker extends TestCase {
 
 	private final List<MessageEventBag> bagList = new ArrayList<MessageEventBag>();
 
-	private final CompressionPoolFactory pf = new CompressionPoolFactoryImpl(10, 10,
-			new AgentStatusImpl());
+	private final CompressionPoolFactory pf = new CompressionPoolFactoryImpl(
+			10, 10, new AgentStatusImpl());
 
 	CompressionCodec codec;
 
@@ -99,7 +98,7 @@ public class TestFilesSendWorker extends TestCase {
 
 		ServerBootstrap bootstrap = connectServer(false);
 		try {
-			
+
 			MapTrackerMemory memory = new MapTrackerMemory();
 
 			FileTrackingStatus fileToSendStatus = createFileTrackingStatus();
@@ -308,20 +307,10 @@ public class TestFilesSendWorker extends TestCase {
 			AgentStatus agentStatus) {
 		FilesToSendQueue queue = new FilesToSendQueueImpl(memory);
 
-		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl() {
-
-			protected ClientConnection createConnection(
-					ExecutorService workerBossService,
-					ExecutorService workerService, Timer timeoutTimer) {
-				return new ClientConnectionImpl(workerBossService,
-						workerService, timeoutTimer);
-			}
-
-		};
-
-		ccFact.setConnectEstablishTimeout(10000L);
-		ccFact.setSendTimeOut(10000L);
-		ccFact.setProtocol(new ProtocolImpl(pf));
+		ExecutorService service = Executors.newCachedThreadPool();
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(
+				new HashedWheelTimer(), new NioClientSocketChannelFactory(
+						service, service), 10000L, 10000L, new ProtocolImpl(pf));
 
 		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
 				10000L);
@@ -482,9 +471,8 @@ public class TestFilesSendWorker extends TestCase {
 
 			if (simulateConflict) {
 				Header header = new ProtocolImpl(pf).read(
-						new PropertiesConfiguration(),
-						new DataInputStream(new ByteArrayInputStream(bag
-								.getBytes())));
+						new PropertiesConfiguration(), new DataInputStream(
+								new ByteArrayInputStream(bag.getBytes())));
 
 				// only add the message bag to the list if no status conflict
 				// sent
