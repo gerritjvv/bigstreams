@@ -12,6 +12,7 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
+import org.streams.collector.write.StreamCreator;
 import org.streams.commons.compression.CompressionPool;
 
 /**
@@ -61,8 +62,8 @@ public class CompressionRollBackHelper {
 	}
 
 	/**
-	 * Copy file using the CompressionPool
 	 * 
+	 * @param streamCreator The streamCreator will be called to create the destination file output stream
 	 * @param source
 	 * @param dest
 	 * @param waitForCompressionResource
@@ -73,7 +74,7 @@ public class CompressionRollBackHelper {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public static final CompressionOutputStream copy(File source, File dest,
+	public static final CompressionOutputStream copy(StreamCreator<CompressionOutputStream> streamCreator, File source, File dest,
 			long waitForCompressionResource, CompressionCodec codec,
 			CompressionPool pool, long mark) throws IOException,
 			InterruptedException {
@@ -82,9 +83,7 @@ public class CompressionRollBackHelper {
 		CompressionInputStream in = pool.create(fileInput,
 				waitForCompressionResource, TimeUnit.MILLISECONDS);
 
-		FileOutputStream fileOut = new FileOutputStream(dest);
-		CompressionOutputStream out = pool.create(fileOut,
-				waitForCompressionResource, TimeUnit.MILLISECONDS);
+		CompressionOutputStream out = streamCreator.create(dest);
 
 		try {
 			copy(in, out, mark);

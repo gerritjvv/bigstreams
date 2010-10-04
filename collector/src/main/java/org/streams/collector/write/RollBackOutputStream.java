@@ -20,7 +20,7 @@ public class RollBackOutputStream extends OutputStream {
 	OutputStream out;
 	File file;
 
-	StreamCreator streamCreator;
+	StreamCreator<? extends OutputStream> streamCreator;
 
 	/**
 	 * Maintains the byte position of the file Its initial value is
@@ -40,14 +40,25 @@ public class RollBackOutputStream extends OutputStream {
 	 * @param out
 	 * @param streamCreator
 	 * @param initialSize
+	 * @throws InterruptedException 
+	 * @throws IOException 
 	 */
-	public RollBackOutputStream(File file, OutputStream out,
-			StreamCreator streamCreator, long initialSize) {
+	public RollBackOutputStream(File file, 	StreamCreator<? extends OutputStream> streamCreator, long initialSize) throws IOException, InterruptedException {
 		super();
 		this.file = file;
-		this.out = out;
 		this.streamCreator = streamCreator;
 		position = new AtomicLong(initialSize);
+		
+		this.out = streamCreator.create(file);
+		
+		if (out == null) {
+
+			throw new IOException(
+					"No compression resource available for "
+							+ streamCreator.toString());
+
+		}
+
 	}
 
 	@Override
@@ -62,7 +73,7 @@ public class RollBackOutputStream extends OutputStream {
 	 */
 	public void mark() {
 		mark = position.get();
-		streamCreator.markEvent(file, out);
+		streamCreator.markEvent();
 	}
 
 	/**
@@ -70,7 +81,7 @@ public class RollBackOutputStream extends OutputStream {
 	 * 
 	 * @throws IOException
 	 */
-	public void rollback() throws IOException {
+	public void rollback() throws IOException, InterruptedException {
 
 		if (mark < 0) {
 			throw new IOException("The mark method must be called first");
@@ -93,13 +104,14 @@ public class RollBackOutputStream extends OutputStream {
 
 		// close current file, and release any external resource e.g.
 		// compression reasource obtained.
-		streamCreator.close(file, out);
+		streamCreator.close();
 		out = null;
 
 		// copy current file to roll back file up to last mark
 		try {
-			streamCreator.transfer(file, rollbackFile, mark);
-
+			out = streamCreator.transfer(file, rollbackFile, mark);
+			position.set(mark);
+			mark = 0;
 		} catch (Throwable t) {
 			FileUtils.forceDelete(rollbackFile);
 			throw new IOException(t.toString(), t);
@@ -117,10 +129,7 @@ public class RollBackOutputStream extends OutputStream {
 		// delete old file
 		FileUtils.deleteQuietly(intermediate);
 
-		position.set(mark);
-		mark = 0;
 
-		out = streamCreator.create(file);
 	}
 
 	@Override
@@ -142,7 +151,7 @@ public class RollBackOutputStream extends OutputStream {
 
 	@Override
 	public void close() throws IOException {
-		out.close();
+		streamCreator.close();
 	}
 
 	public OutputStream getOut() {
@@ -159,6 +168,10 @@ public class RollBackOutputStream extends OutputStream {
 
 	public long getMark() {
 		return mark;
+	}
+
+	public StreamCreator<? extends OutputStream> getStreamCreator() {
+		return streamCreator;
 	}
 
 }

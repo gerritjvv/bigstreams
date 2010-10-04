@@ -93,17 +93,18 @@ public class LocalLogFileWriter implements LogFileWriter {
 	}
 
 	public int write(FileTrackingStatus fileStatus, InputStream input)
-			throws WriterException {
+			throws WriterException, InterruptedException {
 		return write(fileStatus, input, null);
 	}
 
 	/**
 	 * 
 	 * @return the number of bytes written
+	 * @throws InterruptedException 
 	 */
 	@Override
 	public int write(FileTrackingStatus fileStatus, InputStream input,
-			PostWriteAction postWriteAction) throws WriterException {
+			PostWriteAction postWriteAction) throws WriterException, InterruptedException {
 
 		String key = logFileNameExtractor.getFileName(fileStatus);
 		int wasWritten = 0;
@@ -141,6 +142,8 @@ public class LocalLogFileWriter implements LogFileWriter {
 					outputStream.rollback();
 				} catch (IOException e) {
 					throwException(e);
+				} catch (InterruptedException e) {
+					throw e;
 				}
 			}
 

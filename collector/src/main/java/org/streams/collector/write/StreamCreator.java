@@ -9,14 +9,12 @@ import java.io.OutputStream;
  *  Used by RollBackOutputStream to delegate the work of creating a new OutputStream after rollback.
  * 
  */
-public interface StreamCreator {
+public interface StreamCreator<T extends OutputStream> {
 
 	/**
 	 * Close the output stream releasing any other related resources
-	 * @param file
-	 * @param output
 	 */
-	void close(File file, OutputStream output);
+	void close();
 	
 	/**
 	 * Create a new output stream for the file
@@ -24,14 +22,12 @@ public interface StreamCreator {
 	 * @return
 	 * @throws IOException
 	 */
-	OutputStream create(File file) throws IOException;
+	T create(File file) throws IOException, InterruptedException;
 	
 	/**
 	 * The mark method has been called on the RollBackOutputStream.
-	 * @param file
-	 * @param out This is not the RollBackOutputStream but the Stream contained by the RollBackOutputStream.
 	 */
-	void markEvent(File file, OutputStream out);
+	void markEvent();
 	
 	/**
 	 * 
@@ -41,7 +37,7 @@ public interface StreamCreator {
 	 * @throws IOException
 	 * @throws InterruptedException 
 	 */
-	void transfer(File from, File to, long mark) throws IOException, InterruptedException;
+	T transfer(File from, File to, long mark) throws IOException, InterruptedException;
 	
 	
 }

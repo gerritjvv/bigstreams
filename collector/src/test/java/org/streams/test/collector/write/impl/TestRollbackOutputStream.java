@@ -3,7 +3,6 @@ package org.streams.test.collector.write.impl;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
@@ -12,7 +11,6 @@ import java.io.Writer;
 import junit.framework.TestCase;
 
 import org.apache.hadoop.io.compress.CompressionInputStream;
-import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
 import org.streams.collector.mon.impl.CollectorStatusImpl;
@@ -31,16 +29,14 @@ public class TestRollbackOutputStream extends TestCase {
 
 		File file = new File(baseDir, "testfile1");
 		file.createNewFile();
-		FileOutputStream fileOut = new FileOutputStream(file);
 
 		final GzipCodec codec = new GzipCodec();
 
-		CompressionOutputStream cout = codec.createOutputStream(fileOut);
-
 		CompressionPool pool = new CompressionPoolImpl(codec, 10, 10,
 				new CollectorStatusImpl());
-		RollBackOutputStream out = new RollBackOutputStream(file, cout,
-				new CompressedStreamCreator(codec, pool, 10000L), 0L);
+
+		RollBackOutputStream out = new RollBackOutputStream(file,
+				new CompressedStreamCreator(codec, pool, 10000L, 10000L), 0L);
 
 		int linecount = 0;
 
@@ -78,10 +74,9 @@ public class TestRollbackOutputStream extends TestCase {
 
 		File file = new File(baseDir, "testfile2");
 		file.createNewFile();
-		FileOutputStream fileOut = new FileOutputStream(file);
 
-		RollBackOutputStream out = new RollBackOutputStream(file, fileOut,
-				new TextFileStreamCreator(), 0L);
+		RollBackOutputStream out = new RollBackOutputStream(file,
+				new TextFileStreamCreator(10000L), 0L);
 
 		int linecount = 21;
 
@@ -89,6 +84,8 @@ public class TestRollbackOutputStream extends TestCase {
 			doFileRollback(file, out, linecount, true);
 			linecount += 21;
 		}
+
+		out.close();
 
 	}
 

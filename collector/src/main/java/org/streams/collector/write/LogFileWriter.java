@@ -18,7 +18,7 @@ public interface LogFileWriter {
 	 * @throws WriterException
 	 */
 	int write(FileTrackingStatus fileStatus, InputStream input)
-			throws WriterException;
+			throws WriterException, InterruptedException;
 
 	/**
 	 * 
@@ -29,7 +29,7 @@ public interface LogFileWriter {
 	 * @throws WriterException
 	 */
 	int write(FileTrackingStatus fileStatus, InputStream input,
-			PostWriteAction postWriteAction) throws WriterException;
+			PostWriteAction postWriteAction) throws WriterException, InterruptedException;
 
 	void close() throws WriterException;
 
