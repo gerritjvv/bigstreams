@@ -5,6 +5,8 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.log4j.Logger;
+import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
+import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.streams.commons.file.CoordinationException;
@@ -32,6 +34,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 	final ExecutorService threadWorkerBossService;
 	final ExecutorService threadServiceWorkerService;
+	final ClientSocketChannelFactory socketChannelFactory;
 	final Timer timeoutTimer;
 
 	public CoordinationServiceClientImpl(InetSocketAddress lockInetAddress,
@@ -43,6 +46,8 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		threadWorkerBossService = Executors.newCachedThreadPool();
 		threadServiceWorkerService = Executors.newCachedThreadPool();
 
+		socketChannelFactory = new NioClientSocketChannelFactory(threadWorkerBossService, threadServiceWorkerService);
+		
 		timeoutTimer = new HashedWheelTimer();
 
 		LOG.info("Using coordination lock address : " + lockInetAddress);
@@ -55,7 +60,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			throws CoordinationException {
 
 		ClientConnectionResource conn = new ClientConnectionResource(
-				threadWorkerBossService, threadServiceWorkerService,
+				socketChannelFactory,
 				timeoutTimer);
 		conn.init(lockInetAddress);
 
@@ -65,7 +70,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 	@Override
 	public void saveAndFreeLock(SyncPointer syncPointer) {
 		ClientConnectionResource conn = new ClientConnectionResource(
-				threadWorkerBossService, threadServiceWorkerService,
+				socketChannelFactory,
 				timeoutTimer);
 		conn.init(unlockInetAddress);
 

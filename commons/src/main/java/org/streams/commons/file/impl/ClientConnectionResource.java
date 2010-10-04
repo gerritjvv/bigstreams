@@ -27,7 +27,7 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.WriteCompletionEvent;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
+import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.util.Timer;
 import org.streams.commons.file.CoordinationException;
 import org.streams.commons.file.FileTrackingStatus;
@@ -45,7 +45,7 @@ public class ClientConnectionResource {
 
 	private static final ObjectMapper objMapper = new ObjectMapper();
 
-	private ClientBootstrap bootstrap;
+	final private ClientBootstrap bootstrap;
 
 	long connectEstablishTimeout = 10000L;
 
@@ -53,18 +53,13 @@ public class ClientConnectionResource {
 
 	InetSocketAddress inetAddress;
 
-	final ExecutorService threadWorkerBossService;
-	final ExecutorService threadServiceWorkerService;
-
 	final Timer timeoutTimer;
 
-	public ClientConnectionResource(
-			final ExecutorService threadWorkerBossService,
-			final ExecutorService threadServiceWorkerService,
+	public ClientConnectionResource(ClientSocketChannelFactory socketChannelFactory,
 			final Timer timeoutTimer) {
-		this.threadWorkerBossService = threadWorkerBossService;
-		this.threadServiceWorkerService = threadServiceWorkerService;
 		this.timeoutTimer = timeoutTimer;
+		bootstrap = new ClientBootstrap(socketChannelFactory);
+		
 	}
 
 	/**
@@ -141,21 +136,11 @@ public class ClientConnectionResource {
 		final ClientChannelHandler handler = new ClientChannelHandler(sendData,
 				exchanger);
 
-		// final CountdownLatchChannel countdownLatchChannel = new
-		// CountdownLatchChannel();
-
-		bootstrap = new ClientBootstrap(new NioClientSocketChannelFactory(
-				threadWorkerBossService, threadServiceWorkerService, 1));
-
 		// we set the ReadTimeoutHandler to timeout if no response is received
 		// from the server after default 10 seconds
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-//				ChannelPipeline p = Channels.pipeline();
-//				p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
-//				p.addLast("Handler", handler);
-//				return p;
 				 return Channels.pipeline(new MessageFrameDecoder(), handler);
 			}
 		});
