@@ -109,6 +109,7 @@ public class RollBackOutputStream extends OutputStream {
 
 		// copy current file to roll back file up to last mark
 		try {
+			LOG.info("Rolling back file " + file.getAbsolutePath());
 			out = streamCreator.transfer(file, rollbackFile, mark);
 			position.set(mark);
 			mark = 0;
