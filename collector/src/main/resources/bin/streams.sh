@@ -1,7 +1,7 @@
 ###########################
 #
-# Executes the Streams Agent Command line.
-# e.g. streams.sh -start agent
+# Executes the Streams Collector Command line.
+# e.g. streams.sh -start collector
 #      streams.sh -ls
 #!/usr/bin/env bash
 

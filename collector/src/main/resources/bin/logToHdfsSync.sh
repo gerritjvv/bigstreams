@@ -13,21 +13,57 @@ if [ -z $HADOOP_HOME ] ; then
 fi
 
 
-if [ -z $3 ]
+if [ -z $5 ]
 then
- echo "Type <local_log_dir> <synced_dir> <hdfs_dir>"
+ echo "Type <local_log_dir> <synced_dir> <error_dir> <hdfs_dir> <logfile extension>"
  exit -1
 fi
 
 LOCAL_LOG_DIR=$1
 SYNCED_DIR=$2
-HDFS_DIR=$3
+ERROR_DIR=$3
+HDFS_DIR=$4
 
-LOG_FILE_EXTENSION=".lzo"
+LOG_FILE_EXTENSION=$5
+
+COMPRESSION_TOOL="NONE"
+
+#configure the file extension compression testing tool
+case $LOG_FILE_EXTENSION in
+ lzo | LZO | lzop | LZOP)
+   export COMPRESSION_TOOL="/usr/bin/lzop"
+ ;;
+ gz | GZ | gzip | GZIP)
+   export COMPRESSION_TOOL="/usr/bin/gzip"
+ ;;
+ bz2 | BZ2 | bzip2 | BZIP2)
+   export COMPRESSION_TOOL="/usr/bin/bzip2"
+ ;;
+esac
+
 
 
 for f in $( find $LOCAL_LOG_DIR -name "*[0-9][0-9][0-9][0-9]-[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9].*?$LOG_FILE_EXTENSION" )
 do
+
+if [ -a $COMPRESSION_TOOL ] 
+then
+
+ if ! $COMPRESSION_TOOL -t $f ; then
+
+   if [ ! -d $ERROR_DIR ]
+   then
+      mkdir -p $ERROR_DIR
+   fi
+
+   echo "The file $f is not a valid LZO file"
+   echo "Moving file to $ERROR_DIR"
+   mv $f $ERROR_DIR/
+   continue
+ 
+ fi
+
+fi
 
 fileName=$( basename $f)
 echo "fileName: $fileName"

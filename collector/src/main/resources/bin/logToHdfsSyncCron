@@ -1,0 +1,4 @@
+*/30 * * * *    hadoop      /opt/streams-collector/bin/logToHdfsSync.sh /data/streams-collector/logs /data/streams-collector/sync /data/streams-collector/error/ /log/raw  gz &> /opt/streams-collector/logs/logToHdfsSync.log
+
+#Remove files older than 2 days from the sync folder 
+*/30 * * * *    hadoop      find /data/streams-collector/sync/ -type f -mtime +1 -exec rm -f \{\} \;
