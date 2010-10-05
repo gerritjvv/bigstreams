@@ -3,8 +3,9 @@ export PATH
 
 [ -f /etc/sysconfig/streams-agent ] && . /etc/sysconfig/streams-agent
 lockfile=${LOCKFILE-/var/lock/subsys/streams-agent}
-pidfile=${PIDFILE-/var/run/streams-agent.pid}
 streamsd=${STREAMSD-/opt/streams-agent/bin/streams.sh}
+REGEX="org.streams.agent.main.Main -start agent"
+
 RETVAL=0
 
 # Source function library.
@@ -12,20 +13,42 @@ RETVAL=0
 
 
 start() {
+
+   pid=`pgrep -f "$REGEX"`
+
+   if [ -n "$pid" ]; then
+    echo "The Streams agent is already running"
+    RETVAL=2
+   else
+
     echo -n $"Starting streams agent: "
         daemon $streamsd -start agent &> /dev/null &
     RETVAL=$?
     echo
         [ $RETVAL = 0 ] && touch ${lockfile}
-        return $RETVAL
+
+   fi
+
+   return $RETVAL
+
 }
 
 stop() {
-    echo -n $"Stopping streams: "
+
+    pid=`pgrep -f "$REGEX"`
+    if [ -n "$pid" ]; then
+      echo -n $"Stopping streams: "
         $streamsd -stop agent
-    RETVAL=$?
-    echo
-    [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+      RETVAL=$?
+      echo
+       [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+    else
+       echo "No Streams agent instance is running" 
+       RETVAL=2
+    fi
+
+    return $RETVAL
+
 }
 
 restart() {
@@ -33,9 +56,19 @@ restart() {
     start
 }
 
-rh_status() {
-    status | grep -q -- '-p' 2>/dev/null && statusopts="-p $pidfile"
-    status $statusopts $streamsd
+status() {
+
+   pid=`pgrep -f "$REGEX"`
+   if [ -n "$pid" ]; then
+      echo "Streams agent is running"
+      echo "$pid"
+      RETVAL=1
+   else
+       echo "Streams agent instance is stopped" 
+       RETVAL=2
+   fi
+
+   return $RETVAL
 }
 
 case "$1" in
@@ -46,17 +79,14 @@ case "$1" in
     stop
     ;;
   restart)
-    restart
-    ;;
-  condrestart|try-restart)
-    rh_status_q || exit 0
-    restart
+    stop
+    start
     ;;
   status)
-        rh_status
+        status
     ;;
   *)
-    echo $"Usage: $0 {start|stop|status|restart|condrestart}"
+    echo $"Usage: $0 {start|stop|status|restart}"
     exit 1
 esac
 
