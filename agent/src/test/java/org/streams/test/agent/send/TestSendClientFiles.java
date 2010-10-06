@@ -18,6 +18,7 @@ import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.GzipCodec;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.jboss.netty.util.HashedWheelTimer;
 import org.junit.After;
@@ -39,8 +40,6 @@ import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
-
-import com.hadoop.compression.lzo.LzoCodec;
 
 public class TestSendClientFiles extends TestCase {
 
@@ -179,10 +178,10 @@ public class TestSendClientFiles extends TestCase {
 
 		// Create LZO Codec
 		org.apache.hadoop.conf.Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
-		LzoCodec lzoCodec = new LzoCodec();
-		lzoCodec.setConf(hadoopConf);
+		GzipCodec gzipCodec = new GzipCodec();
+		gzipCodec.setConf(hadoopConf);
 
-		codec = lzoCodec;
+		codec = gzipCodec;
 
 		// Write out test file
 		baseDir = new File(".", "target/testSendClientFiles/");

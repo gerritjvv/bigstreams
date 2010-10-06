@@ -17,6 +17,7 @@ import org.apache.commons.configuration.SystemConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.hadoop.io.compress.GzipCodec;
 import org.jboss.netty.bootstrap.ServerBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBuffers;
@@ -61,8 +62,6 @@ import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
 import org.streams.commons.metrics.impl.IntegerCounterPerSecondMetric;
 import org.streams.commons.status.Status;
-
-import com.hadoop.compression.lzo.LzoCodec;
 
 /**
  * This class tests the conflict resolution logic of the agent.
@@ -175,10 +174,10 @@ public class TestFilesSendWorkerConflict extends TestCase {
 
 		// Create LZO Codec
 		Configuration conf = new Configuration();
-		LzoCodec lzoCodec = new LzoCodec();
-		lzoCodec.setConf(conf);
+		GzipCodec gzipCodec = new GzipCodec();
+		gzipCodec.setConf(conf);
 
-		codec = lzoCodec;
+		codec = gzipCodec;
 
 		// Write out test file
 		baseDir = new File(".", "target/testSendClientFilesConflict/");

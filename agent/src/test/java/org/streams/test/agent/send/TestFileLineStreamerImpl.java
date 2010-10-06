@@ -15,6 +15,7 @@ import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
+import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,8 +23,6 @@ import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.mon.status.impl.AgentStatusImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
-
-import com.hadoop.compression.lzo.LzoCodec;
 
 /**
  * 
@@ -114,10 +113,10 @@ public class TestFileLineStreamerImpl extends TestCase {
 
 		// Create LZO Codec
 		Configuration conf = new Configuration();
-		LzoCodec lzoCodec = new LzoCodec();
-		lzoCodec.setConf(conf);
+		GzipCodec gzipCodec = new GzipCodec();
+		gzipCodec.setConf(conf);
 
-		codec = lzoCodec;
+		codec = gzipCodec;
 
 		// Write out test file
 		baseDir = new File(".", "target/fileLineStreamerTest/");

@@ -70,7 +70,8 @@ public class CountCommand implements CommandLineProcessor{
 				LOG.info("Connecting via rest");
 				count = getFilesHttp(status);
 			}
-			writer.print(count);
+			writer.println(count);
+			writer.flush();
 		}finally{
 			writer.close();
 		}
@@ -98,14 +99,16 @@ public class CountCommand implements CommandLineProcessor{
 				+ clientPort + querySuffix);
 
 		StringWriter writer = new StringWriter();
+		Long count = 0L;
 		
 		try {
 			clientResource.get(MediaType.APPLICATION_JSON).write(writer);
+			count = Long.valueOf(writer.toString());
 		} finally {
 			clientResource.release();
 		}
 
-		return Integer.valueOf(writer.toString());
+		return count;
 	}
 	
 	/**

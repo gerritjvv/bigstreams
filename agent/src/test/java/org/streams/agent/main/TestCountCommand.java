@@ -10,6 +10,7 @@ import junit.framework.TestCase;
 
 import org.apache.commons.io.output.ByteArrayOutputStream;
 import org.junit.Test;
+import org.restlet.Component;
 import org.streams.agent.cli.impl.CountCommand;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.main.Bootstrap;
@@ -18,7 +19,6 @@ import org.streams.commons.cli.CommandLineParser;
 import org.streams.commons.cli.CommandLineProcessor;
 import org.streams.commons.cli.CommandLineProcessorFactory;
 
-
 /**
  * Test the CountCommand implementation
  * 
@@ -26,6 +26,82 @@ import org.streams.commons.cli.CommandLineProcessorFactory;
 public class TestCountCommand extends TestCase {
 
 	int fileCount = 100;
+
+	@Test
+	public void testCountAllHttp() throws Exception {
+
+		final CountCommand countCmd = new CountCommand(createMemory(), null,
+				null);
+
+		Bootstrap bootstrap = new Bootstrap();
+		bootstrap.loadProfiles(CommandLineProcessorFactory.PROFILE.REST_CLIENT,
+				CommandLineProcessorFactory.PROFILE.CLI,
+				CommandLineProcessorFactory.PROFILE.DB,
+				CommandLineProcessorFactory.PROFILE.AGENT);
+
+		Component comp = bootstrap.getBean(Component.class);
+
+		CommandLineParser parser = bootstrap
+				.agentCommandLineParser(new CommandLineProcessorFactory() {
+
+					@Override
+					public CommandLineProcessor create(String name,
+							PROFILE... profiles) {
+						return countCmd;
+					}
+
+				});
+
+		try {
+			comp.start();
+			validateCount(parser, fileCount, null, true);
+		} finally {
+			comp.stop();
+			while(! (comp.isStopped() ) ){
+				Thread.sleep(1000);
+				System.out.println("Waiting for http server to shutdown");
+			}
+		}
+
+	}
+
+	@Test
+	public void testCountStatusHttp() throws Exception {
+
+		final CountCommand countCmd = new CountCommand(createMemory(), null,
+				null);
+
+		Bootstrap bootstrap = new Bootstrap();
+		bootstrap.loadProfiles(CommandLineProcessorFactory.PROFILE.REST_CLIENT,
+				CommandLineProcessorFactory.PROFILE.CLI,
+				CommandLineProcessorFactory.PROFILE.DB,
+				CommandLineProcessorFactory.PROFILE.AGENT);
+
+		Component comp = bootstrap.getBean(Component.class);
+
+		CommandLineParser parser = bootstrap
+				.agentCommandLineParser(new CommandLineProcessorFactory() {
+
+					@Override
+					public CommandLineProcessor create(String name,
+							PROFILE... profiles) {
+						return countCmd;
+					}
+
+				});
+
+		try {
+			comp.start();
+			validateCount(parser, fileCount / 2, "READY", true);
+		} finally {
+			comp.stop();
+			while(! (comp.isStopped() ) ){
+				Thread.sleep(1000);
+				System.out.println("Waiting for http server to shutdown");
+			}
+		}
+
+	}
 
 	/**
 	 * 
@@ -93,9 +169,8 @@ public class TestCountCommand extends TestCase {
 	 * @param offline
 	 * @throws Exception
 	 */
-	private void validateCount(CommandLineParser parser,
-			long expectedCount, String status, boolean offline)
-			throws Exception {
+	private void validateCount(CommandLineParser parser, long expectedCount,
+			String status, boolean offline) throws Exception {
 
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 

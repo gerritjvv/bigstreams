@@ -1,6 +1,7 @@
-#this is a comment
-/**
-* another comment
-*/
+#This is where you configure the directories which the agent will read files from
+#Two columns: 
+#  Column1 = log type VERY IMPORTANT!! DO NOT MIX LOG TYPES
+#  Column2 = log file with file globbing. * and ? are supported.
+
 test1 /root/test-logs/logs1/*.txt
 test2 /root/test-logs/logs2/*.txt

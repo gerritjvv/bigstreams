@@ -146,4 +146,13 @@ public class StatusCommand implements CommandLineProcessor {
 		this.client = client;
 	}
 
+	public Configuration getConfiguration() {
+		return configuration;
+	}
+
+	@Autowired(required = true)
+	public void setConfiguration(Configuration configuration) {
+		this.configuration = configuration;
+	}
+
 }
