@@ -64,6 +64,8 @@ public class AgentStatusCommand implements CommandLineProcessor {
 
 			}
 		} finally {
+			writer.println();
+			writer.flush();
 			writer.close();
 		}
 
