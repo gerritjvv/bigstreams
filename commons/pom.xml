@@ -6,11 +6,11 @@
 	<parent>
 		<artifactId>streams-parent</artifactId>
 		<groupId>org.streams</groupId>
-		<version>0.1.0</version>
+		<version>0.1.1-SNAPSHOT</version>
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>commons</artifactId>
-	<version>0.1.0</version>
+	<version>0.1.1-SNAPSHOT</version>
 	<name>commons</name>
 	<url>http://maven.apache.org</url>
 	<dependencies>
