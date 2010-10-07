@@ -13,6 +13,18 @@
 	<version>0.1.0</version>
 	<name>collector-coordination</name>
 	<url>http://code.google.com/p/bigstreams/</url>
+
+	<properties>
+		<hibernate-annotations.version>3.4.0.GA</hibernate-annotations.version>
+		<hibernate-c3p0.version>3.3.2.GA</hibernate-c3p0.version>
+		<hibernate-entitymanager.version>3.4.0.GA</hibernate-entitymanager.version>
+		<slf4j-simple.version>1.4.2</slf4j-simple.version>
+		<hsqldb.version>1.8.0.10</hsqldb.version>
+		<restlet.version>2.0-M7</restlet.version>
+		<netty.version>3.2.2.Final</netty.version>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+	</properties>
+
 	<dependencies>
 		<dependency>
 			<groupId>org.streams</groupId>
@@ -33,55 +45,55 @@
 		<dependency>
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-annotations</artifactId>
-			<version>3.4.0.GA</version>
+			<version>${hibernate-annotations.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-c3p0</artifactId>
-			<version>3.3.2.GA</version>
+			<version>${hibernate-c3p0.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>hibernate</groupId>
 			<artifactId>hibernate-entitymanager</artifactId>
-			<version>3.4.0.GA</version>
+			<version>${hibernate-entitymanager.version}</version>
 
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
-			<version>1.4.2</version>
+			<version>${slf4j-simple.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.hsqldb</groupId>
 			<artifactId>hsqldb</artifactId>
-			<version>1.8.0.10</version>
+			<version>${hsqldb.version}</version>
 		</dependency>
 
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet</artifactId>
-			<version>2.0-M7</version>
+			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet.ext.jackson</artifactId>
-			<version>2.0-M7</version>
+			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet.ext.httpclient</artifactId>
-			<version>2.0-M7</version>
+			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet.ext.simple</artifactId>
-			<version>2.0-M7</version>
+			<version>${restlet.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jboss.netty</groupId>
 			<artifactId>netty</artifactId>
-			<version>3.2.2.Final</version>
+			<version>${netty.version}</version>
 		</dependency>
 	</dependencies>
 
@@ -138,7 +150,7 @@
 							<username>specifics</username>
 							<groupname>specifics</groupname>
 						</mapping>
-					
+
 						<mapping>
 							<directory>/etc/init.d/</directory>
 							<directoryIncluded>false</directoryIncluded>
@@ -267,8 +279,29 @@
 			<name>Public online Restlet repository</name>
 			<url>http://maven.restlet.org</url>
 		</repository>
+		<repository>
+			<id>streams-releases</id>
+			<url>https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>
+		</repository>
+		<repository>
+			<id>streams-releases</id>
+			<url>https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
+		</repository>
 	</repositories>
-	<properties>
-		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-	</properties>
+
+	<distributionManagement>
+		<repository>
+			<id>streams-releases</id>
+			<name>streams releases maven repository</name>
+			<url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>
+			<uniqueVersion>false</uniqueVersion>
+		</repository>
+		<snapshotRepository>
+			<id>streams-snapshots</id>
+			<name>streams snapshot maven repository</name>
+			<url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
+			<uniqueVersion>false</uniqueVersion>
+		</snapshotRepository>
+	</distributionManagement>
+
 </project>
