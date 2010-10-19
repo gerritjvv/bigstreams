@@ -179,6 +179,13 @@ public class CompressionPoolImpl implements CompressionPool {
 	@Override
 	public void closeAndRelease(CompressionOutputStream cout) {
 
+		try{
+			//finish quietly
+			cout.finish();
+		}catch(IOException ioexp){
+			LOG.error(ioexp.toString(), ioexp);
+		}
+		
 		IOUtils.closeQuietly(cout);
 
 		if(hasCompressors){
