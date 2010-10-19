@@ -35,4 +35,20 @@
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
+
+<distributionManagement>
+    <repository>
+        <id>streams-releases</id>
+        <name>streams releases maven repository</name>
+        <url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>
+        <uniqueVersion>false</uniqueVersion>
+    </repository>
+    <snapshotRepository>
+        <id>streams-snapshots</id>
+        <name>streams snapshot maven repository</name>
+        <url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
+        <uniqueVersion>false</uniqueVersion>
+    </snapshotRepository>
+</distributionManagement>
+
 </project>
