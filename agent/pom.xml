@@ -135,8 +135,8 @@
 						<mapping>
 							<directory>/var/opt/streams-agent/db/</directory>
 							<filemode>775</filemode>
-							<username>specifics</username>
-							<groupname>specifics</groupname>
+							<username>streams</username>
+							<groupname>streams</groupname>
 						</mapping>
 
 						<mapping>
