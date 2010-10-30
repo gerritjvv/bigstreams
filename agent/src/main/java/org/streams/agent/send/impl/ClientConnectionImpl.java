@@ -1,6 +1,8 @@
 package org.streams.agent.send.impl;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
@@ -239,11 +241,13 @@ public class ClientConnectionImpl implements ClientConnection {
 			ChannelBuffer channelBuffer = ChannelBuffers.dynamicBuffer(1024);
 			ChannelBufferOutputStream output = new ChannelBufferOutputStream(
 					channelBuffer);
-
+			
+			
 			protocol.send(clientHandlerContext.getHeader(),
-					clientHandlerContext.getFileLineStreamer().getCodec(),
-					output);
-
+						clientHandlerContext.getFileLineStreamer().getCodec(),
+						output);
+			
+			 
 			// write the fileInput to the channel buffer outBuffer
 			// we are reading several lines of data as configured in the
 			// FileLineStreamer
@@ -251,6 +255,7 @@ public class ClientConnectionImpl implements ClientConnection {
 			// this allows more file lines to be read as the in-memory storage
 			// is a
 			// compressed.
+
 			sentLines = clientHandlerContext.getFileLineStreamer()
 					.streamContent(
 							clientHandlerContext.getIntermediatePointer(),
@@ -267,11 +272,13 @@ public class ClientConnectionImpl implements ClientConnection {
 
 				// create a wrapped composite buffer
 				ChannelBuffer messageBuffer = ChannelBuffers.wrappedBuffer(
-						messageLenBuffer, channelBuffer);
+						messageLenBuffer,
+						channelBuffer);
 
 				// write the composite buffer containing the message length and
 				// compressed data to the channel
 				channel.write(messageBuffer);
+
 			} else {
 				// close channel if no write
 				channel.close();
