@@ -46,4 +46,9 @@ public class MockGRing implements GRing{
 		return testMembers;
 	}
 
+	@Override
+	public boolean hasMembers() {
+		return testMembers.size() > 0;
+	}
+
 }

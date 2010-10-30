@@ -24,4 +24,7 @@ public interface GRing {
 	 */
 	SortedSet<MemberDesc> getMembers();
 
+	
+	boolean hasMembers();
+	
 }

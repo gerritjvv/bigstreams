@@ -13,7 +13,11 @@
   <name>gring</name>
   <url>http://maven.apache.org</url>
   <dependencies>
-   
+   		<dependency>
+			<groupId>org.jboss.netty</groupId>
+			<artifactId>netty</artifactId>
+			<version>3.2.2.Final</version>
+		</dependency>
   </dependencies>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

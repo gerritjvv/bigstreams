@@ -1,6 +1,5 @@
 package org.streams.gring.transmit.impl;
 
-import java.util.SortedSet;
 import java.util.concurrent.BlockingDeque;
 
 import org.apache.log4j.Logger;
@@ -29,24 +28,30 @@ import org.streams.gring.net.GRingClientFactory;
 public class TransmitterThread implements Runnable {
 
 	private static final Logger LOG = Logger.getLogger(TransmitterThread.class);
-	
+
 	BlockingDeque<Message> messageQueue;
 	int messagesPerChannel;
-	
+
 	int currentMessageCount = 0;
-	
+
 	GRingClientFactory gringClientFactory;
 	GRing gring;
-	
+
 	GRingClient currentClient;
-	
-	
+
 	/**
 	 * 
-	 * @param gring  Shared between all instances of TransmitterThread to know the group ring members.
-	 * @param messageQueue Shares between all instances of TransmitterThread to get new messages to transmit.
-	 * @param messagesPerChannel Multiple messages can be transmitted over the same channel, this increases throughput.
-	 * @param gringClientFactory Create instances of GRingClient.
+	 * @param gring
+	 *            Shared between all instances of TransmitterThread to know the
+	 *            group ring members.
+	 * @param messageQueue
+	 *            Shares between all instances of TransmitterThread to get new
+	 *            messages to transmit.
+	 * @param messagesPerChannel
+	 *            Multiple messages can be transmitted over the same channel,
+	 *            this increases throughput.
+	 * @param gringClientFactory
+	 *            Create instances of GRingClient.
 	 */
 	public TransmitterThread(GRing gring, BlockingDeque<Message> messageQueue,
 			int messagesPerChannel, GRingClientFactory gringClientFactory) {
@@ -57,86 +62,84 @@ public class TransmitterThread implements Runnable {
 		this.gringClientFactory = gringClientFactory;
 	}
 
-
-
-
 	/**
-	 * Send a message trying each Member in turn when a send fails to any one member.<br/>
+	 * Send a message trying each Member in turn when a send fails to any one
+	 * member.<br/>
 	 * Flow is:<br/>
-	 * <ul> 
-	 *  <li> Get members set </li>
-	 *  <li> if members set is empty send NoGRingMemebersException the MessageTransmitListener.</li>
-	 *  <li> else: for each MemberDesc in member set:</li>
-	 *  <li> open client connection if not open and transmit message.<li>
-	 *  <li> On Error: the run method will catch any errors, black list the node, re discover the network, and send again.</li>
+	 * <ul>
+	 * <li>Get members set</li>
+	 * <li>if members set is empty send NoGRingMemebersException the
+	 * MessageTransmitListener.</li>
+	 * <li>else: for each MemberDesc in member set:</li>
+	 * <li>open client connection if not open and transmit message.
+	 * <li>
+	 * <li>On Error: the run method will catch any errors, black list the node,
+	 * re discover the network, and send again.</li>
 	 * </ul>
+	 * 
 	 * @param message
 	 */
-	private void sendMessage(Message message){
-		
-		SortedSet<MemberDesc> members = gring.getMembers();
-		
-		if(members == null || members.isEmpty()){
-			message.getMessageTransmitListener().error(message, new NoGRingMemebersException("No GRing Members are present"));
-		}else{
-			
-			//get the successor. :-- Messages are always sent to the successor.
-			MemberDesc successor = members.first();
-			
-		
-			try{
-				//open a new client connection only if the currentClient instance is null
-				if(currentClient == null){
+	private void sendMessage(Message message) {
+
+		if (!gring.hasMembers()) {
+			message.getMessageTransmitListener()
+					.error(message,
+							new NoGRingMemebersException(
+									"No GRing Members are present"));
+		} else {
+
+			// get the successor. :-- Messages are always sent to the successor.
+			MemberDesc successor = gring.getSuccessor();
+
+			try {
+				// open a new client connection only if the currentClient
+				// instance is null
+				if (currentClient == null) {
 					currentClient = gringClientFactory.create();
 					currentClient.open(successor.getInetAddress());
 					currentMessageCount = 0;
 				}
-						
+
 				currentClient.transmit(message);
 				currentMessageCount++;
-				
-				message.getMessageTransmitListener().messageSent(message);
-				
-				//close the client if the messagesPerChannel has been reched,
-				//or if the currentClient has been closed by the server.
-				if(currentMessageCount >= messagesPerChannel || currentClient.isClosed()){
-					currentClient.close();
+
+				// close the client if the messagesPerChannel has been reched,
+				// or if the currentClient has been closed by the server.
+				if (currentMessageCount >= messagesPerChannel
+						|| currentClient.isClosed()) {
+					currentClient.close(true);
 					currentClient = null;
 				}
 
-			}catch(Throwable t){
-				currentClient.close();
+			} catch (Throwable t) {
+				currentClient.close(false);
 				currentClient = null;
-				
-				LOG.error("Error transmitting message " + message + " to " + successor, t);
+
+				LOG.error("Error transmitting message " + message + " to "
+						+ successor, t);
 				throw new GRingMemberComException(successor);
 			}
-			
-		
+
 		}
-		
-		
+
 	}
-	
-	
-	
-	
+
 	public void run() {
 
 		boolean interrupted = false;
-		
+
 		try {
 			while (!(interrupted = Thread.interrupted())) {
 				Message message = messageQueue.take();
-				
-				try{
-					sendMessage( message );
-				}catch(GRingMemberComException memberExcp){
-					//blacklist and re-discover the network.
+
+				try {
+					sendMessage(message);
+				} catch (GRingMemberComException memberExcp) {
+					// blacklist and re-discover the network.
 					gring.blackListMember(memberExcp.getMember());
 					sendMessage(message);
 				}
-				
+
 			}
 
 		} catch (InterruptedException e) {
@@ -149,6 +152,4 @@ public class TransmitterThread implements Runnable {
 
 	}
 
-	
-	
 }

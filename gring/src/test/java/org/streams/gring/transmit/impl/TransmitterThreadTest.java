@@ -1,6 +1,9 @@
 package org.streams.gring.transmit.impl;
 
+import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.SocketAddress;
 import java.util.concurrent.BlockingDeque;
 import java.util.concurrent.LinkedBlockingDeque;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -26,6 +29,7 @@ public class TransmitterThreadTest extends TestCase {
 
 	int messagesPerChannel = 10;
 	BlockingDeque<Message> messageQueue = new LinkedBlockingDeque<Message>();
+	int serverPort = 7001;
 	
 	/**
 	 * Test that what happens if when an error is induced on sending.
@@ -37,7 +41,8 @@ public class TransmitterThreadTest extends TestCase {
 		
 		GRingClientFactory factory = createFactory(true);
 		
-		MockGRing gring = new MockGRing(new MemberDescImpl(1L, InetAddress.getLocalHost()));
+		MockGRing gring = new MockGRing(new MemberDescImpl(1L, new InetSocketAddress(InetAddress.getLocalHost(), serverPort)));
+		
 		TransmitterThread transmitterThread = new TransmitterThread(gring, messageQueue, messagesPerChannel, factory);
 		
 		Thread th = new Thread(transmitterThread);
@@ -91,7 +96,7 @@ public class TransmitterThreadTest extends TestCase {
 	public void testSendMessage() throws Exception{
 		
 		GRingClientFactory factory = createFactory(false);
-		MockGRing gring = new MockGRing(new MemberDescImpl(1L, InetAddress.getLocalHost()));
+		MockGRing gring = new MockGRing(new MemberDescImpl(1L, new InetSocketAddress(InetAddress.getLocalHost(), serverPort)));
 		TransmitterThread transmitterThread = new TransmitterThread(gring, messageQueue, messagesPerChannel, factory);
 		
 		
@@ -142,38 +147,42 @@ public class TransmitterThreadTest extends TestCase {
 			public GRingClient create() {
 				return new GRingClient() {
 					
+					boolean isClosed = false;
+					
+					public boolean hasError(){
+						return true;
+					}
+					
 					@Override
 					public void transmit(Message request) {
 						if(errorOnTransmit){
 							throw new RuntimeException("Induced Error");
 						}
+						
+						request.getMessageTransmitListener().messageSent(request);
 					}
 					
+
 					@Override
-					public void open(InetAddress inetAddress) {
+					public void open(SocketAddress inetAddress)
+							throws IOException, InterruptedException {
 						
 					}
-					
+
+					@Override
+					public void close(boolean wait) {
+						isClosed = true;
+					}
+
+
 					@Override
 					public boolean isClosed() {
-						return false;
-					}
-					
-					@Override
-					public void close() {
-						
+						return isClosed;
 					}
 				};
 			}
 		};
 	}
-	
-	@Override
-	protected void setUp() throws Exception {
-		
-		
-	}
-	
 	
 	
 	
