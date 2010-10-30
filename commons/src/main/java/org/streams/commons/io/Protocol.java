@@ -12,5 +12,5 @@ public interface Protocol {
 			throws IOException;
 
 	public void send(Header header, CompressionCodec codec, DataOutput dataOut)
-	throws IOException;
+			throws IOException, InterruptedException;
 }

@@ -1,6 +1,7 @@
 package org.streams.commons.io.impl;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.IOException;
@@ -16,9 +17,6 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.codehaus.jackson.map.ObjectMapper;
-import org.jboss.netty.buffer.ChannelBuffer;
-import org.jboss.netty.buffer.ChannelBufferOutputStream;
-import org.jboss.netty.buffer.ChannelBuffers;
 import org.streams.commons.compression.CompressionPool;
 import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.io.Header;
@@ -40,7 +38,8 @@ public class ProtocolImpl implements Protocol {
 	private CompressionPoolFactory compressionPoolFactory;
 
 	/**
-	 * Time that this class will wait for a compression resource to become available. Default 10000L
+	 * Time that this class will wait for a compression resource to become
+	 * available. Default 10000L
 	 */
 	private long waitForCompressionResource = 10000L;
 
@@ -76,7 +75,8 @@ public class ProtocolImpl implements Protocol {
 
 			// we don't synchronise here because we do not care if the codec is
 			// created more than once.
-			CompressionCodec codec = codecMap.putIfAbsent(codecName, CompressionCodecLoader.loadCodec(conf, codecName));
+			CompressionCodec codec = codecMap.putIfAbsent(codecName,
+					CompressionCodecLoader.loadCodec(conf, codecName));
 
 			if (codec == null) {
 				codec = codecMap.get(codecName);
@@ -101,8 +101,8 @@ public class ProtocolImpl implements Protocol {
 					waitForCompressionResource, TimeUnit.MILLISECONDS);
 
 			if (compressionInput == null) {
-				throw new IOException("No decompression resource available for "
-						+ codec);
+				throw new IOException(
+						"No decompression resource available for " + codec);
 			}
 
 			Reader reader = new InputStreamReader(compressionInput);
@@ -143,13 +143,27 @@ public class ProtocolImpl implements Protocol {
 	 * string which is header codec class name.<br/>
 	 * 4 bytes length of header.<br/>
 	 * compressed json object representing the header.<br/>
+	 * 
+	 * @throws InterruptedException
 	 */
 	public void send(Header header, CompressionCodec codec, DataOutput dataOut)
-			throws IOException {
+			throws IOException, InterruptedException {
 
-		ChannelBuffer headerBuffer = writeCompressedHeaderBytes(header, codec);
+		CompressionPool pool = compressionPoolFactory.get(codec);
 
-		byte[] headerBytes = headerBuffer.toByteBuffer().array();
+		ByteArrayOutputStream byteOut = new ByteArrayOutputStream(100);
+
+		CompressionOutputStream compressionOut = pool.create(byteOut,
+				waitForCompressionResource, TimeUnit.MILLISECONDS);
+
+		try {
+			compressionOut.write(header.toJsonString().getBytes());
+		} finally {
+			compressionOut.finish();
+			pool.closeAndRelease(compressionOut);
+		}
+
+		byte[] headerBytes = byteOut.toByteArray();
 
 		byte[] compressCodecNameBytes = codec.getClass().getName().getBytes();
 
@@ -159,34 +173,6 @@ public class ProtocolImpl implements Protocol {
 		dataOut.writeInt(headerBytes.length);
 		dataOut.write(headerBytes);
 
-	}
-
-	/**
-	 * Returns a ChannelBuffer with the compressed Header data
-	 * 
-	 * @param header
-	 * @param codec
-	 * @return
-	 * @throws IOException
-	 */
-	private ChannelBuffer writeCompressedHeaderBytes(Header header,
-			CompressionCodec codec) throws IOException {
-
-		// GET RAW HEADER BYTES
-		byte[] headerBytes = header.toJsonString().getBytes();
-
-		// COMPRESS HEADER DATA
-		ChannelBuffer channelBuffer = ChannelBuffers.dynamicBuffer();
-		ChannelBufferOutputStream channelBufferOut = new ChannelBufferOutputStream(
-				channelBuffer);
-
-		CompressionOutputStream compressionOut = codec
-				.createOutputStream(channelBufferOut);
-		compressionOut.write(headerBytes);
-		compressionOut.finish();
-		compressionOut.close();
-
-		return channelBuffer;
 	}
 
 	public long getWaitForCompressionResource() {

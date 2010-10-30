@@ -52,10 +52,10 @@ public class CompressionPoolImpl implements CompressionPool {
 
 	private static final String DECOMPRESSOR_USED_PREF = "DECOMPRESSORS-USED";
 	private static final String COMPRESSOR_USED_PREF = "COMPRESSORS-USED";
-	
+
 	private String DECOMPRESSOR_STR;
 	private String COMPRESSOR_STR;
-	
+
 	final LinkedBlockingDeque<Decompressor> decompressorQueue;
 	final LinkedBlockingDeque<Compressor> compressorQueue;
 
@@ -69,9 +69,9 @@ public class CompressionPoolImpl implements CompressionPool {
 
 	AtomicInteger compressorsUsedCount = new AtomicInteger();
 	AtomicInteger decompressorsUsedCount = new AtomicInteger();
-	
+
 	Status status;
-	
+
 	/**
 	 * 
 	 * @param codec
@@ -87,10 +87,12 @@ public class CompressionPoolImpl implements CompressionPool {
 
 		this.codec = codec;
 		this.status = status;
-		
-		DECOMPRESSOR_STR = DECOMPRESSOR_USED_PREF + "-" + codec.getDefaultExtension();
-		COMPRESSOR_STR = COMPRESSOR_USED_PREF + "-" + codec.getDefaultExtension();
-		
+
+		DECOMPRESSOR_STR = DECOMPRESSOR_USED_PREF + "-"
+				+ codec.getDefaultExtension();
+		COMPRESSOR_STR = COMPRESSOR_USED_PREF + "-"
+				+ codec.getDefaultExtension();
+
 		if (codec.createDecompressor() != null) {
 			hasDecompressors = true;
 			LOG.info("Creating " + decompressorPoolSize + " decompressors"
@@ -135,7 +137,8 @@ public class CompressionPoolImpl implements CompressionPool {
 				CompressionInputStream cin = codec.createInputStream(input,
 						decompressor);
 				usedDecompressors.put(cin, decompressor);
-				status.setCounter(DECOMPRESSOR_STR, decompressorsUsedCount.getAndIncrement());
+				status.setCounter(DECOMPRESSOR_STR,
+						decompressorsUsedCount.getAndIncrement());
 				return cin;
 			}
 		} else {
@@ -154,7 +157,8 @@ public class CompressionPoolImpl implements CompressionPool {
 				CompressionOutputStream cout = codec.createOutputStream(output,
 						compressor);
 				usedCompressors.put(cout, compressor);
-				status.setCounter(COMPRESSOR_STR, compressorsUsedCount.getAndIncrement());
+				status.setCounter(COMPRESSOR_STR,
+						compressorsUsedCount.getAndIncrement());
 				return cout;
 			}
 		} else {
@@ -167,11 +171,12 @@ public class CompressionPoolImpl implements CompressionPool {
 
 		IOUtils.closeQuietly(cin);
 
-		if(hasDecompressors){
+		if (hasDecompressors) {
 			Decompressor dec = usedDecompressors.remove(cin);
 			dec.reset();
 			decompressorQueue.offer(dec);
-			status.setCounter(DECOMPRESSOR_STR, decompressorsUsedCount.decrementAndGet());
+			status.setCounter(DECOMPRESSOR_STR,
+					decompressorsUsedCount.decrementAndGet());
 		}
 
 	}
@@ -179,20 +184,21 @@ public class CompressionPoolImpl implements CompressionPool {
 	@Override
 	public void closeAndRelease(CompressionOutputStream cout) {
 
-		try{
-			//finish quietly
+		try {
+			// finish quietly
 			cout.finish();
-		}catch(IOException ioexp){
+		} catch (IOException ioexp) {
 			LOG.error(ioexp.toString(), ioexp);
 		}
-		
+
 		IOUtils.closeQuietly(cout);
 
-		if(hasCompressors){
+		if (hasCompressors) {
 			Compressor comp = usedCompressors.remove(cout);
 			comp.reset();
 			compressorQueue.offer(comp);
-			status.setCounter(COMPRESSOR_STR, compressorsUsedCount.decrementAndGet());
+			status.setCounter(COMPRESSOR_STR,
+					compressorsUsedCount.decrementAndGet());
 		}
 
 	}
