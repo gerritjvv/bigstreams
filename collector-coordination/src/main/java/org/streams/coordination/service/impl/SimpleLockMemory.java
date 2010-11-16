@@ -97,7 +97,7 @@ public class SimpleLockMemory implements LockMemory {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public FileTrackingStatus removeLock(SyncPointer syncPointer)
+	public FileTrackingStatus removeLock(SyncPointer syncPointer, String remoteAddress)
 			throws InterruptedException {
 
 		ReentrantLock lock = getLock(syncPointer.getLockId());
@@ -139,21 +139,21 @@ public class SimpleLockMemory implements LockMemory {
 	 * @return
 	 * @throws InterruptedException
 	 */
-	@Override
-	public boolean contains(FileTrackingStatus fileStatus)
-			throws InterruptedException {
-		ReentrantLock lock = getLock(fileStatus);
-		lock.lockInterruptibly();
-		try {
-			return syncMap.containsValue(fileStatus);
-		} finally {
-			lock.unlock();
-		}
-	}
+//	@Override
+//	public boolean contains(FileTrackingStatus fileStatus)
+//			throws InterruptedException {
+//		ReentrantLock lock = getLock(fileStatus);
+//		lock.lockInterruptibly();
+//		try {
+//			return syncMap.containsValue(fileStatus);
+//		} finally {
+//			lock.unlock();
+//		}
+//	}
 
-	public SyncPointer setLock(FileTrackingStatus fileStatus)
+	public SyncPointer setLock(FileTrackingStatus fileStatus, String remoteAddress)
 			throws InterruptedException {
-		return setLock(fileStatus, Long.MAX_VALUE);
+		return setLock(fileStatus, Long.MAX_VALUE, remoteAddress);
 	}
 
 	/**
@@ -168,13 +168,9 @@ public class SimpleLockMemory implements LockMemory {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public SyncPointer setLock(FileTrackingStatus fileStatus, long lockTimeOut)
+	public SyncPointer setLock(FileTrackingStatus fileStatus, long lockTimeOut, String remoteAddress)
 			throws InterruptedException {
-		SyncPointer pointer = new SyncPointer();
-		pointer.setFilePointer(fileStatus.getFilePointer());
-		pointer.setFileSize(fileStatus.getFileSize());
-		pointer.setLinePointer(fileStatus.getLinePointer());
-		pointer.setLockId(fileStatus.hashCode());
+		SyncPointer pointer = new SyncPointer(fileStatus);
 
 		SyncPointer retPointer = null;
 
@@ -221,7 +217,7 @@ public class SimpleLockMemory implements LockMemory {
 		
 		for(Entry<SyncPointer, FileTrackingStatus> entry : syncMap.entrySet()){
 			if(!isLockValid(entry.getValue(), lockTimeOut)){
-				removeLock(entry.getKey());
+				removeLock(entry.getKey(), null);
 			}
 		}
 		

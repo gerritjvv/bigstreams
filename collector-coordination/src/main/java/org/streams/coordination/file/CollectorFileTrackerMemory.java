@@ -4,34 +4,35 @@ import java.util.Collection;
 
 import org.streams.commons.file.FileTrackingStatus;
 
-
 /**
  * Abstract the storage implementation.<br/>
  * 
  */
 public interface CollectorFileTrackerMemory {
-	
+
 	/**
 	 * Get the number of distinct log types.
+	 * 
 	 * @return
 	 */
 	long getLogTypeCount();
-	
+
 	/**
 	 * The the distinct log types currently held in storage.
+	 * 
 	 * @param from
 	 * @param max
 	 * @return
 	 */
 	Collection<String> getLogTypes(int from, int max);
-	
+
 	/**
 	 * 
 	 * @param queryStr
 	 * @return
 	 */
 	long getFileCountByQuery(String queryStr);
-	
+
 	/**
 	 * 
 	 * @param queryStr
@@ -41,7 +42,7 @@ public interface CollectorFileTrackerMemory {
 	 */
 	Collection<FileTrackingStatus> getFilesByQuery(String queryStr, int from,
 			int max);
-	
+
 	/**
 	 * Gets the FileTrackingStatus for a file from an agent
 	 * 
@@ -50,8 +51,9 @@ public interface CollectorFileTrackerMemory {
 	 * @param fileName
 	 * @return
 	 */
-	FileTrackingStatus getStatus(String agentName, String logType, String fileName);
-	
+	FileTrackingStatus getStatus(String agentName, String logType,
+			String fileName);
+
 	/**
 	 * Sets the file tracking status for file from an agent
 	 * 
@@ -72,8 +74,8 @@ public interface CollectorFileTrackerMemory {
 	 * @param max
 	 * @return
 	 */
-	Collection<FileTrackingStatus> getFilesByAgent(String agentName,
-			int from, int max);
+	Collection<FileTrackingStatus> getFilesByAgent(String agentName, int from,
+			int max);
 
 	/**
 	 * Get all file entries
@@ -108,6 +110,7 @@ public interface CollectorFileTrackerMemory {
 
 	/**
 	 * Delete's a FileTrackingStatus entry from the storage.
+	 * 
 	 * @param file
 	 * @return true if done
 	 */

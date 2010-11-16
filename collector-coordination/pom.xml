@@ -22,6 +22,7 @@
 		<hsqldb.version>1.8.0.10</hsqldb.version>
 		<restlet.version>2.0-M7</restlet.version>
 		<netty.version>3.2.2.Final</netty.version>
+		<hazelcast.version>1.9</hazelcast.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
@@ -41,7 +42,11 @@
 				</exclusion>
 			</exclusions>
 		</dependency>
-
+		<dependency>
+			<groupId>com.hazelcast</groupId>
+			<artifactId>hazelcast</artifactId>
+			<version>${hazelcast.version}</version>
+		</dependency>
 		<dependency>
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-annotations</artifactId>
@@ -284,7 +289,7 @@
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>
 		</repository>
 		<repository>
-			<id>streams-releases</id>
+			<id>streams-snapshots</id>
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
 		</repository>
 	</repositories>

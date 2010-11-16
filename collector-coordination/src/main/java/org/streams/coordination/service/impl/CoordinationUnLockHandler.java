@@ -1,5 +1,7 @@
 package org.streams.coordination.service.impl;
 
+import java.net.InetSocketAddress;
+
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -69,7 +71,7 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 					"Please send a SyncPointer object: SyncPointer is null");
 		}
 
-		final boolean ok = saveAndReleaseLock(syncPointer);
+		final boolean ok = saveAndReleaseLock(syncPointer, (InetSocketAddress) e.getRemoteAddress());
 
 		ChannelBuffer buffer = null;
 
@@ -107,13 +109,13 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 	 * @throws InterruptedException
 	 */
 	@Put("json")
-	public boolean saveAndReleaseLock(SyncPointer syncPointer)
+	public boolean saveAndReleaseLock(SyncPointer syncPointer, InetSocketAddress remoteAddress)
 			throws InterruptedException {
 
 		// NOTE: Correct usage for thread correctness is important here.
 		// The first thing we MUST do here is try to release a SyncPointer Lock
 		// before doing anything else.
-		FileTrackingStatus fileStatus = lockMemory.removeLock(syncPointer);
+		FileTrackingStatus fileStatus = lockMemory.removeLock(syncPointer, remoteAddress.getHostName());
 
 		if (fileStatus == null) {
 			LOG.info("ERROR UNLOCK(" + syncPointer.getLockId() + ")");

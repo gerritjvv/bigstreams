@@ -16,7 +16,7 @@ public interface LockMemory {
 	 * @return FileTrackingStatus return null if no lock was set
 	 * @throws InterruptedException
 	 */
-	FileTrackingStatus removeLock(SyncPointer syncPointer)
+	FileTrackingStatus removeLock(SyncPointer syncPointer, String remoteAddress)
 			throws InterruptedException;
 
 	/**
@@ -26,7 +26,7 @@ public interface LockMemory {
 	 */
 	void removeTimedOutLocks(long lockTimeout) throws InterruptedException;
 	
-	boolean contains(FileTrackingStatus fileStatus) throws InterruptedException;
+//	boolean contains(FileTrackingStatus fileStatus) throws InterruptedException;
 
 	/**
 	 * Stores the lock for the SyncPointer and the FileTrackingStatus
@@ -35,7 +35,7 @@ public interface LockMemory {
 	 * @return
 	 * @throws InterruptedException
 	 */
-	SyncPointer setLock(FileTrackingStatus fileStatus)
+	SyncPointer setLock(FileTrackingStatus fileStatus, String remoteAddress)
 			throws InterruptedException;
 
 	/**
@@ -46,10 +46,11 @@ public interface LockMemory {
 	 *            in milliseconds. If the time stamp held for the lock has
 	 *            passed this value i.e. the different between the timestamp
 	 *            held and the current time in milliseconds.
+	 * @param remoteAddress the remote server requesting the lock. Only this address will be allowed to remove the lock            
 	 * @return
 	 * @throws InterruptedException
 	 */
-	public SyncPointer setLock(FileTrackingStatus fileStatus, long lockTimeOut)
+	public SyncPointer setLock(FileTrackingStatus fileStatus, long lockTimeOut, String remoteAddress)
 			throws InterruptedException;
 
 	long lockTimeStamp(FileTrackingStatus fileStatus)

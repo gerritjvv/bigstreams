@@ -1,8 +1,6 @@
 package org.streams.coordination.service.impl;
 
 import java.net.InetSocketAddress;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 import javax.inject.Inject;
 
@@ -36,8 +34,9 @@ import org.streams.coordination.service.LockMemory;
  */
 public class CoordinationLockHandler extends SimpleChannelHandler {
 
-	private final static Logger LOG = Logger.getLogger(CoordinationLockHandler.class);
-	
+	private final static Logger LOG = Logger
+			.getLogger(CoordinationLockHandler.class);
+
 	private static final byte[] CONFLICT_MESSAGE = "The resource is already locked"
 			.getBytes();
 
@@ -54,8 +53,6 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 	 */
 	int pingPort;
 
-	Map<FileTrackingStatus, String> lockHolders = new ConcurrentHashMap<FileTrackingStatus, String>();
-
 	public CoordinationLockHandler(CoordinationStatus coordinationStatus,
 			LockMemory lockMemory, CollectorFileTrackerMemory memory,
 			int pingPort, long lockTimeout) {
@@ -66,7 +63,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		this.lockTimeOut = lockTimeout;
 
 	}
-	
+
 	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
 			throws Exception {
@@ -94,8 +91,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 				buffer.writeInt(CONFLICT_MESSAGE.length + 4);
 				buffer.writeInt(409); // conflict code
 				buffer.writeBytes(CONFLICT_MESSAGE);
-				
-				
+
 			} else {
 				// if a syncpointer is returned the resource was not locked and
 				// is
@@ -112,15 +108,19 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 				buffer.writeInt(200);
 				buffer.writeBytes(msgBytes, 0, msgBytes.length);
 
-				LOG.info("LOCK( " + syncPointer.getLockId() + ") - " + fileStatus.getAgentName() + "." + fileStatus.getLogType() + "." + fileStatus.getFileName());
+				LOG.info("LOCK( " + syncPointer.getLockId() + ") - "
+						+ fileStatus.getAgentName() + "."
+						+ fileStatus.getLogType() + "."
+						+ fileStatus.getFileName());
 			}
 
 			ChannelFuture future = e.getChannel().write(buffer);
 			future.addListener(ChannelFutureListener.CLOSE);
-		}catch (Exception t) {
+		} catch (Exception t) {
 			// we catch any exception here to ensure that in case of an error we
 			// do release the lock held if any optained
-			LOG.info("ERROR MAKING LOCK " + fileStatus.getAgentName() + "." + fileStatus.getLogType() + "." + fileStatus.getFileName());
+			LOG.info("ERROR MAKING LOCK " + fileStatus.getAgentName() + "."
+					+ fileStatus.getLogType() + "." + fileStatus.getFileName());
 			// re-throw the error
 			throw t;
 		}
@@ -146,7 +146,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 		// ---------- This line uses a semi lock free algorithm
 		final SyncPointer pointer = lockMemory.setLock(requestFileStatus,
-				lockTimeOut);
+				lockTimeOut, remoteAddress.getHostName());
 		// ---------- lock released. At this stage we either have a SyncPointer
 		// lock or a null reference if the resource was locked already.
 
@@ -155,6 +155,9 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 			return null;
 		} else {
 
+			// The MAP will already be configured with a persistence
+			// implementation to
+			// perform the below
 			FileTrackingStatus fileStatus = memory.getStatus(
 					requestFileStatus.getAgentName(),
 					requestFileStatus.getLogType(),
@@ -165,10 +168,6 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 				memory.setStatus(fileStatus);
 			}
-
-			// save the address for the holder
-			lockHolders.put(fileStatus, remoteAddress.getHostName());
-
 			coordinationStatus.incCounter("LOCKS", 1);
 			coordinationStatus.setStatus(STATUS.OK, "running");
 			return pointer;
@@ -183,7 +182,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		coordinationStatus.setStatus(STATUS.UNKOWN_ERROR, e.toString());
 		Throwable error = e.getCause();
 		LOG.error(e.toString(), error);
-		
+
 		e.getChannel().close();
 	}
 

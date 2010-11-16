@@ -12,7 +12,6 @@ import javax.persistence.Query;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
 
-
 /**
  * Manages the database persistence for the FileTrackingStatus.<br/>
  * This object abstracts any calling object from the database by using the
@@ -39,9 +38,8 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	public Collection<String> getAgents(int from, int max) {
 
 		return getStringList("fileTrackingStatus.listAgents", from, max);
-		
-	}
 
+	}
 
 	/**
 	 * Delete the FileTrackingStatusEntity object
@@ -80,7 +78,6 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		return ret;
 	}
 
-	
 	/**
 	 * Executes the named query and expects a list of string results
 	 * 
@@ -116,7 +113,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		}
 
 		return ls;
-		
+
 	}
 
 	/**
@@ -453,7 +450,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 						.getSingleResult();
 				entity.update(status);
 				entity.setLastModifiedTime(System.currentTimeMillis());
-				
+
 				entityManager.persist(entity);
 
 			} catch (NoResultException noResultExcp) {
@@ -511,7 +508,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	@Override
 	public Collection<String> getLogTypes(int from, int max) {
 		return getStringList("fileTrackingStatus.listLogTypes", from, max);
-		
+
 	}
 
 }
