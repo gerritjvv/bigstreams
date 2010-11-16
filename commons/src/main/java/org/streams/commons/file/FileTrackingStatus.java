@@ -1,11 +1,18 @@
 package org.streams.commons.file;
 
+import java.io.Serializable;
+
 /**
  * Represents a snapshot of the file data
  * 
  */
-public class FileTrackingStatus {
+public class FileTrackingStatus implements Serializable{
 
+	/**
+	 * 
+	 */
+	private static final long serialVersionUID = 1L;
+	
 	long filePointer;
 	long fileSize;
 	int linePointer;
