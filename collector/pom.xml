@@ -258,7 +258,7 @@
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>
 		</repository>
 		<repository>
-			<id>streams-releases</id>
+			<id>streams-snapshots</id>
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
 		</repository>
 	</repositories>
