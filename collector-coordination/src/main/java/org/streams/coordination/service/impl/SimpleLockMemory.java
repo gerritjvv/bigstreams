@@ -80,8 +80,8 @@ public class SimpleLockMemory implements LockMemory {
 	 * @param value
 	 * @return
 	 */
-	private final ReentrantLock getLock(int value) {
-		int hash = value % lockArr.length;
+	private final ReentrantLock getLock(String value) {
+		int hash = value.hashCode() % lockArr.length;
 		if (hash < 0) {
 			hash *= -1;
 		}
@@ -97,8 +97,8 @@ public class SimpleLockMemory implements LockMemory {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public FileTrackingStatus removeLock(SyncPointer syncPointer, String remoteAddress)
-			throws InterruptedException {
+	public FileTrackingStatus removeLock(SyncPointer syncPointer,
+			String remoteAddress) throws InterruptedException {
 
 		ReentrantLock lock = getLock(syncPointer.getLockId());
 		lock.lockInterruptibly();
@@ -139,20 +139,20 @@ public class SimpleLockMemory implements LockMemory {
 	 * @return
 	 * @throws InterruptedException
 	 */
-//	@Override
-//	public boolean contains(FileTrackingStatus fileStatus)
-//			throws InterruptedException {
-//		ReentrantLock lock = getLock(fileStatus);
-//		lock.lockInterruptibly();
-//		try {
-//			return syncMap.containsValue(fileStatus);
-//		} finally {
-//			lock.unlock();
-//		}
-//	}
+	// @Override
+	// public boolean contains(FileTrackingStatus fileStatus)
+	// throws InterruptedException {
+	// ReentrantLock lock = getLock(fileStatus);
+	// lock.lockInterruptibly();
+	// try {
+	// return syncMap.containsValue(fileStatus);
+	// } finally {
+	// lock.unlock();
+	// }
+	// }
 
-	public SyncPointer setLock(FileTrackingStatus fileStatus, String remoteAddress)
-			throws InterruptedException {
+	public SyncPointer setLock(FileTrackingStatus fileStatus,
+			String remoteAddress) throws InterruptedException {
 		return setLock(fileStatus, Long.MAX_VALUE, remoteAddress);
 	}
 
@@ -168,8 +168,8 @@ public class SimpleLockMemory implements LockMemory {
 	 * @throws InterruptedException
 	 */
 	@Override
-	public SyncPointer setLock(FileTrackingStatus fileStatus, long lockTimeOut, String remoteAddress)
-			throws InterruptedException {
+	public SyncPointer setLock(FileTrackingStatus fileStatus, long lockTimeOut,
+			String remoteAddress) throws InterruptedException {
 		SyncPointer pointer = new SyncPointer(fileStatus);
 
 		SyncPointer retPointer = null;
@@ -210,16 +210,18 @@ public class SimpleLockMemory implements LockMemory {
 
 	/**
 	 * This method will not block on locks accept when removing them.
-	 * @throws InterruptedException 
+	 * 
+	 * @throws InterruptedException
 	 */
 	@Override
-	public void removeTimedOutLocks(long lockTimeOut) throws InterruptedException {
-		
-		for(Entry<SyncPointer, FileTrackingStatus> entry : syncMap.entrySet()){
-			if(!isLockValid(entry.getValue(), lockTimeOut)){
+	public void removeTimedOutLocks(long lockTimeOut)
+			throws InterruptedException {
+
+		for (Entry<SyncPointer, FileTrackingStatus> entry : syncMap.entrySet()) {
+			if (!isLockValid(entry.getValue(), lockTimeOut)) {
 				removeLock(entry.getKey(), null);
 			}
 		}
-		
+
 	}
 }

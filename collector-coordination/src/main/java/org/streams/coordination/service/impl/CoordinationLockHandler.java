@@ -16,8 +16,9 @@ import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileTrackingStatusKey;
 import org.streams.commons.file.SyncPointer;
-import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.FileTrackerStorage;
 import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.CoordinationStatus.STATUS;
 import org.streams.coordination.service.LockMemory;
@@ -46,7 +47,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 	CoordinationStatus coordinationStatus;
 	LockMemory lockMemory;
-	CollectorFileTrackerMemory memory;
+	FileTrackerStorage memory;
 
 	/**
 	 * The port to use for pinging for lock holders
@@ -54,7 +55,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 	int pingPort;
 
 	public CoordinationLockHandler(CoordinationStatus coordinationStatus,
-			LockMemory lockMemory, CollectorFileTrackerMemory memory,
+			LockMemory lockMemory, FileTrackerStorage memory,
 			int pingPort, long lockTimeout) {
 		this.coordinationStatus = coordinationStatus;
 		this.lockMemory = lockMemory;
@@ -158,10 +159,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 			// The MAP will already be configured with a persistence
 			// implementation to
 			// perform the below
-			FileTrackingStatus fileStatus = memory.getStatus(
-					requestFileStatus.getAgentName(),
-					requestFileStatus.getLogType(),
-					requestFileStatus.getFileName());
+			FileTrackingStatus fileStatus = memory.getStatus(new FileTrackingStatusKey(requestFileStatus));
 
 			if (fileStatus == null) {
 				fileStatus = requestFileStatus;
@@ -233,7 +231,6 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		return coordinationStatus;
 	}
 
-	@Inject
 	public void setCoordinationStatus(CoordinationStatus coordinationStatus) {
 		this.coordinationStatus = coordinationStatus;
 	}
@@ -242,17 +239,15 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		return lockMemory;
 	}
 
-	@Inject
 	public void setLockMemory(LockMemory lockMemory) {
 		this.lockMemory = lockMemory;
 	}
 
-	public CollectorFileTrackerMemory getMemory() {
+	public FileTrackerStorage getMemory() {
 		return memory;
 	}
 
-	@Inject
-	public void setMemory(CollectorFileTrackerMemory memory) {
+	public void setMemory(FileTrackerStorage memory) {
 		this.memory = memory;
 	}
 

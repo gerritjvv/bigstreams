@@ -10,7 +10,7 @@ import org.streams.commons.file.FileTrackingStatusKey;
  * Abstract the storage implementation.<br/>
  * 
  */
-public interface CollectorFileTrackerMemory {
+public interface CollectorFileTrackerMemory extends FileTrackerStorage{
 
 	/**
 	 * Get the number of distinct log types.
@@ -56,14 +56,7 @@ public interface CollectorFileTrackerMemory {
 	FileTrackingStatus getStatus(String agentName, String logType,
 			String fileName);
 
-	/**
-	 * Gets the FileTrackingStatus for a file from an agent
-	 * 
-	 * @param key
-	 *            FileTrackingStatusKey
-	 * @return
-	 */
-	FileTrackingStatus getStatus(FileTrackingStatusKey key);
+	
 
 	/**
 	 * 
@@ -73,19 +66,6 @@ public interface CollectorFileTrackerMemory {
 	Map<FileTrackingStatusKey, FileTrackingStatus> getStatus(
 			Collection<FileTrackingStatusKey> keys);
 
-	/**
-	 * Sets the file tracking status for file from an agent
-	 * 
-	 * @param status
-	 */
-	void setStatus(FileTrackingStatus status);
-
-	/**
-	 * Sets the file tracking status for file from an agent
-	 * 
-	 * @param status
-	 */
-	void setStatus(Collection<FileTrackingStatus> status);
 	
 	/**
 	 * Gets a list of agent names from the persistence.
@@ -134,20 +114,6 @@ public interface CollectorFileTrackerMemory {
 	 */
 	long getFileCountByAgent(String agentName);
 
-	/**
-	 * Delete's a FileTrackingStatus entry from the storage.
-	 * 
-	 * @param file
-	 * @return true if done
-	 */
-	boolean delete(FileTrackingStatusKey file);
 	
-	/**
-	 * Delete's a FileTrackingStatus entry from the storage.
-	 * 
-	 * @param file
-	 * @return true if done
-	 */
-	boolean delete(FileTrackingStatus file);
 
 }

@@ -34,6 +34,7 @@ import org.streams.coordination.cli.startup.check.impl.PersistenceCheck;
 import org.streams.coordination.cli.startup.service.impl.CoordinationServerService;
 import org.streams.coordination.cli.startup.service.impl.StatusCleanoutService;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.impl.CoordinationAgentCountResource;
 import org.streams.coordination.mon.impl.CoordinationAgentNamesResource;
@@ -49,8 +50,8 @@ import org.streams.coordination.service.LockMemory;
 import org.streams.coordination.service.impl.CoordinationLockHandler;
 import org.streams.coordination.service.impl.CoordinationServerImpl;
 import org.streams.coordination.service.impl.CoordinationUnLockHandler;
+import org.streams.coordination.service.impl.HazelcastLockMemory;
 import org.streams.coordination.service.impl.LockTimeoutCheckAppService;
-import org.streams.coordination.service.impl.SimpleLockMemory;
 
 @Configuration
 @Import(MetricsDI.class)
@@ -161,7 +162,7 @@ public class CoordinationDI {
 
 	@Bean
 	public LockMemory lockMemory() {
-		return new SimpleLockMemory();
+		return new HazelcastLockMemory();
 	}
 
 	@Bean
@@ -239,7 +240,7 @@ public class CoordinationDI {
 		return new CoordinationLockHandler(
 				beanFactory.getBean(CoordinationStatus.class),
 				beanFactory.getBean(LockMemory.class),
-				beanFactory.getBean(CollectorFileTrackerMemory.class), port,
+				beanFactory.getBean(HazelcastFileTrackerStorage.class), port,
 				lockTimeout);
 
 	}
@@ -251,32 +252,37 @@ public class CoordinationDI {
 		return new CoordinationUnLockHandler(
 				beanFactory.getBean(CoordinationStatus.class),
 				beanFactory.getBean(LockMemory.class),
-				beanFactory.getBean(CollectorFileTrackerMemory.class));
+				beanFactory.getBean(HazelcastFileTrackerStorage.class));
 
 	}
 
 	@Bean
+	public HazelcastFileTrackerStorage hazelcastFileTrackerStorage(){
+		return new HazelcastFileTrackerStorage();
+	}
+	
+	@Bean
 	public CoordinationFileTrackingCountResource coordinationFileTrackingCountResource() {
 		return new CoordinationFileTrackingCountResource(
-				beanFactory.getBean(CollectorFileTrackerMemory.class));
+				beanFactory.getBean("collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
 	}
 
 	@Bean
 	public CoordinationFileTrackingResource coordinationFileTrackingResource() {
 		return new CoordinationFileTrackingResource(
-				beanFactory.getBean(CollectorFileTrackerMemory.class));
+				beanFactory.getBean("collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
 	}
 
 	@Bean
 	public CoordinationAgentNamesResource coordinationAgentNamesResource() {
 		return new CoordinationAgentNamesResource(
-				beanFactory.getBean(CollectorFileTrackerMemory.class));
+				beanFactory.getBean("collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
 	}
 
 	@Bean
 	public CoordinationAgentCountResource coordinationAgentCountResource() {
 		return new CoordinationAgentCountResource(
-				beanFactory.getBean(CollectorFileTrackerMemory.class));
+				beanFactory.getBean("collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
 	}
 
 	@Bean
@@ -293,13 +299,13 @@ public class CoordinationDI {
 	@Bean
 	public CoordinationLogTypesResource coordinationLogTypesResource() {
 		return new CoordinationLogTypesResource(
-				beanFactory.getBean(CollectorFileTrackerMemory.class));
+				beanFactory.getBean("collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
 	}
 
 	@Bean
 	public CoordinationLogTypeCountResource coordinationLogTypeCountResource() {
 		return new CoordinationLogTypeCountResource(
-				beanFactory.getBean(CollectorFileTrackerMemory.class));
+				beanFactory.getBean("collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
 	}
 
 	@Bean
@@ -334,7 +340,7 @@ public class CoordinationDI {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 		CollectorFileTrackerMemory fileTrackerMemory = beanFactory
-				.getBean(CollectorFileTrackerMemory.class);
+				.getBean("collectorFileTrackerMemory", CollectorFileTrackerMemory.class);
 
 		long historyTimeLimit = configuration.getLong(
 				CoordinationProperties.PROP.STATUS_HISTORY_LIMIT.toString(),

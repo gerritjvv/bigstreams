@@ -27,7 +27,7 @@ public class HazelcastLockMemory implements LockMemory {
 	private static final Logger LOG = Logger
 			.getLogger(HazelcastLockMemory.class);
 
-	IMap<Integer, LockValue> locksMap = Hazelcast
+	IMap<String, LockValue> locksMap = Hazelcast
 			.getMap("LOCK_MEMORY_LOCKS_MAP");
 
 	/**
@@ -38,8 +38,12 @@ public class HazelcastLockMemory implements LockMemory {
 	public FileTrackingStatus removeLock(SyncPointer syncPointer,
 			String remoteAddress) throws InterruptedException {
 
-		final int lockId = syncPointer.getLockId();
+		final String lockId = syncPointer.getLockId();
 
+		if(lockId == null){
+			throw new NullPointerException("The SyncPointer.getLockId cannot be null");
+		}
+		
 		locksMap.lock(lockId);
 		FileTrackingStatus retStatus = null;
 
@@ -128,8 +132,7 @@ public class HazelcastLockMemory implements LockMemory {
 	public long lockTimeStamp(FileTrackingStatus fileStatus)
 			throws InterruptedException {
 
-		LockValue entry = locksMap.get(new SyncPointer(fileStatus)
-				.getLockId());
+		LockValue entry = locksMap.get(new SyncPointer(fileStatus).getLockId());
 		return (entry == null) ? 0L : entry.timeStamp;
 
 	}

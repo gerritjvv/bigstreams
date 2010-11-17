@@ -17,6 +17,8 @@ import org.streams.coordination.main.Bootstrap;
 import org.streams.coordination.service.CoordinationServer;
 import org.streams.test.coordination.util.AlwaysOKRestlet;
 
+import com.hazelcast.core.Hazelcast;
+
 
 public class TestCoordinationHandlers extends TestCase {
 	private Bootstrap bootstrap;
@@ -124,6 +126,15 @@ public class TestCoordinationHandlers extends TestCase {
 			} catch (Throwable t) {
 				assertTrue(true);
 			}
+			
+			try {
+				// we expect an error here
+				client.saveAndFreeLock(new SyncPointer(new FileTrackingStatus(0L, 0L, 1, "a", "f", "t")));
+				assertTrue(false);
+			} catch (Throwable t) {
+				assertTrue(true);
+			}
+			
 		} finally {
 			coordinationServer.shutdown();
 		}
@@ -190,5 +201,6 @@ public class TestCoordinationHandlers extends TestCase {
 	@Override
 	protected void tearDown() throws Exception {
 		bootstrap.close();
+		Hazelcast.shutdownAll();
 	}
 }

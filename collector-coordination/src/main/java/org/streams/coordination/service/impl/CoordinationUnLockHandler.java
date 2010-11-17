@@ -16,7 +16,7 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 import org.restlet.resource.Put;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
-import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.FileTrackerStorage;
 import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.CoordinationStatus.STATUS;
 import org.streams.coordination.service.LockMemory;
@@ -42,13 +42,13 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 
 	CoordinationStatus coordinationStatus;
 	LockMemory lockMemory;
-	CollectorFileTrackerMemory memory;
+	FileTrackerStorage memory;
 
 	public CoordinationUnLockHandler() {
 	}
 
 	public CoordinationUnLockHandler(CoordinationStatus coordinationStatus,
-			LockMemory lockMemory, CollectorFileTrackerMemory memory) {
+			LockMemory lockMemory, FileTrackerStorage memory) {
 		super();
 		this.coordinationStatus = coordinationStatus;
 		this.lockMemory = lockMemory;
@@ -71,6 +71,11 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 					"Please send a SyncPointer object: SyncPointer is null");
 		}
 
+		if (syncPointer.getLockId() == null) {
+			throw new RuntimeException(
+					"Please send a SyncPointer object with a lockId: SyncPointer.getLockId == null");
+		}
+		
 		final boolean ok = saveAndReleaseLock(syncPointer, (InetSocketAddress) e.getRemoteAddress());
 
 		ChannelBuffer buffer = null;
