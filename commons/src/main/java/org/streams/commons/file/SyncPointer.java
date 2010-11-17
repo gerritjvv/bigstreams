@@ -14,7 +14,7 @@ public class SyncPointer implements Comparable<SyncPointer>, Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 
-	int lockId;
+	String lockId;
 	long filePointer;
 	int linePointer;
 	long fileSize;
@@ -31,14 +31,14 @@ public class SyncPointer implements Comparable<SyncPointer>, Serializable {
 		this.filePointer = status.getFilePointer();
 		this.linePointer = status.getLinePointer();
 		this.fileSize = status.getFileSize();
-		this.lockId = status.hashCode();
+		this.lockId = new FileTrackingStatusKey(status).getKey();
 	}
 
-	public int getLockId() {
+	public String getLockId() {
 		return lockId;
 	}
 
-	public void setLockId(int lockId) {
+	public void setLockId(String lockId) {
 		this.lockId = lockId;
 	}
 
@@ -58,28 +58,6 @@ public class SyncPointer implements Comparable<SyncPointer>, Serializable {
 		filePointer += add;
 	}
 
-	@Override
-	public int hashCode() {
-		final int prime = 31;
-		int result = 1;
-		result = prime * result + (int) (lockId ^ (lockId >>> 32));
-		return result;
-	}
-
-	@Override
-	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
-		if (obj == null)
-			return false;
-		if (getClass() != obj.getClass())
-			return false;
-		SyncPointer other = (SyncPointer) obj;
-		if (lockId != other.lockId)
-			return false;
-		return true;
-	}
-
 	public long getFileSize() {
 		return fileSize;
 	}
@@ -90,13 +68,7 @@ public class SyncPointer implements Comparable<SyncPointer>, Serializable {
 
 	@Override
 	public int compareTo(SyncPointer o) {
-		if (o.lockId == lockId) {
-			return 0;
-		} else if (o.lockId < lockId) {
-			return -1;
-		} else {
-			return 1;
-		}
+		return lockId.compareTo(o.getLockId());
 	}
 
 	public int getLinePointer() {
@@ -115,5 +87,29 @@ public class SyncPointer implements Comparable<SyncPointer>, Serializable {
 		this.timeStamp = timeStamp;
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((lockId == null) ? 0 : lockId.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		SyncPointer other = (SyncPointer) obj;
+		if (lockId == null) {
+			if (other.lockId != null)
+				return false;
+		} else if (!lockId.equals(other.lockId))
+			return false;
+		return true;
+	}
 
 }

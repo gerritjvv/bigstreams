@@ -2,29 +2,38 @@ package org.streams.commons.file;
 
 import java.io.Serializable;
 
-
 /**
- * Used to represent the composite key that FileTrackingStatus contains made up of : logType + agentName + fileName
- *
+ * Used to represent the composite key that FileTrackingStatus contains made up
+ * of : logType + agentName + fileName
+ * 
  */
-public class FileTrackingStatusKey implements Serializable, Comparable<FileTrackingStatusKey>{
-	
+public class FileTrackingStatusKey implements Serializable,
+		Comparable<FileTrackingStatusKey> {
+
 	/**
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-	
-	
+
 	String agentName = null;
 	String logType = null;
 	String fileName = null;
-	
-	public FileTrackingStatusKey(){}
-	
-	public FileTrackingStatusKey(FileTrackingStatus status){
-		this.agentName = status.getAgentName();
-		this.logType = status.getLogType();
-		this.fileName = status.getFileName();
+
+	public FileTrackingStatusKey() {
+	}
+
+	public FileTrackingStatusKey(String agentName, String logType,
+			String fileName) {
+		super();
+		this.agentName = agentName.trim();
+		this.logType = logType.trim();
+		this.fileName = fileName.trim();
+	}
+
+	public FileTrackingStatusKey(FileTrackingStatus status) {
+		this.agentName = status.getAgentName().trim();
+		this.logType = status.getLogType().trim();
+		this.fileName = status.getFileName().trim();
 	}
 
 	public String getAgentName() {
@@ -51,13 +60,10 @@ public class FileTrackingStatusKey implements Serializable, Comparable<FileTrack
 		this.fileName = fileName;
 	}
 
-
 	public String getKey() {
 		return logType + agentName + fileName;
 	}
 
-	
-	
 	@Override
 	public int hashCode() {
 		String key = getKey();
@@ -78,7 +84,7 @@ public class FileTrackingStatusKey implements Serializable, Comparable<FileTrack
 		FileTrackingStatusKey other = (FileTrackingStatusKey) obj;
 		String key = getKey();
 		String otherKey = other.getKey();
-		
+
 		if (key == null) {
 			if (otherKey != null)
 				return false;
@@ -87,13 +93,9 @@ public class FileTrackingStatusKey implements Serializable, Comparable<FileTrack
 		return true;
 	}
 
-	
-	
 	@Override
 	public int compareTo(FileTrackingStatusKey f) {
 		return getKey().compareTo(f.getKey());
 	}
 
-
-	
 }
