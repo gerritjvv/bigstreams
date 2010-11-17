@@ -1,8 +1,10 @@
 package org.streams.coordination.file;
 
 import java.util.Collection;
+import java.util.Map;
 
 import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileTrackingStatusKey;
 
 /**
  * Abstract the storage implementation.<br/>
@@ -55,12 +57,36 @@ public interface CollectorFileTrackerMemory {
 			String fileName);
 
 	/**
+	 * Gets the FileTrackingStatus for a file from an agent
+	 * 
+	 * @param key
+	 *            FileTrackingStatusKey
+	 * @return
+	 */
+	FileTrackingStatus getStatus(FileTrackingStatusKey key);
+
+	/**
+	 * 
+	 * @param keys
+	 * @return
+	 */
+	Map<FileTrackingStatusKey, FileTrackingStatus> getStatus(
+			Collection<FileTrackingStatusKey> keys);
+
+	/**
 	 * Sets the file tracking status for file from an agent
 	 * 
 	 * @param status
 	 */
 	void setStatus(FileTrackingStatus status);
 
+	/**
+	 * Sets the file tracking status for file from an agent
+	 * 
+	 * @param status
+	 */
+	void setStatus(Collection<FileTrackingStatus> status);
+	
 	/**
 	 * Gets a list of agent names from the persistence.
 	 */
@@ -108,6 +134,14 @@ public interface CollectorFileTrackerMemory {
 	 */
 	long getFileCountByAgent(String agentName);
 
+	/**
+	 * Delete's a FileTrackingStatus entry from the storage.
+	 * 
+	 * @param file
+	 * @return true if done
+	 */
+	boolean delete(FileTrackingStatusKey file);
+	
 	/**
 	 * Delete's a FileTrackingStatus entry from the storage.
 	 * 

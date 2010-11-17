@@ -2,7 +2,9 @@ package org.streams.coordination.file.impl.db;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -10,6 +12,7 @@ import javax.persistence.NoResultException;
 import javax.persistence.Query;
 
 import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileTrackingStatusKey;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
 
 /**
@@ -42,10 +45,21 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	}
 
 	/**
+	 * Delete's a FileTrackingStatus entry from the storage.
+	 * 
+	 * @param file
+	 * @return true if done
+	 */
+	@Override
+	public boolean delete(FileTrackingStatus file){
+		return delete(new FileTrackingStatusKey(file));
+	}
+	
+	/**
 	 * Delete the FileTrackingStatusEntity object
 	 */
 	@Override
-	public boolean delete(FileTrackingStatus file) {
+	public boolean delete(FileTrackingStatusKey file) {
 
 		EntityManager entityManager = entityManagerFactory
 				.createEntityManager();
@@ -389,6 +403,51 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		return (count == null) ? 0L : count.longValue();
 	}
 
+	@Override
+	public Map<FileTrackingStatusKey, FileTrackingStatus> getStatus(
+			Collection<FileTrackingStatusKey> keys) {
+
+		int size = keys.size();
+		Map<FileTrackingStatusKey, FileTrackingStatus> valuesMap = new HashMap<FileTrackingStatusKey, FileTrackingStatus>(
+				size);
+
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
+		FileTrackingStatus status = null;
+
+		try {
+			entityManager.getTransaction().begin();
+
+			for (FileTrackingStatusKey key : keys) {
+				Query query = entityManager
+						.createNamedQuery("fileTrackingStatus.byAgentFileNameLogTypeReadOnly");
+
+				query.setParameter("agentName", key.getAgentName());
+				query.setParameter("fileName", key.getFileName());
+				query.setParameter("logType", key.getLogType());
+
+				try {
+					FileTrackingStatusEntity entity = (FileTrackingStatusEntity) query
+							.getSingleResult();
+					status = entity.createStatusObject();
+
+				} catch (NoResultException noResultExcp) {
+					// ignore if no result is found
+					status = null;
+				}
+
+				valuesMap.put(key, status);
+			}
+		} finally {
+			entityManager.getTransaction().commit();
+			entityManager.close();
+		}
+
+		return valuesMap;
+
+	}
+
 	/**
 	 * Gets a FileTrackingStatus from the persistent memory.<br/>
 	 * This method will open a close a readonly transaction.<br/>
@@ -425,6 +484,45 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		}
 
 		return status;
+	}
+
+	@Override
+	public void setStatus(Collection<FileTrackingStatus> statusList) {
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
+		try {
+			entityManager.getTransaction().begin();
+			Query query = entityManager
+			.createNamedQuery("fileTrackingStatus.byAgentLogTypeFileUpdate");
+			
+			for(FileTrackingStatus status : statusList){
+				
+				query.setParameter("agentName", status.getAgentName());
+				query.setParameter("fileName", status.getFileName());
+				query.setParameter("logType", status.getLogType());
+	
+				try {
+					FileTrackingStatusEntity entity = (FileTrackingStatusEntity) query
+							.getSingleResult();
+					entity.update(status);
+					entity.setLastModifiedTime(System.currentTimeMillis());
+	
+					entityManager.persist(entity);
+	
+				} catch (NoResultException noResultExcp) {
+					// the entity does not exist yet
+					FileTrackingStatusEntity entity = FileTrackingStatusEntity
+							.createEntity(status);
+					entity.setLastModifiedTime(System.currentTimeMillis());
+					entityManager.persist(entity);
+				}
+			}
+
+		} finally {
+			entityManager.getTransaction().commit();
+			entityManager.close();
+		}
 	}
 
 	/**
@@ -509,6 +607,12 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	public Collection<String> getLogTypes(int from, int max) {
 		return getStringList("fileTrackingStatus.listLogTypes", from, max);
 
+	}
+
+	@Override
+	public FileTrackingStatus getStatus(FileTrackingStatusKey key) {
+		return getStatus(key.getAgentName(), key.getLogType(),
+				key.getFileName());
 	}
 
 }

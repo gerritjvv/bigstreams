@@ -1,6 +1,8 @@
 package org.streams.test.coordination.file.impl.db;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Map;
 
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
@@ -9,6 +11,7 @@ import junit.framework.TestCase;
 
 import org.junit.Test;
 import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileTrackingStatusKey;
 import org.streams.coordination.file.impl.db.DBCollectorFileTrackerMemory;
 
 
@@ -20,6 +23,86 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 
 	private static final String TEST_ENTITY = "coordinationFileTracking";
 
+	/**
+	 * Tests that get by agent and logtype works
+	 */
+	@Test
+	public void testSetByBatchGetByKeyBatch() {
+		EntityManagerFactory emf = Persistence
+				.createEntityManagerFactory(TEST_ENTITY);
+		DBCollectorFileTrackerMemory memory = new DBCollectorFileTrackerMemory();
+		memory.setEntityManagerFactory(emf);
+
+		int count = 10;
+
+		Collection<FileTrackingStatusKey> keys = new ArrayList<FileTrackingStatusKey>(count);
+		
+		Collection<FileTrackingStatus> values = new ArrayList<FileTrackingStatus>(count);
+		try {
+
+			// generate data
+			for (int i = 0; i < count; i++) {
+				FileTrackingStatus status = new FileTrackingStatus(1L, 10L, 0,
+						"agent1", "f1_" + i, "type1");
+				keys.add(new FileTrackingStatusKey(status));
+				values.add(status);
+			}
+
+			memory.setStatus(values);
+			
+			Map<FileTrackingStatusKey, FileTrackingStatus> valuesMap = memory.getStatus(keys);
+			
+			assertEquals(count, valuesMap.size());
+			
+			for(FileTrackingStatusKey key : keys){
+				assertNotNull(valuesMap.get(key));
+			}
+			
+
+		} finally {
+			emf.close();
+		}
+	}
+	
+	
+	/**
+	 * Tests that get by agent and logtype works
+	 */
+	@Test
+	public void testGetByKeyBatch() {
+		EntityManagerFactory emf = Persistence
+				.createEntityManagerFactory(TEST_ENTITY);
+		DBCollectorFileTrackerMemory memory = new DBCollectorFileTrackerMemory();
+		memory.setEntityManagerFactory(emf);
+
+		int count = 10;
+
+		Collection<FileTrackingStatusKey> keys = new ArrayList<FileTrackingStatusKey>(count);
+		
+		try {
+
+			// generate data
+			for (int i = 0; i < count; i++) {
+				FileTrackingStatus status = new FileTrackingStatus(1L, 10L, 0,
+						"agent1", "f1_" + i, "type1");
+				keys.add(new FileTrackingStatusKey(status));
+				memory.setStatus(status);
+			}
+
+			Map<FileTrackingStatusKey, FileTrackingStatus> valuesMap = memory.getStatus(keys);
+			
+			assertEquals(count, valuesMap.size());
+			
+			for(FileTrackingStatusKey key : keys){
+				assertNotNull(valuesMap.get(key));
+			}
+			
+
+		} finally {
+			emf.close();
+		}
+	}
+	
 	/**
 	 * Tests that get by agent and logtype works
 	 */
