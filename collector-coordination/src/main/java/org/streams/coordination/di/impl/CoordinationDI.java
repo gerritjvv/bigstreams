@@ -32,6 +32,7 @@ import org.streams.coordination.CoordinationProperties;
 import org.streams.coordination.cli.startup.check.impl.ConfigCheck;
 import org.streams.coordination.cli.startup.check.impl.PersistenceCheck;
 import org.streams.coordination.cli.startup.service.impl.CoordinationServerService;
+import org.streams.coordination.cli.startup.service.impl.HazelcastStartupService;
 import org.streams.coordination.cli.startup.service.impl.StatusCleanoutService;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
 import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
@@ -76,6 +77,7 @@ public class CoordinationDI {
 				beanFactory.getBean(PersistenceCheck.class));
 
 		List<? extends ApplicationService> serviceList = Arrays.asList(
+				beanFactory.getBean(HazelcastStartupService.class),
 				beanFactory.getBean(CoordinationServerService.class),
 				beanFactory.getBean(StatusCleanoutService.class),
 				beanFactory.getBean(RestletService.class),
@@ -86,6 +88,11 @@ public class CoordinationDI {
 				null);
 	}
 
+	@Bean
+	public HazelcastStartupService hazelcastStartupService(){
+		return new HazelcastStartupService();
+	}
+	
 	@Bean
 	public RestletService restletService() {
 		return new RestletService(beanFactory.getBean(Component.class));

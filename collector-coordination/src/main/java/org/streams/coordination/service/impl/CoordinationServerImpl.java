@@ -46,8 +46,13 @@ public class CoordinationServerImpl implements CoordinationServer {
 	}
 
 	public void shutdown() {
-		lockBootstrap.releaseExternalResources();
-		unlockBootstrap.releaseExternalResources();
+		if (lockBootstrap != null) {
+			lockBootstrap.releaseExternalResources();
+		}
+
+		if (unlockBootstrap != null) {
+			unlockBootstrap.releaseExternalResources();
+		}
 	}
 
 	/**
@@ -64,13 +69,13 @@ public class CoordinationServerImpl implements CoordinationServer {
 		lockBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-//				ChannelPipeline p = Channels.pipeline();
-//				p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
-//				p.addLast("MetricHandler", metricHandler);
-//				p.addLast("LockHandler", lockHandler);
-				return Channels.pipeline(new MessageFrameDecoder(), metricHandler,
-				 lockHandler);
-//				return p;
+				// ChannelPipeline p = Channels.pipeline();
+				// p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
+				// p.addLast("MetricHandler", metricHandler);
+				// p.addLast("LockHandler", lockHandler);
+				return Channels.pipeline(new MessageFrameDecoder(),
+						metricHandler, lockHandler);
+				// return p;
 			}
 		});
 
@@ -93,12 +98,12 @@ public class CoordinationServerImpl implements CoordinationServer {
 		unlockBootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-//				ChannelPipeline p = Channels.pipeline();
-//				p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
-//				p.addLast("UnLockHandler", unlockHandler);
-//				return p;
-				 return Channels.pipeline(new MessageFrameDecoder(),
-				 unlockHandler);
+				// ChannelPipeline p = Channels.pipeline();
+				// p.addFirst("MessageFrameDecoder", new MessageFrameDecoder());
+				// p.addLast("UnLockHandler", unlockHandler);
+				// return p;
+				return Channels.pipeline(new MessageFrameDecoder(),
+						unlockHandler);
 			}
 		});
 

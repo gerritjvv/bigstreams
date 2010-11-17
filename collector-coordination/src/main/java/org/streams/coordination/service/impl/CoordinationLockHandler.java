@@ -2,8 +2,6 @@ package org.streams.coordination.service.impl;
 
 import java.net.InetSocketAddress;
 
-import javax.inject.Inject;
-
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.jboss.netty.buffer.ChannelBuffer;
@@ -55,8 +53,8 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 	int pingPort;
 
 	public CoordinationLockHandler(CoordinationStatus coordinationStatus,
-			LockMemory lockMemory, FileTrackerStorage memory,
-			int pingPort, long lockTimeout) {
+			LockMemory lockMemory, FileTrackerStorage memory, int pingPort,
+			long lockTimeout) {
 		this.coordinationStatus = coordinationStatus;
 		this.lockMemory = lockMemory;
 		this.memory = memory;
@@ -159,7 +157,8 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 			// The MAP will already be configured with a persistence
 			// implementation to
 			// perform the below
-			FileTrackingStatus fileStatus = memory.getStatus(new FileTrackingStatusKey(requestFileStatus));
+			FileTrackingStatus fileStatus = memory
+					.getStatus(new FileTrackingStatusKey(requestFileStatus));
 
 			if (fileStatus == null) {
 				fileStatus = requestFileStatus;
