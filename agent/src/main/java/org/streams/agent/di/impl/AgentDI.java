@@ -10,14 +10,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManagerFactory;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.util.HashedWheelTimer;
 import org.jboss.netty.util.Timer;
 import org.restlet.Application;
 import org.restlet.Component;
@@ -58,12 +56,14 @@ import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.FilesToSendQueue;
+import org.streams.agent.send.ThreadResourceService;
 import org.streams.agent.send.impl.ClientConnectionFactoryImpl;
 import org.streams.agent.send.impl.ClientResourceFactoryImpl;
 import org.streams.agent.send.impl.FileLineStreamerImpl;
 import org.streams.agent.send.impl.FileSendTaskImpl;
 import org.streams.agent.send.impl.FilesSendService;
 import org.streams.agent.send.impl.FilesToSendQueueImpl;
+import org.streams.agent.send.impl.ThreadResourceServiceImpl;
 import org.streams.commons.app.AppLifeCycleManager;
 import org.streams.commons.app.ApplicationService;
 import org.streams.commons.app.StartupCheck;
@@ -141,6 +141,7 @@ public class AgentDI {
 				fileTrackingStatusStartupCheck());
 
 		List<ApplicationService> serviceList = Arrays.asList(
+				beanFactory.getBean(ThreadResourceService.class),
 				beanFactory.getBean(DirectoryPollingService.class),
 				beanFactory.getBean(RestletService.class),
 				beanFactory.getBean(FilesSendService.class),
@@ -407,6 +408,11 @@ public class AgentDI {
 		return fileStreamer;
 	}
 
+	@Bean
+	public ThreadResourceService threadResourceService(){
+		return new ThreadResourceServiceImpl();
+	}
+	
 	/**
 	 * ClientConnection instances are done per call to this method.<br/>
 	 * A client connection instance is meant to be used once and then thrown
@@ -437,9 +443,12 @@ public class AgentDI {
 		long connectionEstablishTimeout = configuration.getLong(
 				AgentProperties.CLIENTCONNECTION_ESTABLISH_TIMEOUT, 20000L);
 
-		Timer timer = new HashedWheelTimer();
-		ExecutorService workerBossService = Executors.newCachedThreadPool();
-		ExecutorService workerService = Executors.newCachedThreadPool();
+		ThreadResourceService resourceService = beanFactory.getBean(ThreadResourceService.class);
+		
+		Timer timer = resourceService.getTimer();
+		ExecutorService workerBossService = resourceService.getWorkerBossService();
+		ExecutorService workerService = resourceService.getWorkerService();
+		
 		
 		// create factory passing the connection class to the factory.
 		// the factory class will take charge or creating the connection

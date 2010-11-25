@@ -1,8 +1,6 @@
 package org.streams.agent.send.impl;
 
 import java.io.BufferedReader;
-import java.io.ByteArrayOutputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.TimeUnit;
@@ -241,13 +239,11 @@ public class ClientConnectionImpl implements ClientConnection {
 			ChannelBuffer channelBuffer = ChannelBuffers.dynamicBuffer(1024);
 			ChannelBufferOutputStream output = new ChannelBufferOutputStream(
 					channelBuffer);
-			
-			
+
 			protocol.send(clientHandlerContext.getHeader(),
-						clientHandlerContext.getFileLineStreamer().getCodec(),
-						output);
-			
-			 
+					clientHandlerContext.getFileLineStreamer().getCodec(),
+					output);
+
 			// write the fileInput to the channel buffer outBuffer
 			// we are reading several lines of data as configured in the
 			// FileLineStreamer
@@ -272,8 +268,7 @@ public class ClientConnectionImpl implements ClientConnection {
 
 				// create a wrapped composite buffer
 				ChannelBuffer messageBuffer = ChannelBuffers.wrappedBuffer(
-						messageLenBuffer,
-						channelBuffer);
+						messageLenBuffer, channelBuffer);
 
 				// write the composite buffer containing the message length and
 				// compressed data to the channel
@@ -290,18 +285,24 @@ public class ClientConnectionImpl implements ClientConnection {
 		@Override
 		public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 				throws Exception {
-			LOG.info("Client Exception Caught");
+			LOG.warn("Client Exception Caught");
 			// any client side exception in the IO pipeline is captured here.
 			// if this happens close the connection
-			clientHandlerContext
-					.setClientStatusCode(ClientHandlerContext.STATUS_ERROR);
-			Throwable t = e.getCause();
-			clientHandlerContext.setErrorCause(t);
+			try {
+				clientHandlerContext
+						.setClientStatusCode(ClientHandlerContext.STATUS_ERROR);
+				Throwable t = e.getCause();
+				clientHandlerContext.setErrorCause(t);
 
-			String msg = "Client Error: " + t.toString();
-			LOG.error(msg, t);
+				String msg = "Client Error: " + t.toString();
+				LOG.error(msg, t);
 
-			ctx.getChannel().close();
+				
+				ctx.getChannel().close();
+			} catch (Throwable t) {
+				LOG.error(t.toString(), t);
+			}
+
 		}
 
 		@Override

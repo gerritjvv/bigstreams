@@ -82,7 +82,10 @@ public class ClientConnectionFactoryImpl implements ClientConnectionFactory {
 
 	@Override
 	public void close() {
-		socketChannelFactory.releaseExternalResources();
+		//IMPORTANT - never call sockerChannelFactory.destroyExternalResources
+		// this method will hang and cause the agent to hang if called.
+		// The ThreadResourceService will be called by the ApplicationLifeCycleManager to shutdown any threads.
+		socketChannelFactory = null;
 	}
 
 }

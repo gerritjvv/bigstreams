@@ -92,10 +92,16 @@ public class FilesSendService implements ApplicationService {
 	public void shutdown() {
 		LOG.info("Shutdown FileSendService");
 
+		System.out.println("resourceFactory.destroy() -1 ");
 		resourceFactory.destroy();
+		System.out.println("resourceFactory.destroy() - done");
+		System.out.println("service.shutdown -1 ");
 		service.shutdown();
+		System.out.println("service.shutdown - done ");
 		for (int i = 0; i < filesSendWorkers.length; i++) {
+			System.out.println("service.shutdown -1 " + filesSendWorkers[i]);
 			filesSendWorkers[i].destroy();
+			System.out.println("service.shutdown - done " + i + " of " + filesSendWorkers.length);
 		}
 
 	}
