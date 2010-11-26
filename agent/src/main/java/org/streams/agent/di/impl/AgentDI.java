@@ -434,12 +434,10 @@ public class AgentDI {
 				.getBean(org.apache.commons.configuration.Configuration.class);
 		Protocol protocol = beanFactory.getBean(Protocol.class);
 
-		// find ClientConnection class either from configuration or from the
-		// default class ClientConnectionImpl
 
 		// load timeout parameters
 		long sendTimeout = configuration.getLong(
-				AgentProperties.CLIENTCONNECTION_SEND_TIMEOUT, 10000L);
+				AgentProperties.CLIENTCONNECTION_SEND_TIMEOUT, 60000L);
 		long connectionEstablishTimeout = configuration.getLong(
 				AgentProperties.CLIENTCONNECTION_ESTABLISH_TIMEOUT, 20000L);
 

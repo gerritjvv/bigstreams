@@ -30,15 +30,16 @@ import org.streams.commons.io.Header;
 public class ClientHandlerContext {
 
 	public final static int STATUS_ERROR = 500;
+	public final static int NO_SERVER_RESPONSE = 506;
 	public final static int STATUS_OK = 200;
 	public final static int STATUS_CONFLICT = 409;
-
+	
 	/**
 	 * The value is set by the SimpleChannelUpStreamHandler on receipt of a
 	 * server response.<br/>
 	 * The response must be 200 any other value is interpreted as an error.
 	 */
-	final AtomicInteger serverStatusCode = new AtomicInteger(STATUS_ERROR);
+	final AtomicInteger serverStatusCode = new AtomicInteger(NO_SERVER_RESPONSE);
 	/**
 	 * Any error on the client site will switch this value to error.
 	 */

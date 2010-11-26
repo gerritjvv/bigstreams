@@ -97,6 +97,7 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 
 		// startup test server
 		ServerUtil serverUtil = new ServerUtil();
+		
 		serverUtil.connect();
 
 		int port = serverUtil.getPort();

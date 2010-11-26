@@ -3,7 +3,10 @@ package org.streams.agent.send.impl;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
 import org.jboss.netty.bootstrap.ClientBootstrap;
@@ -12,7 +15,6 @@ import org.jboss.netty.buffer.ChannelBufferInputStream;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
-import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
@@ -31,7 +33,6 @@ import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.ServerException;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
-import org.streams.commons.io.impl.CountdownLatchChannel;
 
 /**
  * 
@@ -106,10 +107,13 @@ public class ClientConnectionImpl implements ClientConnection {
 			throw new ClientException("Please set a protocol", -1);
 		}
 
-		final CountdownLatchChannel countdownLatchChannel = new CountdownLatchChannel();
-
-		final ClientHandlerContext clientHandlerContext = new ClientHandlerContext(
+		ClientHandlerContext clientHandlerContext = new ClientHandlerContext(
 				header, input, fileLineStreamer);
+
+		final Exchanger<ClientHandlerContext> exchanger = new Exchanger<ClientHandlerContext>();
+
+		final ClientChannelHandler clientHandler = new ClientChannelHandler(
+				exchanger, clientHandlerContext);
 
 		bootstrap = new ClientBootstrap(socketChannelFactory);
 
@@ -119,38 +123,30 @@ public class ClientConnectionImpl implements ClientConnection {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
 				return Channels.pipeline(new ClientMessageFrameDecoder(),
-						countdownLatchChannel, new ClientChannelHandler(
-								clientHandlerContext));
+						clientHandler);
 			}
 		});
 
 		bootstrap.setOption("connectTimeoutMillis", connectEstablishTimeout);
 
 		// Start the connection attempt.
-		ChannelFuture future = bootstrap.connect(inetAddress);
+		bootstrap.connect(inetAddress);
 
-		while (!future.isDone()) {
-			try {
-				Thread.sleep(10);
-			} catch (InterruptedException e) {
-				Thread.currentThread().interrupt();
-			}
+		try {
+			System.out.println("Wait on exchanger");
+			clientHandlerContext = exchanger.exchange(null, sendTimeOut * 2,
+					TimeUnit.MILLISECONDS);
+			System.out.println("Got on exchanger");
+		} catch (InterruptedException e) {
+			// this is called if the thread is to be closed by some shutdown
+			// process.
+			Thread.currentThread().interrupt();
 
-		}
-
-		if (future.isSuccess()) {
-			// only ever wait for channel close if the connection was successful
-			try {
-				// we wait twice the timeout to allow for timer inaccuracies. If
-				// a timeout the ReadTimeoutHandler should handle the timeout.
-				countdownLatchChannel.waitTillClose(sendTimeOut * 2,
-						TimeUnit.MILLISECONDS);
-			} catch (InterruptedException e) {
-				// this is called if the thread is to be closed by some shutdown
-				// process.
-				Thread.currentThread().interrupt();
-			}
-
+		} catch (TimeoutException e) {
+			throw new ServerException(
+					"The server did not respond within the timeout "
+							+ (sendTimeOut * 2), null,
+					clientHandlerContext.getServerStatusCode());
 		}
 
 		// complete io operations
@@ -172,6 +168,11 @@ public class ClientConnectionImpl implements ClientConnection {
 			} else if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.STATUS_ERROR) {
 				throw new ServerException("Error with server communication",
 						null, clientHandlerContext.getServerStatusCode());
+			} else if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.NO_SERVER_RESPONSE) {
+				throw new ServerException(
+						"The server did not respond within the timeout "
+								+ (sendTimeOut * 2), null,
+						clientHandlerContext.getServerStatusCode());
 			}
 
 			fileLinePointer.copyIncrement(clientHandlerContext
@@ -217,9 +218,14 @@ public class ClientConnectionImpl implements ClientConnection {
 	class ClientChannelHandler extends SimpleChannelHandler {
 
 		private final ClientHandlerContext clientHandlerContext;
+		Exchanger<ClientHandlerContext> exchanger;
 
-		public ClientChannelHandler(ClientHandlerContext clientHandlerContext) {
+		AtomicBoolean exhanged = new AtomicBoolean(false);
+
+		public ClientChannelHandler(Exchanger<ClientHandlerContext> exchanger,
+				ClientHandlerContext clientHandlerContext) {
 			this.clientHandlerContext = clientHandlerContext;
+			this.exchanger = exchanger;
 		}
 
 		/**
@@ -277,6 +283,9 @@ public class ClientConnectionImpl implements ClientConnection {
 			} else {
 				// close channel if no write
 				channel.close();
+				if (!exhanged.getAndSet(true)) {
+					exchanger.exchange(clientHandlerContext);
+				}
 			}
 
 			super.channelConnected(ctx, e);
@@ -297,10 +306,13 @@ public class ClientConnectionImpl implements ClientConnection {
 				String msg = "Client Error: " + t.toString();
 				LOG.error(msg, t);
 
-				
 				ctx.getChannel().close();
 			} catch (Throwable t) {
 				LOG.error(t.toString(), t);
+			}
+
+			if (!exhanged.getAndSet(true)) {
+				exchanger.exchange(clientHandlerContext);
 			}
 
 		}
@@ -311,9 +323,11 @@ public class ClientConnectionImpl implements ClientConnection {
 			// wait for and interpret the response message from the
 			// server
 			// only the HTTP OK response is accepted i.e. 200.
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Server response received");
-			}
+			// if (LOG.isDebugEnabled()) {
+			// LOG.debug("Server response received");
+			// }
+
+			LOG.info("----------------- Server response received");
 
 			ChannelBuffer buff = (ChannelBuffer) e.getMessage();
 
@@ -351,6 +365,10 @@ public class ClientConnectionImpl implements ClientConnection {
 				}
 			} finally {
 				in.close();
+			}
+
+			if (!exhanged.getAndSet(true)) {
+				exchanger.exchange(clientHandlerContext);
 			}
 
 			super.messageReceived(ctx, e);
