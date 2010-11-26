@@ -10,9 +10,12 @@ import junit.framework.TestCase;
 import org.junit.Test;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
+import org.streams.coordination.file.DistributedMapNames;
 import org.streams.coordination.service.impl.HazelcastLockMemory;
+import org.streams.coordination.service.impl.LockValue;
 
 import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.IMap;
 
 /**
  * 
@@ -29,7 +32,10 @@ public class TestHazelcastLockMemory extends TestCase {
 	@Test
 	public void testMultipleLockRequestsConflict() throws Exception {
 
-		final HazelcastLockMemory memory = new HazelcastLockMemory();
+		IMap<String, LockValue> locksMap = Hazelcast.getMap(
+				DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString());
+		
+		final HazelcastLockMemory memory = new HazelcastLockMemory(locksMap);
 		/**
 		 * (long filePointer, long fileSize,int linePointer, String agentName,
 		 * String fileName, String logType)
@@ -75,7 +81,10 @@ public class TestHazelcastLockMemory extends TestCase {
 	@Test
 	public void testMultipleLockUnLockFromDifferentCollector() throws Exception {
 
-		final HazelcastLockMemory memory = new HazelcastLockMemory();
+		IMap<String, LockValue> locksMap = Hazelcast.getMap(
+				DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString());
+		
+		final HazelcastLockMemory memory = new HazelcastLockMemory(locksMap);
 		/**
 		 * (long filePointer, long fileSize,int linePointer, String agentName,
 		 * String fileName, String logType)
@@ -99,7 +108,10 @@ public class TestHazelcastLockMemory extends TestCase {
 	@Test
 	public void testRemoveTimedoutLocks() throws Exception {
 
-		final HazelcastLockMemory memory = new HazelcastLockMemory();
+		IMap<String, LockValue> locksMap = Hazelcast.getMap(
+				DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString());
+		
+		final HazelcastLockMemory memory = new HazelcastLockMemory(locksMap);
 		/**
 		 * (long filePointer, long fileSize,int linePointer, String agentName,
 		 * String fileName, String logType)

@@ -57,7 +57,9 @@ public class StatusCleanoutService implements ApplicationService {
 
 	@Override
 	public void shutdown() {
-		service.shutdown();
+		if(service != null){
+			service.shutdown();
+		}
 	}
 
 	public FileStatusCleanoutManager getFileStatusCleanoutManager() {

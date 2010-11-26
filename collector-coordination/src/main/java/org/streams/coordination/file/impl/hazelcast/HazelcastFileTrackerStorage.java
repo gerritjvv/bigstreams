@@ -2,33 +2,69 @@ package org.streams.coordination.file.impl.hazelcast;
 
 import java.util.Collection;
 
+import org.apache.log4j.Logger;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusKey;
+import org.streams.coordination.file.DistributedMapNames;
 import org.streams.coordination.file.FileTrackerStorage;
 
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.IMap;
 
 /**
  * 
- *  Provides a Hazelcast IMap as the underlying storage.
- *
+ * Provides a Hazelcast IMap as the underlying storage.
+ * 
  */
 public class HazelcastFileTrackerStorage implements FileTrackerStorage {
 
-	private static final String FILE_TRACKER_MAP = "COORDINATION_FILE_TRACKER_MEMORY_MAP";
+	private static final Logger LOG = Logger
+			.getLogger(HazelcastFileTrackerStorage.class);
 
-	IMap<FileTrackingStatusKey, FileTrackingStatus> fileTrackerMemory = Hazelcast
-			.getMap(FILE_TRACKER_MAP);
+	final IMap<FileTrackingStatusKey, FileTrackingStatus> fileTrackerMemoryMap;
+
+	/**
+	 * Requires a hazelcast map.
+	 * 
+	 * @param fileTrackerMemory
+	 */
+	public HazelcastFileTrackerStorage(
+			IMap<FileTrackingStatusKey, FileTrackingStatus> fileTrackerMemory) {
+		this.fileTrackerMemoryMap = fileTrackerMemory;
+
+		LOG.info("HazelcastFileTrackerStorage ----- MAP_ID: "
+				+ fileTrackerMemory.getId());
+		LOG.info("HazelcastFileTrackerStorage ----- MAP_NAME: "
+				+ fileTrackerMemory.getName());
+		LOG.info("HazelcastFileTrackerStorage ----- STRING: "
+				+ fileTrackerMemory.toString());
+		LOG.info("HazelcastFileTrackerStorage ----- INSTANCE_TYPE: "
+				+ fileTrackerMemory.getInstanceType());
+
+		MapConfig mapConf = Hazelcast.getConfig().getMapConfig(
+				DistributedMapNames.MAP.FILE_TRACKER_MAP.toString());
+
+		MapStoreConfig mapStoreConf = mapConf.getMapStoreConfig();
+
+		if (mapStoreConf == null) {
+			LOG.info("HazelcastFileTrackerStorage ----- MAPSTORE NULL");
+		} else {
+			LOG.info("HazelcastFileTrackerStorage ----- MAPSTORE IMPL: "
+					+ mapStoreConf.getImplementation());
+		}
+
+	}
 
 	@Override
 	public FileTrackingStatus getStatus(FileTrackingStatusKey key) {
-		return fileTrackerMemory.get(key);
+		return fileTrackerMemoryMap.get(key);
 	}
 
 	@Override
 	public void setStatus(FileTrackingStatus status) {
-		fileTrackerMemory.put(new FileTrackingStatusKey(status), status);
+		fileTrackerMemoryMap.put(new FileTrackingStatusKey(status), status);
 	}
 
 	@Override
@@ -42,7 +78,7 @@ public class HazelcastFileTrackerStorage implements FileTrackerStorage {
 
 	@Override
 	public boolean delete(FileTrackingStatusKey key) {
-		return fileTrackerMemory.remove(key) != null;
+		return fileTrackerMemoryMap.remove(key) != null;
 	}
 
 	@Override

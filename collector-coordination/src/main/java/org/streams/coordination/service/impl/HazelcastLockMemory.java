@@ -5,8 +5,11 @@ import java.util.Collection;
 import org.apache.log4j.Logger;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
+import org.streams.coordination.file.DistributedMapNames;
 import org.streams.coordination.service.LockMemory;
 
+import com.hazelcast.config.MapConfig;
+import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.IMap;
 import com.hazelcast.query.SqlPredicate;
@@ -27,8 +30,29 @@ public class HazelcastLockMemory implements LockMemory {
 	private static final Logger LOG = Logger
 			.getLogger(HazelcastLockMemory.class);
 
-	IMap<String, LockValue> locksMap = Hazelcast
-			.getMap("LOCK_MEMORY_LOCKS_MAP");
+	final IMap<String, LockValue> locksMap;
+
+	public HazelcastLockMemory(IMap<String, LockValue> locksMap) {
+		super();
+		this.locksMap = locksMap;
+		
+		LOG.info("HazelcastLockMemory ----- MAP_ID: " + locksMap.getId());
+		LOG.info("HazelcastLockMemory ----- MAP_NAME: " + locksMap.getName());
+		LOG.info("HazelcastLockMemory ----- MAP_STRING: " + locksMap.toString());
+		LOG.info("HazelcastLockMemory ----- MAP_INSTANCE_TYPE: " + locksMap.getInstanceType());
+		
+		MapConfig mapConf = Hazelcast.getConfig().getMapConfig(DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString());
+		
+		MapStoreConfig mapStoreConf = mapConf.getMapStoreConfig();
+		
+		if(mapStoreConf == null){
+			LOG.info("HazelcastLockMemory ----- MAPSTORE NULL");	
+		}else{
+			LOG.info("HazelcastLockMemory ----- MAPSTORE IMPL: " + mapStoreConf.getImplementation());
+		}
+		
+		
+	}
 
 	/**
 	 * Locks are only removed if the SyncPointer instance getCollectorAddress
@@ -40,10 +64,11 @@ public class HazelcastLockMemory implements LockMemory {
 
 		final String lockId = syncPointer.getLockId();
 
-		if(lockId == null){
-			throw new NullPointerException("The SyncPointer.getLockId cannot be null");
+		if (lockId == null) {
+			throw new NullPointerException(
+					"The SyncPointer.getLockId cannot be null");
 		}
-		
+
 		locksMap.lock(lockId);
 		FileTrackingStatus retStatus = null;
 
@@ -90,8 +115,17 @@ public class HazelcastLockMemory implements LockMemory {
 		lockValue.remoteAddress = remoteAddress;
 		lockValue.status = fileStatus;
 
-		if (locksMap.putIfAbsent(syncPointer.getLockId(), lockValue) != null) {
-			syncPointer = null;
+		
+		if ( ( lockValue = locksMap.putIfAbsent(syncPointer.getLockId(), lockValue) ) != null) {
+			
+			
+			if(!isLockValid(lockValue.getTimeStamp(), lockTimeOut)){
+				LOG.warn("Lock expired: " + syncPointer + " replacing with new requested lock");
+				locksMap.put(syncPointer.getLockId(), lockValue);
+			}else{
+				syncPointer = null;
+			}
+			
 		}
 
 		return syncPointer;
@@ -122,6 +156,19 @@ public class HazelcastLockMemory implements LockMemory {
 
 	}
 
+	/**
+	 * Checks that the lock has not timed out
+	 * 
+	 * @param requestFileStatus
+	 * @param lockTimeOut
+	 * @return
+	 */
+	private final boolean isLockValid(Long lockTimeStamp,
+			long lockTimeOut) {
+		return !(lockTimeStamp == null || (System.currentTimeMillis() - lockTimeStamp) > lockTimeOut);
+
+	}
+	
 	@Override
 	public SyncPointer setLock(FileTrackingStatus fileStatus,
 			String remoteAddress) throws InterruptedException {

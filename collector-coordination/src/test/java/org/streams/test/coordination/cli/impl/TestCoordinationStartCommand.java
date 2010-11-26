@@ -19,6 +19,9 @@ import org.streams.coordination.main.Bootstrap;
 import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.impl.CoordinationStatusImpl;
 
+import com.hazelcast.core.Hazelcast;
+import com.hazelcast.core.Member;
+
 
 public class TestCoordinationStartCommand extends TestCase {
 
@@ -89,6 +92,10 @@ public class TestCoordinationStartCommand extends TestCase {
 	@After
 	public void tearDown() throws Exception {
 		bootstrap.close();
+		
+		
+		Hazelcast.shutdownAll();
+		
 	}
 
 }

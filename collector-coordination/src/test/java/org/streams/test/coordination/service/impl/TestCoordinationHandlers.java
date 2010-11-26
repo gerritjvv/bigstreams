@@ -12,13 +12,13 @@ import org.streams.commons.cli.CommandLineProcessorFactory;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
 import org.streams.commons.file.impl.CoordinationServiceClientImpl;
+import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.coordination.CoordinationProperties;
 import org.streams.coordination.main.Bootstrap;
 import org.streams.coordination.service.CoordinationServer;
 import org.streams.test.coordination.util.AlwaysOKRestlet;
 
 import com.hazelcast.core.Hazelcast;
-
 
 public class TestCoordinationHandlers extends TestCase {
 	private Bootstrap bootstrap;
@@ -37,7 +37,7 @@ public class TestCoordinationHandlers extends TestCase {
 		CoordinationServer coordinationServer = bootstrap
 				.getBean(CoordinationServer.class);
 		coordinationServer.connect();
-		
+
 		// we need to setup a ping response to simulate that the collector is
 		// active.
 		// or else the lock will not work.
@@ -61,8 +61,9 @@ public class TestCoordinationHandlers extends TestCase {
 								.getDefaultValue());
 
 		CoordinationServiceClientImpl client = new CoordinationServiceClientImpl(
-				new InetSocketAddress("localhost", lockPort),
-				new InetSocketAddress("localhost", unlockPort));
+				new RandomDistAddressSelector(new InetSocketAddress(
+						"localhost", lockPort)), new RandomDistAddressSelector(
+						new InetSocketAddress("localhost", unlockPort)));
 
 		FileTrackingStatus status = new FileTrackingStatus(0, 10, 0, "test1",
 				"test1", "test1");
@@ -83,7 +84,6 @@ public class TestCoordinationHandlers extends TestCase {
 		}
 
 	}
-
 
 	/**
 	 * Test release a resource that is not locked. We expect an error to be
@@ -116,8 +116,10 @@ public class TestCoordinationHandlers extends TestCase {
 									.getDefaultValue());
 
 			CoordinationServiceClientImpl client = new CoordinationServiceClientImpl(
-					new InetSocketAddress("localhost", lockPort),
-					new InetSocketAddress("localhost", unlockPort));
+					new RandomDistAddressSelector(new InetSocketAddress(
+							"localhost", lockPort)),
+					new RandomDistAddressSelector(new InetSocketAddress(
+							"localhost", unlockPort)));
 
 			try {
 				// we expect an error here
@@ -126,15 +128,16 @@ public class TestCoordinationHandlers extends TestCase {
 			} catch (Throwable t) {
 				assertTrue(true);
 			}
-			
+
 			try {
 				// we expect an error here
-				client.saveAndFreeLock(new SyncPointer(new FileTrackingStatus(0L, 0L, 1, "a", "f", "t")));
+				client.saveAndFreeLock(new SyncPointer(new FileTrackingStatus(
+						0L, 0L, 1, "a", "f", "t")));
 				assertTrue(false);
 			} catch (Throwable t) {
 				assertTrue(true);
 			}
-			
+
 		} finally {
 			coordinationServer.shutdown();
 		}
@@ -166,15 +169,17 @@ public class TestCoordinationHandlers extends TestCase {
 									.getDefaultValue());
 
 			CoordinationServiceClientImpl client = new CoordinationServiceClientImpl(
-					new InetSocketAddress("localhost", lockPort),
-					new InetSocketAddress("localhost", unlockPort));
+					new RandomDistAddressSelector(new InetSocketAddress(
+							"localhost", lockPort)),
+					new RandomDistAddressSelector(new InetSocketAddress(
+							"localhost", unlockPort)));
 
 			Set<SyncPointer> pointers = new TreeSet<SyncPointer>();
 
 			// save 10 different sync pointers
 			for (int i = 0; i < 10; i++) {
-				FileTrackingStatus fileStatus = new FileTrackingStatus(0L, 10L, 0,
-						"agent" + i, "file" + i, "type" + i);
+				FileTrackingStatus fileStatus = new FileTrackingStatus(0L, 10L,
+						0, "agent" + i, "file" + i, "type" + i);
 				SyncPointer syncPointer = client.getAndLock(fileStatus);
 
 				assertNotNull(syncPointer);

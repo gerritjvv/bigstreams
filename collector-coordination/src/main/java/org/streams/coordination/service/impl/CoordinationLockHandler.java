@@ -145,7 +145,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 		// ---------- This line uses a semi lock free algorithm
 		final SyncPointer pointer = lockMemory.setLock(requestFileStatus,
-				lockTimeOut, remoteAddress.getHostName());
+				lockTimeOut, remoteAddress.getAddress().getHostAddress());
 		// ---------- lock released. At this stage we either have a SyncPointer
 		// lock or a null reference if the resource was locked already.
 

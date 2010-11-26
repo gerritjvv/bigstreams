@@ -120,7 +120,7 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 		// NOTE: Correct usage for thread correctness is important here.
 		// The first thing we MUST do here is try to release a SyncPointer Lock
 		// before doing anything else.
-		FileTrackingStatus fileStatus = lockMemory.removeLock(syncPointer, remoteAddress.getHostName());
+		FileTrackingStatus fileStatus = lockMemory.removeLock(syncPointer, remoteAddress.getAddress().getHostAddress());
 
 		if (fileStatus == null) {
 			LOG.info("ERROR UNLOCK(" + syncPointer.getLockId() + ")");

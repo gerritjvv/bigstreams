@@ -7,6 +7,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.streams.commons.app.AppLifeCycleManager;
 import org.streams.commons.cli.CommandLineParser;
 import org.streams.commons.cli.CommandLineProcessor;
 import org.streams.commons.cli.CommandLineProcessorFactory;
@@ -15,6 +16,8 @@ import org.streams.coordination.di.impl.ConfigurationDI;
 import org.streams.coordination.di.impl.CoordinationDI;
 import org.streams.coordination.di.impl.DBDI;
 import org.streams.coordination.di.impl.RestClientDI;
+
+import com.hazelcast.core.Hazelcast;
 
 
 /**
@@ -171,6 +174,13 @@ public class Bootstrap {
 	}
 
 	public void close(){
+		
+		AppLifeCycleManager lifeCycleManager = appContext.getBean(AppLifeCycleManager.class);
+		if(lifeCycleManager != null){
+			lifeCycleManager.shutdown();
+		}
+		
+		Hazelcast.shutdownAll();
 		appContext.close();
 	}
 }
