@@ -1,7 +1,6 @@
 package org.streams.commons.file.impl;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.OutputStreamWriter;
 import java.io.Reader;
@@ -16,7 +15,6 @@ import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferInputStream;
 import org.jboss.netty.buffer.ChannelBuffers;
-import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
@@ -58,6 +56,7 @@ public class ClientConnectionResource {
 			ClientSocketChannelFactory socketChannelFactory,
 			final Timer timeoutTimer) {
 		this.timeoutTimer = timeoutTimer;
+
 		bootstrap = new ClientBootstrap(socketChannelFactory);
 
 	}
@@ -87,7 +86,7 @@ public class ClientConnectionResource {
 
 			return (msg != null);
 		} catch (Throwable t) {
-			CoordinationException exp = new CoordinationException();
+			CoordinationException exp = new CoordinationException(t);
 			exp.setStackTrace(t.getStackTrace());
 			throw exp;
 		}
@@ -99,6 +98,7 @@ public class ClientConnectionResource {
 		try {
 
 			final String data = objMapper.writeValueAsString(status);
+
 			String msg = sendData(data, null);
 
 			SyncPointer syncPointer = null;
@@ -110,7 +110,7 @@ public class ClientConnectionResource {
 			return syncPointer;
 		} catch (Throwable t) {
 			LOG.error(t.toString(), t);
-			CoordinationException exp = new CoordinationException();
+			CoordinationException exp = new CoordinationException(t);
 			exp.setStackTrace(t.getStackTrace());
 			throw exp;
 		}
@@ -148,47 +148,34 @@ public class ClientConnectionResource {
 		bootstrap.setOption("connectTimeoutMillis", connectEstablishTimeout);
 
 		// Start the connection attempt.
-		ChannelFuture future = bootstrap.connect(inetAddress);
+		bootstrap.connect(inetAddress);
 
-		while (!future.isDone()) {
-			Thread.sleep(10);
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("Waiting to connect to agent: " + inetAddress);
-			}
+		ClientResourceMessage message = exchanger.exchange(null,
+				sendTimeOut * 2, TimeUnit.MILLISECONDS);
 
-		}
+		// complete io operations
+		// check error codes
 
-		if (future.isSuccess()) {
+		if (message.isHasError()) {
+			// if any error throw it
+			LOG.error(message.getMsg(), message.getError());
+			throw message.getError();
 
-			// this will wait for the message
-			ClientResourceMessage message = exchanger.exchange(null,
-					sendTimeOut * 2, TimeUnit.MILLISECONDS);
-
-			// complete io operations
-			// check error codes
-
-			if (message.isHasError()) {
-				// if any error throw it
-				LOG.error(message.getMsg(), message.getError());
-				throw message.getError();
-			} else if (message.getCode() == 409) {
-				// conflict print message and return null
-				LOG.error(message.getMsg());
-				return null;
-			} else {
-				// we have a success here but the MSG sent by the coordination
-				// service might be null,
-				String msg = message.getMsg();
-				if (msg == null) {
-					LOG.warn("The message received from the server was null, returning "
-							+ defaultResponse);
-					return defaultResponse;
-				} else {
-					return msg;
-				}
-			}
+		} else if (message.getCode() == 409) {
+			// conflict print message and return null
+			LOG.error(message.getMsg());
+			return null;
 		} else {
-			throw new IOException("Failed to connect to: " + inetAddress);
+			// we have a success here but the MSG sent by the coordination
+			// service might be null,
+			String msg = message.getMsg();
+			if (msg == null) {
+				LOG.warn("The message received from the server was null, returning "
+						+ defaultResponse);
+				return defaultResponse;
+			} else {
+				return msg;
+			}
 		}
 
 	}
@@ -216,7 +203,7 @@ public class ClientConnectionResource {
 	 */
 	class ClientChannelHandler extends SimpleChannelHandler {
 
-		Exchanger<ClientResourceMessage> exchange;
+		final Exchanger<ClientResourceMessage> exchange;
 
 		/**
 		 * Data to send
@@ -264,12 +251,14 @@ public class ClientConnectionResource {
 			LOG.error(msg, e.getCause());
 
 			Throwable error = e.getCause();
+
 			try {
 				ctx.getChannel().close();
 			} finally {
 				exchange.exchange(new ClientResourceMessage(500, msg, true,
 						error));
 			}
+
 		}
 
 		@Override
