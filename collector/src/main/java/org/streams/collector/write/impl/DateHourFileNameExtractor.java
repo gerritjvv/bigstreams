@@ -9,25 +9,29 @@ import org.apache.commons.beanutils.BeanUtils;
 import org.streams.collector.write.LogFileNameExtractor;
 import org.streams.commons.file.FileTrackingStatus;
 
-
 /**
  * This implementation will write the log files per date hour, plus an added key
  * that is determined by a comma separated string.<br/>
  * <p/>
  * e.g. to write files per log type and agent name set the property
  * keyProperties = 'logType,agentName';
+ * <p/>
+ * When the hour value is not present in the file name but is does contain a
+ * year month and day, these values will be used and hour is marked as 00.
  */
 public class DateHourFileNameExtractor implements LogFileNameExtractor {
 
 	private static final Pattern dateTimePattern = Pattern
 			.compile("\\d{4,4}-\\d\\d-\\d\\d-\\d\\d");
+
+	private static final Pattern dateOnlyPattern = Pattern
+			.compile("\\d{4,4}-\\d\\d-\\d\\d");
+
 	private static final SimpleDateFormat dateTimeFormat = new SimpleDateFormat(
 			"yyyy-MM-dd-HH");
-	
+
 	String[] keyProperties;
 
-	
-	
 	public DateHourFileNameExtractor(String[] keyProperties) {
 		super();
 		this.keyProperties = keyProperties;
@@ -50,7 +54,7 @@ public class DateHourFileNameExtractor implements LogFileNameExtractor {
 
 		buff.append(".");
 		buff.append(extractDateTime(status.getFileName()));
-		
+
 		return buff.toString();
 	}
 
@@ -62,6 +66,10 @@ public class DateHourFileNameExtractor implements LogFileNameExtractor {
 
 		if (m.find()) {
 			dateTime = m.group(0);
+		} else if ((m = dateOnlyPattern.matcher(fileName)).find()) {
+			// if only the year month and day is present use this date but add
+			// hour 00
+			dateTime = m.group(0) + "-00";
 		} else {
 			// if the original log files are not date formated use the
 			// collection date.

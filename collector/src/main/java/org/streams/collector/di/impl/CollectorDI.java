@@ -24,6 +24,7 @@ import org.streams.collector.cli.startup.check.impl.CodecCheck;
 import org.streams.collector.cli.startup.check.impl.ConfigCheck;
 import org.streams.collector.cli.startup.check.impl.PingCheck;
 import org.streams.collector.conf.CollectorProperties;
+import org.streams.collector.coordination.impl.CoordinationAddresses;
 import org.streams.collector.mon.CollectorStatus;
 import org.streams.collector.mon.impl.CollectorStatusResource;
 import org.streams.collector.mon.impl.PingOKResource;
@@ -44,6 +45,7 @@ import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.impl.CoordinationServiceClientImpl;
 import org.streams.commons.io.Protocol;
+import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricChannel;
 import org.streams.commons.metrics.impl.MetricsAppService;
@@ -115,7 +117,7 @@ public class CollectorDI {
 						.getBean(CoordinationServiceClient.class), beanFactory
 						.getBean(CollectorStatus.class), beanFactory.getBean(
 						"fileKilobytesWrittenMetric", CounterMetric.class),
-						beanFactory.getBean(CompressionPoolFactory.class));
+				beanFactory.getBean(CompressionPoolFactory.class));
 	}
 
 	@Bean
@@ -126,8 +128,27 @@ public class CollectorDI {
 
 	@Bean
 	public CoordinationServiceClient coordinationServiceClient() {
+
+		CoordinationAddresses coordinationAddresses = beanFactory.getBean(CoordinationAddresses.class);
+		
+		return new CoordinationServiceClientImpl(coordinationAddresses.getLockAddressSelector(),
+				coordinationAddresses.getUnlockAddressSelector());
+	}
+
+	/**
+	 * Configure and start the CoordinationAddresses with the lock and unlock addresses
+	 * @return
+	 */
+	@Bean
+	public CoordinationAddresses coordinationAddresses() {
+
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		String hosts = configuration.getString(
+				CollectorProperties.WRITER.COORDINATION_HOST.toString(),
+				(String) CollectorProperties.WRITER.COORDINATION_HOST
+						.getDefaultValue());
 
 		int lockport = configuration.getInt(
 				CollectorProperties.WRITER.COORDINATION_LOCK_PORT.toString(),
@@ -139,14 +160,20 @@ public class CollectorDI {
 				(Integer) CollectorProperties.WRITER.COORDINATION_UNLOCK_PORT
 						.getDefaultValue());
 
-		String hostname = configuration.getString(
-				CollectorProperties.WRITER.COORDINATION_HOST.toString(),
-				(String) CollectorProperties.WRITER.COORDINATION_HOST
-						.getDefaultValue());
+		String[] hostArr = hosts.split("[,;]");
 
-		return new CoordinationServiceClientImpl(new InetSocketAddress(
-				hostname, lockport),
-				new InetSocketAddress(hostname, unlockport));
+		InetSocketAddress[] lockAddresses = new InetSocketAddress[hostArr.length];
+		for (int i = 0; i < hostArr.length; i++) {
+			lockAddresses[i] = new InetSocketAddress(hostArr[i], lockport);
+		}
+
+		InetSocketAddress[] unLockAddresses = new InetSocketAddress[hostArr.length];
+		for (int i = 0; i < hostArr.length; i++) {
+			unLockAddresses[i] = new InetSocketAddress(hostArr[i], unlockport);
+		}
+
+		return new CoordinationAddresses(new RandomDistAddressSelector(
+				lockAddresses), new RandomDistAddressSelector(unLockAddresses));
 	}
 
 	@Bean

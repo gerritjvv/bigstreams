@@ -270,6 +270,10 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 		Set<String> keys = openFiles.keySet();
 
+		if(keys == null){
+			return;
+		}
+		
 		// we're using concurrent hashmap so the set is safe
 		// for each key we will:
 		// --- (1) - check to see if we should roll it over
@@ -291,9 +295,14 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			// the time in milliseconds when the file was last updated
 			Long updateTime = fileUpdateTimes.get(file);
 
-			boolean shouldRollover = rolloverCheck.shouldRollover(file,
+			boolean shouldRollover = false;
+			try{
+			 shouldRollover = rolloverCheck.shouldRollover(file,
 					creationTime, updateTime);
-
+			}catch(Throwable t){
+				LOG.error(t.toString(), t);
+			}
+			
 			if (shouldRollover) {
 				boolean lockAcquired;
 

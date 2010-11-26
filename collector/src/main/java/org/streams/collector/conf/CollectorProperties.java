@@ -52,6 +52,7 @@ public interface CollectorProperties {
 		COLLECTOR_DECOMPRESSOR_POOLSIZE("collector.decompressor.poolsize", 100);
 		
 		
+		
 		String name;
 		Object defaultValue;
 		

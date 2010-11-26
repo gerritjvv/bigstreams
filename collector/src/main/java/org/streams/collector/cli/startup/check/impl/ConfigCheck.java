@@ -1,5 +1,6 @@
 package org.streams.collector.cli.startup.check.impl;
 
+import java.util.Arrays;
 import java.util.Iterator;
 
 import javax.inject.Inject;
@@ -48,6 +49,9 @@ public class ConfigCheck extends AbstractStartupCheck {
 			LOG.info(key + " = " + configuration.getProperty(key));
 		}
 		
+		String hosts = configuration.getString(
+				CollectorProperties.WRITER.COORDINATION_HOST.toString());
+		
 		//check that the compression and decompression codecs are at least equal to that of the Thread counts
 		int workerThreadCount = configuration.getInt(CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT.toString(),
 				(Integer)CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT.getDefaultValue());
@@ -66,7 +70,9 @@ public class ConfigCheck extends AbstractStartupCheck {
 		checkTrue( decompressorCount >= workerThreadCount, "The " + CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_COUNT + "(" + workerThreadCount + ") is larger than " 
 				+ CollectorProperties.WRITER.COLLECTOR_DECOMPRESSOR_POOLSIZE + "(" + decompressorCount + ") this is not allowed and will cause the server to run out of decompressor resources");
 		
-
+		checkTrue( hosts != null, "The property " +  CollectorProperties.WRITER.COORDINATION_HOST + " must be specified");
+		
+		LOG.info("Using coordination hosts : " + Arrays.toString(hosts.split("[,;]")));
 		
 		LOG.info("DONE");
 

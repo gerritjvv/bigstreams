@@ -246,6 +246,8 @@ public class LocalLogFileWriter implements LogFileWriter {
 				// do not send if the rolloverCheck is null this might happend
 				// dueue to threading and this method
 				// being called from the Timer Thread.
+				LOG.debug("Using rollover class: " + logRolloverCheck);
+				
 				if (logRolloverCheck != null
 						&& fileOutputStreamPoolFactory != null)
 					fileOutputStreamPoolFactory

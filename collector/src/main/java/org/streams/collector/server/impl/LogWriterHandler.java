@@ -4,7 +4,6 @@ import java.io.DataInputStream;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
@@ -23,7 +22,6 @@ import org.jboss.netty.channel.ChannelStateEvent;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
-import org.streams.collector.error.ConcurrencyException;
 import org.streams.collector.mon.CollectorStatus;
 import org.streams.collector.write.LogFileWriter;
 import org.streams.collector.write.PostWriteAction;
@@ -77,7 +75,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 	 * Simple concurrency check. This is experimental and would either be
 	 * improved appon or removed in the future depending on performance impact.
 	 */
-	private static final ConcurrentMap<FileTrackingStatus, Long> fileStatusMap = new ConcurrentHashMap<FileTrackingStatus, Long>();
+//	private static final ConcurrentMap<FileTrackingStatus, Long> fileStatusMap = new ConcurrentHashMap<FileTrackingStatus, Long>();
 
 	public LogWriterHandler() {
 	}
@@ -178,7 +176,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 				throw new CoordinationException("File already locked "
 						+ fileName);
 			}
-
+			
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("LOCK(" + syncPointer.getLockId() + ")");
 			}
@@ -208,15 +206,27 @@ public class LogWriterHandler extends SimpleChannelHandler {
 									
 								}
 							});
-				} finally {
+					
+					buffer.writeInt(200);
+					
+					collectorStatus.setStatus(CollectorStatus.STATUS.OK, "Running");
+					if (bytesWritten > -1) {
+						//send kilobytes written
+						fileBytesWrittenMetric.incrementCounter(bytesWritten/1024);
+					}
+				}catch(Throwable t){
+					collectorStatus.setStatus(CollectorStatus.STATUS.UNKOWN_ERROR, t.toString());
+					
+					LOG.error(t.toString(), t);
+					buffer.writeInt(500);
+				}finally {
 					pool.closeAndRelease(compressInput);
 					compressInputWasReleased = true;
 					IOUtils.closeQuietly(datInput);
 					IOUtils.closeQuietly(channelInput);
 				}
 
-
-				buffer.writeInt(200);
+				
 			} else {
 				LOG.info("File pointer Conflict detected: agent "
 						+ header.getHost() + " file: " + header.getFileName()
@@ -237,7 +247,8 @@ public class LogWriterHandler extends SimpleChannelHandler {
 		} finally {
 			// on any error event with coordination these resources must be
 			// released
-			fileStatusMap.remove(fileStatus);
+//			assert fileStatusMap.remove(fileStatus) != null;
+			
 			if (!compressInputWasReleased) {
 				pool.closeAndRelease(compressInput);
 			}
@@ -248,11 +259,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			future.addListener(ChannelFutureListener.CLOSE);
 		}
 
-		collectorStatus.setStatus(CollectorStatus.STATUS.OK, "Running");
-		if (bytesWritten > -1) {
-			//send kilobytes written
-			fileBytesWrittenMetric.incrementCounter(bytesWritten/1024);
-		}
+		
 
 	}
 
@@ -294,15 +301,15 @@ public class LogWriterHandler extends SimpleChannelHandler {
 	 * @param fileStatus
 	 */
 	private void checkFileStatusConcurrency(FileTrackingStatus fileStatus) {
-		Long ts = null;
-
-		if ((ts = fileStatusMap.putIfAbsent(fileStatus,
-				Long.valueOf(System.currentTimeMillis()))) != null) {
-			// throw error
-			throw new ConcurrencyException(fileStatus.getAgentName() + " "
-					+ fileStatus.getLogType() + " " + fileStatus.getFileName()
-					+ " is in processed by another thread with ts: " + ts);
-		}
+//		Long ts = null;
+//
+//		if ((ts = fileStatusMap.putIfAbsent(fileStatus,
+//				Long.valueOf(System.currentTimeMillis()))) != null) {
+//			// throw error
+//			throw new ConcurrencyException(fileStatus.getAgentName() + " "
+//					+ fileStatus.getLogType() + " " + fileStatus.getFileName()
+//					+ " is in processed by another thread with ts: " + ts);
+//		}
 
 	}
 
