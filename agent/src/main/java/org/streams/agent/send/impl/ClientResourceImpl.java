@@ -3,13 +3,13 @@ package org.streams.agent.send.impl;
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
-import java.nio.charset.Charset;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
@@ -177,8 +177,7 @@ public class ClientResourceImpl implements ClientResource {
 		}
 
 		// return a channel reader
-		return new BufferedReader(Channels.newReader(channel, Charset
-				.defaultCharset().newDecoder(), -1));
+		return new BufferedReader(new InputStreamReader(Channels.newInputStream(channel)));
 
 	}
 
