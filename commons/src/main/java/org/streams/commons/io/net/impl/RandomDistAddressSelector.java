@@ -48,12 +48,18 @@ public class RandomDistAddressSelector implements AddressSelector {
 
 	@Override
 	public InetSocketAddress nextAddress() {
-		int index = random.nextInt() % (addresses.size());
-		if (index < 0) {
-			index *= -1;
-		}
 
-		return (addresses.size() > 0) ? addresses.get(index) : null;
+		InetSocketAddress address = null;
+
+		if (addresses.size() > 0) {
+			int index = random.nextInt() % (addresses.size());
+			if (index < 0) {
+				index *= -1;
+			}
+
+			address = addresses.get(index);
+		}
+		return address;
 	}
 
 	@Override
