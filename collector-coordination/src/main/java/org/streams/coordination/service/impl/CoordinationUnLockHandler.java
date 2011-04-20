@@ -123,12 +123,15 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 		FileTrackingStatus fileStatus = lockMemory.removeLock(syncPointer, remoteAddress.getAddress().getHostAddress());
 
 		if (fileStatus == null) {
-			LOG.info("ERROR UNLOCK(" + syncPointer.getLockId() + ")");
+			LOG.error("ERROR UNLOCK(" + syncPointer.getLockId() + ")");
 			return false;
 		} else {
-			LOG.info("UNLOCK(" + syncPointer.getLockId() + ") - "
+			if(LOG.isDebugEnabled()){
+			LOG.debug("UNLOCK(" + syncPointer.getLockId() + ") - "
 					+ fileStatus.getAgentName() + "." + fileStatus.getLogType()
 					+ "." + fileStatus.getFileName());
+			}
+			
 			fileStatus.setFilePointer(syncPointer.getFilePointer());
 			fileStatus.setFileSize(syncPointer.getFileSize());
 			fileStatus.setLinePointer(syncPointer.getLinePointer());

@@ -34,15 +34,6 @@ public class HazelcastFileTrackerStorage implements FileTrackerStorage {
 			IMap<FileTrackingStatusKey, FileTrackingStatus> fileTrackerMemory) {
 		this.fileTrackerMemoryMap = fileTrackerMemory;
 
-		LOG.info("HazelcastFileTrackerStorage ----- MAP_ID: "
-				+ fileTrackerMemory.getId());
-		LOG.info("HazelcastFileTrackerStorage ----- MAP_NAME: "
-				+ fileTrackerMemory.getName());
-		LOG.info("HazelcastFileTrackerStorage ----- STRING: "
-				+ fileTrackerMemory.toString());
-		LOG.info("HazelcastFileTrackerStorage ----- INSTANCE_TYPE: "
-				+ fileTrackerMemory.getInstanceType());
-
 		MapConfig mapConf = Hazelcast.getConfig().getMapConfig(
 				DistributedMapNames.MAP.FILE_TRACKER_MAP.toString());
 

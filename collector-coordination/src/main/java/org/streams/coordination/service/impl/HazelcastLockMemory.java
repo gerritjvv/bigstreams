@@ -86,7 +86,8 @@ public class HazelcastLockMemory implements LockMemory {
 				} else {
 					LOG.warn("Lock conflict: Collector " + remoteAddress
 							+ " is trying to remove a lock held by "
-							+ lockAddress);
+							+ lockAddress + " (lock not removed)");
+					
 				}
 
 			}
@@ -100,7 +101,7 @@ public class HazelcastLockMemory implements LockMemory {
 	}
 
 	/**
-	 * The lockTimeOut is not used in this method because we peform a non
+	 * The lockTimeOut is not used in this method because we perform a non
 	 * blocking putIfAbsent here.
 	 * 
 	 * @param remoteAddress
@@ -115,15 +116,21 @@ public class HazelcastLockMemory implements LockMemory {
 		lockValue.remoteAddress = remoteAddress;
 		lockValue.status = fileStatus;
 
+		final String lockId = syncPointer.getLockId();
 		
-		if ( ( lockValue = locksMap.putIfAbsent(syncPointer.getLockId(), lockValue) ) != null) {
+		if ( ( lockValue = locksMap.putIfAbsent(lockId, lockValue) ) != null) {
 			
-			
-			if(!isLockValid(lockValue.getTimeStamp(), lockTimeOut)){
-				LOG.warn("Lock expired: " + syncPointer + " replacing with new requested lock");
-				locksMap.put(syncPointer.getLockId(), lockValue);
-			}else{
-				syncPointer = null;
+			//do a thread safe put
+			locksMap.lock(lockId);
+			try{
+				if(!isLockValid(lockValue.getTimeStamp(), lockTimeOut)){
+					LOG.warn("Lock expired: " + syncPointer + " replacing with new requested lock");
+					locksMap.put(lockId, lockValue);
+				}else{
+					syncPointer = null;
+				}
+			}finally{
+				locksMap.unlock(lockId);
 			}
 			
 		}
@@ -146,11 +153,21 @@ public class HazelcastLockMemory implements LockMemory {
 			for (LockValue lockValue : expiredSyncPointers) {
 				// no need to lock here because the remove will wait if any
 				// locks are held
-
-				if (locksMap.remove(new SyncPointer(lockValue.status)
-						.getLockId()) != null) {
-					LOG.info("Removing expired lock for + " + lockValue.status);
+				final String lockId = new SyncPointer(lockValue.status).getLockId();
+				
+				locksMap.lock(lockId);
+				try{
+					//check expiry again
+					if(!isLockValid(lockValue.getTimeStamp(), lockTimeout))
+					
+					if (locksMap.remove(lockId) != null) {
+						LOG.info("Removing expired lock for + " + lockValue.status);
+					}
+					
+				}finally{
+					locksMap.unlock(lockId);
 				}
+				
 			}
 		}
 

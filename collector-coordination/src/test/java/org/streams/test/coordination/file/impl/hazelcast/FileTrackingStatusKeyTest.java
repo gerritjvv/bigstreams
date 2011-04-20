@@ -1,10 +1,14 @@
 package org.streams.test.coordination.file.impl.hazelcast;
 
+import java.util.Map;
+
 import junit.framework.TestCase;
 
 import org.junit.Test;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusKey;
+
+import com.hazelcast.core.Hazelcast;
 
 public class FileTrackingStatusKeyTest extends TestCase{
 	
@@ -18,6 +22,15 @@ public class FileTrackingStatusKeyTest extends TestCase{
 		FileTrackingStatus status = new FileTrackingStatus(0L, 0L, 0, agent, fileName, logType );
 		
 		assertEquals(logType + agent + fileName, new FileTrackingStatusKey(status).getKey());
+		
+	}
+
+	@Test
+	public void testHazelcast(){
+		
+		Map<String, String> map = Hazelcast.getMap("mymap");
+		map.put("key1", "test1");
+		
 		
 	}
 
