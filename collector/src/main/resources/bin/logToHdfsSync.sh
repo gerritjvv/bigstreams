@@ -134,7 +134,7 @@ hdfsFileSize=$($HADOOP_HOME/bin/hadoop fs -du $HDFS_DIR/$logtype/$daydate/hour=$
 localFileSize=$(du -b $f | awk '{ print $1}')
 
 
- if [ $hdfsFileSize -lt $localFileSize ] ; then
+ if [[ $hdfsFileSize -lt $localFileSize ]] ; then
    #overwrite the existing file on hdfs BY
    if ! $HADOOP_HOME/bin/hadoop fs -rm  $HDFS_DIR/$logtype/$daydate/hour=$hour/$uploadFileName ; then
      echo "Failed to remove file  $HDFS_DIR/$logtype/$daydate/hour=$hour/$uploadFileName"
