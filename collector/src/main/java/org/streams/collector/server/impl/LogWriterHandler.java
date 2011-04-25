@@ -75,7 +75,8 @@ public class LogWriterHandler extends SimpleChannelHandler {
 	 * Simple concurrency check. This is experimental and would either be
 	 * improved appon or removed in the future depending on performance impact.
 	 */
-//	private static final ConcurrentMap<FileTrackingStatus, Long> fileStatusMap = new ConcurrentHashMap<FileTrackingStatus, Long>();
+	// private static final ConcurrentMap<FileTrackingStatus, Long>
+	// fileStatusMap = new ConcurrentHashMap<FileTrackingStatus, Long>();
 
 	public LogWriterHandler() {
 	}
@@ -171,7 +172,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 				throw new CoordinationException("File already locked "
 						+ fileName);
 			}
-			
+
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("LOCK(" + syncPointer.getLockId() + ")");
 			}
@@ -181,60 +182,72 @@ public class LogWriterHandler extends SimpleChannelHandler {
 
 			ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
 
-			if (syncFilePointer == filePointer) {
+			try { // try finally for pointer lock release
 
-				try {
-					//Note on rollback:
-					// The writer will writer the file data, and then execute the PostWriteAction
-					// if any step fails the file will be rolled back.
-					// This mean that if the syncPointer release send to the CoordinationService fails the file is rolled back
-					// and an error thrown.
-					bytesWritten = writer.write(fileStatus, compressInput,
-							new PostWriteAction() {
+				if (syncFilePointer == filePointer) {
 
-								@Override
-								public void run(int bytesWritten)
-										throws Exception {
-									//INCREMENT FILE SYNCPOINTER
-									syncPointer.incFilePointer(bytesWritten);
-									sendSyncRelease(syncPointer);
-									
-								}
-							});
-					
-					buffer.writeInt(200);
-					
-					collectorStatus.setStatus(CollectorStatus.STATUS.OK, "Running");
-					if (bytesWritten > -1) {
-						//send kilobytes written
-						fileBytesWrittenMetric.incrementCounter(bytesWritten/1024);
+					try {
+						// Note on rollback:
+						// The writer will writer the file data, and then
+						// execute the PostWriteAction
+						// if any step fails the file will be rolled back.
+						// This mean that if the syncPointer release send to the
+						// CoordinationService fails the file is rolled back
+						// and an error thrown.
+						bytesWritten = writer.write(fileStatus, compressInput,
+								new PostWriteAction() {
+
+									@Override
+									public void run(int bytesWritten)
+											throws Exception {
+										// INCREMENT FILE SYNCPOINTER
+										syncPointer
+												.incFilePointer(bytesWritten);
+									}
+								});
+
+						buffer.writeInt(200);
+
+						collectorStatus.setStatus(CollectorStatus.STATUS.OK,
+								"Running");
+						if (bytesWritten > -1) {
+							// send kilobytes written
+							fileBytesWrittenMetric
+									.incrementCounter(bytesWritten / 1024);
+						}
+					} catch (Throwable t) {
+						collectorStatus.setStatus(
+								CollectorStatus.STATUS.UNKOWN_ERROR,
+								t.toString());
+
+						LOG.error(t.toString(), t);
+						buffer.writeInt(500);
+					} finally {
+						pool.closeAndRelease(compressInput);
+						compressInputWasReleased = true;
+						IOUtils.closeQuietly(datInput);
+						IOUtils.closeQuietly(channelInput);
 					}
-				}catch(Throwable t){
-					collectorStatus.setStatus(CollectorStatus.STATUS.UNKOWN_ERROR, t.toString());
-					
-					LOG.error(t.toString(), t);
-					buffer.writeInt(500);
-				}finally {
-					pool.closeAndRelease(compressInput);
-					compressInputWasReleased = true;
-					IOUtils.closeQuietly(datInput);
-					IOUtils.closeQuietly(channelInput);
+
+				} else {
+					LOG.info("File pointer Conflict detected: agent "
+							+ header.getHost() + " file: "
+							+ header.getFileName() + " agentPointer: "
+							+ header.getFilePointer() + " collectorPointer: "
+							+ syncFilePointer);
+
+					// send the sync pointer to the agent, this is a request
+					// made to
+					// the
+					// agent that is sends data starting from this pointer
+					// write the http codec 409 == Conflict
+					buffer.writeInt(409);
+					buffer.writeLong(syncFilePointer);
 				}
 
-				
-			} else {
-				LOG.info("File pointer Conflict detected: agent "
-						+ header.getHost() + " file: " + header.getFileName()
-						+ " agentPointer: " + header.getFilePointer()
-						+ " collectorPointer: " + syncFilePointer);
-
-				// send the sync pointer to the agent, this is a request
-				// made to
-				// the
-				// agent that is sends data starting from this pointer
-				// write the http codec 409 == Conflict
-				buffer.writeInt(409);
-				buffer.writeLong(syncFilePointer);
+			} finally {
+				// release pointer lock
+				sendSyncRelease(syncPointer);
 			}
 
 			future = e.getChannel().write(buffer);
@@ -242,8 +255,8 @@ public class LogWriterHandler extends SimpleChannelHandler {
 		} finally {
 			// on any error event with coordination these resources must be
 			// released
-//			assert fileStatusMap.remove(fileStatus) != null;
-			
+			// assert fileStatusMap.remove(fileStatus) != null;
+
 			if (!compressInputWasReleased) {
 				pool.closeAndRelease(compressInput);
 			}
@@ -254,12 +267,11 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			future.addListener(ChannelFutureListener.CLOSE);
 		}
 
-		
-
 	}
 
 	/**
 	 * Calls the saveAndFreeLock method on the coordination service.
+	 * 
 	 * @param syncPointer
 	 */
 	private final void sendSyncRelease(SyncPointer syncPointer) {
@@ -334,13 +346,30 @@ public class LogWriterHandler extends SimpleChannelHandler {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
-		collectorStatus.setStatus(CollectorStatus.STATUS.UNKOWN_ERROR, e
-				.getCause().toString());
 
-		collectorStatus.incCounter("Errors_Caught", 1);
+		/**
+		 * Very important to respond here. The agent will always be listening
+		 * for some kind of feedback.
+		 */
+		ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
+		buffer.writeInt(500);
 
-		LOG.error(e.getCause().toString(), e.getCause());
-		e.getChannel().close();
+		ChannelFuture future = e.getChannel().write(buffer);
+
+		future.addListener(ChannelFutureListener.CLOSE);
+
+		// WRITE STATUS
+		try {
+			collectorStatus.setStatus(CollectorStatus.STATUS.UNKOWN_ERROR, e
+					.getCause().toString());
+
+			collectorStatus.incCounter("Errors_Caught", 1);
+
+			LOG.error(e.getCause().toString(), e.getCause());
+		} catch (Throwable t) {
+			LOG.error(t);
+		}
+
 	}
 
 	public Protocol getProtocol() {
