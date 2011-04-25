@@ -106,7 +106,7 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 			if (fileFilter != null) {
 				filter = fileFilter;
 			}
-
+			
 			filesIt = FileUtils.iterateFiles(directory, filter,
 					TrueFileFilter.INSTANCE);
 
@@ -149,6 +149,7 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 
 		} catch (Throwable t) {
 			t.printStackTrace();
+			LOG.error("Error reading directory: " + dir);
 			LOG.error(t.toString(), t);
 		}
 

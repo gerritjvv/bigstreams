@@ -32,8 +32,11 @@ public class TestDirectoryWatcher extends TestCase {
 	protected void setUp() throws Exception {
 		testDirectoryFile = new File(".", "target/test"
 				+ System.currentTimeMillis());
-		testDirectoryFile.mkdirs();
+		if(!testDirectoryFile.mkdirs()){
+			throw new RuntimeException("Error creating directory " + testDirectoryFile);
+		}
 
+		
 		bootstrap = new Bootstrap();
 		bootstrap.loadProfiles(CommandLineProcessorFactory.PROFILE.DB,
 				CommandLineProcessorFactory.PROFILE.CLI,

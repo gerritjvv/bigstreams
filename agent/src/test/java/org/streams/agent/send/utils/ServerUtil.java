@@ -157,7 +157,18 @@ public class ServerUtil {
 				throws Exception {
 			System.out.println("Server Exception Caught");
 			e.getCause().printStackTrace();
-			e.getChannel().close();
+
+			/**
+			 * Very important to respond here.
+			 * The agent will always be listening for some kind of feedback.
+			 */
+			ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
+			buffer.writeInt(500);
+
+			ChannelFuture future = e.getChannel().write(buffer);
+
+			future.addListener(ChannelFutureListener.CLOSE);
+
 		}
 
 	}
