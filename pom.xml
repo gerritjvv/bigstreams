@@ -135,6 +135,6 @@
 		<module>commons</module>
 		<module>collector</module>
 		<module>collector-coordination</module>
-    <module>gring</module>
+    <module>monitoring</module>
   </modules>
 </project>

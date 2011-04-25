@@ -309,10 +309,10 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 				try {
 					// this try lock is still good for inactivity checks also
 					// because an inactive file will not have any locks.
-					lockAcquired = keyLock.acquireLock(key, 100L);
+					lockAcquired = keyLock.acquireLock(key, 1000L);
 				} catch (InterruptedException e) {
 					Thread.currentThread().interrupt();
-					// we need to thread to leave this method emdiately
+					// we need to thread to leave this method immediately
 					return;
 				}
 

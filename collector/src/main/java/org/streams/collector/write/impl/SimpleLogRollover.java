@@ -11,7 +11,7 @@ import org.streams.collector.write.LogRollover;
 
 /**
  * This class will do a log roll over.<br/>
- * The rollover technique used differs from that of log4j only in that the extenion of a file is always preserved.<br/>
+ * The rollover technique used differs from that of log4j only in that the extension of a file is always preserved.<br/>
  * That is if the file ends in .gz, .txt, .lzo, .bz2 etc the rollover index will happen before the extension and the file<br/>
  * name will be something like 1.gz, 1.txt, 1.lzo, 1.bz2 etc.
  * </p>

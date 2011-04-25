@@ -8,11 +8,10 @@ import java.util.Map;
 import javax.inject.Inject;
 import javax.inject.Named;
 
-import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
+import org.streams.agent.conf.AgentConfiguration;
 import org.streams.agent.conf.LogDirConf;
 import org.streams.commons.app.AbstractStartupCheck;
-
 
 /**
  * 
@@ -28,15 +27,16 @@ import org.streams.commons.app.AbstractStartupCheck;
  */
 @Named
 public class ConfigCheck extends AbstractStartupCheck {
-	
+
 	private static final Logger LOG = Logger.getLogger(ConfigCheck.class);
 
 	LogDirConf logDirConf = null;
-	Configuration configuration;
+	AgentConfiguration configuration;
 
-	public ConfigCheck(){}
-	
-	public ConfigCheck(LogDirConf logDirConf, Configuration configuration) {
+	public ConfigCheck() {
+	}
+
+	public ConfigCheck(LogDirConf logDirConf, AgentConfiguration configuration) {
 		this.logDirConf = logDirConf;
 		this.configuration = configuration;
 	}
@@ -50,7 +50,7 @@ public class ConfigCheck extends AbstractStartupCheck {
 		checkTrue(logDirConf != null, "No LogDirConf instance provided");
 		Collection<File> files = logDirConf.getDirectories();
 
-		checkTrue(!( files == null || files.size() < 1),
+		checkTrue(!(files == null || files.size() < 1),
 				"No directories specified in stream_directories configuration file");
 
 		Map<String, File> consistencyMap = new HashMap<String, File>();
@@ -60,17 +60,20 @@ public class ConfigCheck extends AbstractStartupCheck {
 			// performed here.
 			String fileName = file.getName();
 			File dirToCheck = file;
-			
-			if(fileName.contains("*") || fileName.contains("?")){
+
+			if (fileName.contains("*") || fileName.contains("?")) {
 				dirToCheck = file.getParentFile();
 			}
-			
-			checkTrue(dirToCheck.exists(), "The directory " + dirToCheck.getAbsolutePath()
-					+ " does not exist");
-			checkTrue(dirToCheck.isDirectory(), "The path " + dirToCheck.getAbsolutePath()
-					+ " must be a directory");
-			checkTrue(dirToCheck.canRead(), "The path " + dirToCheck.getAbsolutePath()
-					+ " is not readable");
+
+			checkTrue(dirToCheck.exists(),
+					"The directory " + dirToCheck.getAbsolutePath()
+							+ " does not exist");
+			checkTrue(dirToCheck.isDirectory(),
+					"The path " + dirToCheck.getAbsolutePath()
+							+ " must be a directory");
+			checkTrue(dirToCheck.canRead(),
+					"The path " + dirToCheck.getAbsolutePath()
+							+ " is not readable");
 
 			String logType = logDirConf.getLogType(file);
 
@@ -100,12 +103,12 @@ public class ConfigCheck extends AbstractStartupCheck {
 		this.logDirConf = logDirConf;
 	}
 
-	public Configuration getConfiguration() {
+	public AgentConfiguration getConfiguration() {
 		return configuration;
 	}
 
 	@Inject
-	public void setConfiguration(Configuration configuration) {
+	public void setConfiguration(AgentConfiguration configuration) {
 		this.configuration = configuration;
 	}
 

@@ -5,7 +5,7 @@ import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Configurable;
 import org.springframework.context.annotation.Bean;
-import org.streams.agent.conf.AgentProperties;
+import org.streams.agent.conf.AgentConfiguration;
 import org.streams.agent.mon.status.AgentStatus;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.Metric;
@@ -29,13 +29,10 @@ public class MetricsDI {
 	@Bean
 	public MetricsAppService metricsAppService() {
 
-		org.apache.commons.configuration.Configuration conf = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
 
-		long timePeriod = conf.getLong(
-				AgentProperties.METRIC_REFRESH_PERIOD,
-				10000L);
-
+		long timePeriod = conf.getMetricRefreshPeriod();
+		
 		return new MetricsAppService(beanFactory.getBean(MetricManager.class),
 				timePeriod);
 	}

@@ -38,6 +38,7 @@ import org.streams.agent.agentcli.startup.check.impl.FileTrackingStatusStartupCh
 import org.streams.agent.agentcli.startup.check.impl.PersistenceCheck;
 import org.streams.agent.agentcli.startup.service.impl.DirectoryPollingService;
 import org.streams.agent.agentcli.startup.service.impl.StatusCleanoutService;
+import org.streams.agent.conf.AgentConfiguration;
 import org.streams.agent.conf.AgentProperties;
 import org.streams.agent.conf.LogDirConf;
 import org.streams.agent.file.DirectoryWatcher;
@@ -103,10 +104,8 @@ public class AgentDI {
 
 	@Bean
 	public ConfigCheck configCheck() throws IOException {
-		return new ConfigCheck(
-				beanFactory.getBean(LogDirConf.class),
-				beanFactory
-						.getBean(org.apache.commons.configuration.Configuration.class));
+		return new ConfigCheck(beanFactory.getBean(LogDirConf.class),
+				beanFactory.getBean(AgentConfiguration.class));
 	}
 
 	@Bean
@@ -155,13 +154,12 @@ public class AgentDI {
 	@Lazy
 	public StatusCleanoutService statusCleanoutService() throws Exception {
 		// default once day
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
 		FileStatusCleanoutManager fileStatusCleanoutManager = beanFactory
 				.getBean(FileStatusCleanoutManager.class);
 
-		int statusCleanoutInterval = configuration.getInt(
-				AgentProperties.STATUS_CLEANOUT_INTERVAL, 20000);
+		int statusCleanoutInterval = conf.getStatusCleanoutInterval();
+
 		StatusCleanoutService service = new StatusCleanoutService(
 				fileStatusCleanoutManager, 60000, statusCleanoutInterval);
 
@@ -170,11 +168,9 @@ public class AgentDI {
 
 	@Bean
 	public FilesSendService filesSendService() throws Exception {
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
 
-		int clientThreadCount = configuration.getInt(
-				AgentProperties.CLIENT_THREAD_COUNT, 1);
+		int clientThreadCount = conf.getClientThreadCount();
 
 		return new FilesSendService(
 				beanFactory.getBean(ClientResourceFactory.class),
@@ -197,11 +193,11 @@ public class AgentDI {
 	@Bean
 	@Inject
 	public Component restletComponent() {
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
+		
 		Component component = new Component();
 		component.getServers().add(org.restlet.data.Protocol.HTTP,
-				configuration.getInt(AgentProperties.MONITORING_PORT, 8040));
+				conf.getMonitoringPort());
 		component.getDefaultHost().attach(restletApplication());
 
 		return component;
@@ -307,13 +303,13 @@ public class AgentDI {
 	@Lazy
 	public FileStatusCleanoutManager fileStatusCleanoutManager()
 			throws Exception {
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
+		
 		FileTrackerMemory fileTrackerMemory = beanFactory
 				.getBean(FileTrackerMemory.class);
 
-		long historyTimeLimit = configuration.getLong(
-				AgentProperties.STATUS_HISTORY_LIMIT, Long.MAX_VALUE);
+		long historyTimeLimit = conf.getStatusHistoryLimit();
 		FileStatusCleanoutManager fileStatusCleanoutManager = new FileStatusCleanoutManager(
 				fileTrackerMemory, historyTimeLimit);
 
@@ -334,8 +330,9 @@ public class AgentDI {
 	@Bean
 	@Lazy
 	public DirectoryWatcherFactory directoryWatcherFactory() throws Exception {
-		final org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		final AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
+		
 		final FileTrackerMemory fileTrackerMemory = beanFactory
 				.getBean(FileTrackerMemory.class);
 		DirectoryWatcherFactory fact = new DirectoryWatcherFactory() {
@@ -348,10 +345,8 @@ public class AgentDI {
 
 				ThreadedDirectoryWatcher watcher = map.get(directory);
 				if (watcher == null) {
-					// get polling interval, default is 20 seconds
-					int pollingInterval = configuration.getInt(
-							AgentProperties.DIRECTORY_WATCH_POLL_INTERVAL,
-							20000);
+					int pollingInterval = conf.getPollingInterval();
+					
 					watcher = new ThreadedDirectoryWatcher(logType,
 							pollingInterval, fileTrackerMemory);
 					watcher.setDirectory(directory.getAbsolutePath());
@@ -381,16 +376,14 @@ public class AgentDI {
 	@Bean
 	@Lazy
 	public FileStreamer fileStreamer() throws Exception {
-		org.apache.commons.configuration.Configuration conf = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
+		
 		CompressionCodec codec = beanFactory.getBean(CompressionCodec.class);
 
-		String fileStreamerClass = conf.getString(
-				AgentProperties.FILE_STREAMER_CLASS, null);
+		String fileStreamerClass = conf.getFileStreamerClass();
 		FileStreamer fileStreamer = null;
 
-		long bufferSize = conf.getLong(
-				AgentProperties.FILE_STREAMER_BUFFERSIZE, 1024 * 100);
+		long bufferSize = conf.getConnectionBufferSize();
 
 		if (fileStreamerClass == null) {
 			fileStreamer = new FileLineStreamerImpl(codec,
@@ -409,10 +402,10 @@ public class AgentDI {
 	}
 
 	@Bean
-	public ThreadResourceService threadResourceService(){
+	public ThreadResourceService threadResourceService() {
 		return new ThreadResourceServiceImpl();
 	}
-	
+
 	/**
 	 * ClientConnection instances are done per call to this method.<br/>
 	 * A client connection instance is meant to be used once and then thrown
@@ -430,31 +423,29 @@ public class AgentDI {
 			throws InstantiationException, IllegalAccessException,
 			ClassNotFoundException {
 
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
 		Protocol protocol = beanFactory.getBean(Protocol.class);
 
-
+		// @TODO configuration
 		// load timeout parameters
-		long sendTimeout = configuration.getLong(
-				AgentProperties.CLIENTCONNECTION_SEND_TIMEOUT, 60000L);
-		long connectionEstablishTimeout = configuration.getLong(
-				AgentProperties.CLIENTCONNECTION_ESTABLISH_TIMEOUT, 20000L);
+		long sendTimeout = conf.getConnectionSendTimeout();
+		long connectionEstablishTimeout = conf.getConnectionEstablishTimeout();
 
-		ThreadResourceService resourceService = beanFactory.getBean(ThreadResourceService.class);
-		
+		ThreadResourceService resourceService = beanFactory
+				.getBean(ThreadResourceService.class);
+
 		Timer timer = resourceService.getTimer();
-		ExecutorService workerBossService = resourceService.getWorkerBossService();
+		ExecutorService workerBossService = resourceService
+				.getWorkerBossService();
 		ExecutorService workerService = resourceService.getWorkerService();
-		
-		
+
 		// create factory passing the connection class to the factory.
 		// the factory class will take charge or creating the connection
 		// instances
-		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(timer, 
-				new NioClientSocketChannelFactory(workerBossService, workerService), connectionEstablishTimeout, sendTimeout,
-				protocol);
-		
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(timer,
+				new NioClientSocketChannelFactory(workerBossService,
+						workerService), connectionEstablishTimeout,
+				sendTimeout, protocol);
 
 		return ccFact;
 	}
@@ -483,10 +474,8 @@ public class AgentDI {
 	@Bean
 	public FileSendTask fileSendTask() throws MalformedURLException {
 
-		// get and parse the collector address
-		org.apache.commons.configuration.Configuration conf = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
-		String collector = conf.getString(AgentProperties.COLLECTOR);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
+		String collector = conf.getCollectorAddress();
 
 		if (collector == null) {
 			throw new RuntimeException(

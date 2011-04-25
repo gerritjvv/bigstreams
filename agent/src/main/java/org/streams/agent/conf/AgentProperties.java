@@ -30,7 +30,6 @@ public interface AgentProperties {
 	
 	static final String MONITORING_PORT = "agent.mon.port";
 
-//	static final String CLIENTCONNECTION_FACTORY_CLASS = "agent.send.clientconnection.factory.class";
 	static final String CLIENTCONNECTION_ESTABLISH_TIMEOUT = "agent.send.clientconnection.timeout";
 	static final String CLIENTCONNECTION_SEND_TIMEOUT = "agent.send.clientconnection.sendtimeout";
 

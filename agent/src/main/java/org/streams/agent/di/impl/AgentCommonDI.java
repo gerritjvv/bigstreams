@@ -1,15 +1,13 @@
 package org.streams.agent.di.impl;
 
-import java.lang.reflect.Field;
 import java.util.Iterator;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
-import org.apache.hadoop.io.compress.GzipCodec;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.streams.agent.conf.AgentProperties;
+import org.streams.agent.conf.AgentConfiguration;
 import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.mon.status.impl.AgentStatusImpl;
 import org.streams.commons.compression.CompressionPoolFactory;
@@ -24,9 +22,9 @@ import org.streams.commons.io.impl.ProtocolImpl;
 @Configuration
 public class AgentCommonDI {
 
-	@Autowired(required=true)
+	@Autowired(required = true)
 	BeanFactory beanFactory;
-	
+
 	@Bean
 	public AgentStatus agentStatus() {
 		return new AgentStatusImpl();
@@ -34,12 +32,12 @@ public class AgentCommonDI {
 
 	@Bean
 	public Protocol protocol() {
-		return new ProtocolImpl(beanFactory.getBean(CompressionPoolFactory.class));
+		return new ProtocolImpl(
+				beanFactory.getBean(CompressionPoolFactory.class));
 	}
 
 	/**
 	 * Loads as a singleton the CompressionCodec either default Gzip or the
-	 * codec defined in the chukwa-env-conf.xml file by the
 	 * SEND_COMPRESSION_CODEC proptery.
 	 * 
 	 * @throws NoSuchFieldException
@@ -51,29 +49,10 @@ public class AgentCommonDI {
 			IllegalAccessException, ClassNotFoundException, SecurityException,
 			NoSuchFieldException {
 
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
-
-		if (System.getenv("java.library.path") == null) {
-
-			String path = configuration.getString("java.library.path");
-			if (path != null) {
-				System.setProperty("java.library.path", path);
-				Field fieldSysPath = ClassLoader.class
-						.getDeclaredField("sys_paths");
-				fieldSysPath.setAccessible(true);
-				fieldSysPath.set(System.class.getClassLoader(), null);
-			} else {
-				throw new RuntimeException("java.library.path is not specified");
-			}
-		}
-
-		org.apache.commons.configuration.Configuration conf = configuration;
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
 
 		// if compression codec property not defined load the GzipCodec
-		String compressionCodec = conf.getString(
-				AgentProperties.SEND_COMPRESSION_CODEC,
-				GzipCodec.class.getName());
+		String compressionCodec = conf.getCompressionCodec();
 
 		CompressionCodec codec = null;
 
@@ -83,12 +62,14 @@ public class AgentCommonDI {
 
 		// check for codecs that implement the Configurable interface
 		if (codec instanceof org.apache.hadoop.conf.Configurable) {
+			org.apache.commons.configuration.Configuration commonsConf = conf
+					.getConfiguration();
 			org.apache.hadoop.conf.Configuration hadoopConf = new org.apache.hadoop.conf.Configuration();
 
-			Iterator<String> it = conf.getKeys();
+			Iterator<String> it = commonsConf.getKeys();
 			while (it.hasNext()) {
 				String key = it.next();
-				hadoopConf.set(key, conf.getProperty(key).toString());
+				hadoopConf.set(key, commonsConf.getProperty(key).toString());
 			}
 
 			((org.apache.hadoop.conf.Configurable) codec).setConf(hadoopConf);
@@ -96,19 +77,14 @@ public class AgentCommonDI {
 
 		return codec;
 	}
-	
-	
+
 	@Bean
 	public CompressionPoolFactory compressionPoolFactory() {
 
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
+		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
 
 		int decompressorPoolSize = 1;
-		
-		int agentSendThreadCount = configuration.getInt(AgentProperties.CLIENT_THREAD_COUNT, 1);
-		
-		int compressorPoolSize = configuration.getInt(AgentProperties.COMPRESSOR_POOLSIZE,agentSendThreadCount);
+		int compressorPoolSize = conf.getCompressorPoolSize();
 
 		return new CompressionPoolFactoryImpl(decompressorPoolSize,
 				compressorPoolSize, beanFactory.getBean(AgentStatus.class));

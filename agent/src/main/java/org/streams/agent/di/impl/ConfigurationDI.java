@@ -6,10 +6,13 @@ import java.net.URL;
 import org.apache.commons.configuration.CombinedConfiguration;
 import org.apache.commons.configuration.ConfigurationException;
 import org.apache.commons.configuration.PropertiesConfiguration;
+import org.springframework.beans.BeansException;
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.streams.agent.conf.AgentConfiguration;
 import org.streams.agent.conf.LogDirConf;
-
 
 /**
  * Only loads the configuration related beans.
@@ -17,6 +20,9 @@ import org.streams.agent.conf.LogDirConf;
  */
 @Configuration
 public class ConfigurationDI {
+
+	@Autowired(required = true)
+	BeanFactory beanFactory;
 
 	/**
 	 * Loads the streams-agent.properties file from the classpath
@@ -49,6 +55,20 @@ public class ConfigurationDI {
 		}
 
 		return cc;
+	}
+
+	/**
+	 * AgentConfiguration
+	 * @return AgentConfiguration
+	 * @throws BeansException
+	 * @throws Exception
+	 */
+	@Bean
+	public AgentConfiguration agentConfiguration() throws BeansException, Exception {
+		return new AgentConfiguration(
+				beanFactory
+						.getBean(org.apache.commons.configuration.Configuration.class),
+				beanFactory.getBean(LogDirConf.class));
 	}
 
 	/**

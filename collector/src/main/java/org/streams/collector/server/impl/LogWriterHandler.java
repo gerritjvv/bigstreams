@@ -150,11 +150,6 @@ public class LogWriterHandler extends SimpleChannelHandler {
 
 		try {
 
-			// check that the file status is not currently been used
-			// we only expect one filestatus at any time, having 2 means that
-			// there is a concurrency error
-			checkFileStatusConcurrency(fileStatus);
-
 			// --------------------- Check Coordination parameters
 			// --------------------- that is that the agent is not sending
 			// duplicate
@@ -292,25 +287,6 @@ public class LogWriterHandler extends SimpleChannelHandler {
 		RuntimeException writerException = new RuntimeException(t.toString(), t);
 		writerException.setStackTrace(t.getStackTrace());
 		throw writerException;
-	}
-
-	/**
-	 * This method will check to see if another thread is processing the
-	 * FileTrackingStatus. If so a ConcurrencyException is thrown.
-	 * 
-	 * @param fileStatus
-	 */
-	private void checkFileStatusConcurrency(FileTrackingStatus fileStatus) {
-//		Long ts = null;
-//
-//		if ((ts = fileStatusMap.putIfAbsent(fileStatus,
-//				Long.valueOf(System.currentTimeMillis()))) != null) {
-//			// throw error
-//			throw new ConcurrencyException(fileStatus.getAgentName() + " "
-//					+ fileStatus.getLogType() + " " + fileStatus.getFileName()
-//					+ " is in processed by another thread with ts: " + ts);
-//		}
-
 	}
 
 	/**

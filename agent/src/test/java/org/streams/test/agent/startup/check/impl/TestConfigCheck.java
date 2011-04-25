@@ -4,9 +4,9 @@ import java.io.File;
 
 import junit.framework.TestCase;
 
-import org.apache.commons.configuration.Configuration;
 import org.junit.Test;
 import org.streams.agent.agentcli.startup.check.impl.ConfigCheck;
+import org.streams.agent.conf.AgentConfiguration;
 import org.streams.agent.conf.LogDirConf;
 import org.streams.agent.main.Bootstrap;
 import org.streams.commons.cli.CommandLineProcessorFactory;
@@ -33,7 +33,7 @@ public class TestConfigCheck extends TestCase {
 		
 		ConfigCheck check = new ConfigCheck();
 		check.setLogDirConf(conf);
-		check.setConfiguration((Configuration) bootstrap.getBean("appConfig"));
+		check.setConfiguration( bootstrap.getBean(AgentConfiguration.class));
 	
 		try{
 			//we expect an error from the check with an empty LogDirConf
