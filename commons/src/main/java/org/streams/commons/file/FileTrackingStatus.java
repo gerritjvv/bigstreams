@@ -1,6 +1,7 @@
 package org.streams.commons.file;
 
 import java.io.Serializable;
+import java.util.Date;
 
 /**
  * Represents a snapshot of the file data
@@ -13,6 +14,7 @@ public class FileTrackingStatus implements Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	
+	Date date;
 	long filePointer;
 	long fileSize;
 	int linePointer;
@@ -22,11 +24,13 @@ public class FileTrackingStatus implements Serializable{
 	String logType;
 
 	public FileTrackingStatus() {
+		date = new Date();
 	}
 
-	public FileTrackingStatus(long filePointer, long fileSize,int linePointer,
+	public FileTrackingStatus(Date date, long filePointer, long fileSize,int linePointer,
 			String agentName, String fileName, String logType) {
 		super();
+		this.date = date;
 		this.filePointer = filePointer;
 		this.fileSize = fileSize;
 		this.agentName = agentName;
@@ -120,6 +124,14 @@ public class FileTrackingStatus implements Serializable{
 		} else if (!logType.equals(other.logType))
 			return false;
 		return true;
+	}
+
+	public Date getDate() {
+		return date;
+	}
+
+	public void setDate(Date date) {
+		this.date = date;
 	}
 
 }
