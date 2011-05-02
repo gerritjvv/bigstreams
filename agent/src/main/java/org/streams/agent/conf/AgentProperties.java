@@ -44,4 +44,14 @@ public interface AgentProperties {
 	 */
 	static final String COMPRESSOR_POOLSIZE = "agent.send.compressor.poolsize";
 	
+	/**
+	 * Regex used to extract the date pattern from the file name
+	 */
+	static final String FILENAME_DATE_EXTRACT_PATTERN = "file.date.extract.pattern";
+	
+	/**
+	 * Used in DateFormat to parse the extracted file date
+	 */
+	static final String FILENAME_DATE_FORMAT = "file.date.format";
+	
 }

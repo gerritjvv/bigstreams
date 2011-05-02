@@ -1,6 +1,5 @@
 package org.streams.agent.file;
 
-
 import java.io.File;
 
 import junit.framework.TestCase;
@@ -10,13 +9,14 @@ import org.apache.commons.io.filefilter.WildcardFileFilter;
 import org.junit.Test;
 import org.streams.agent.file.impl.DirectoryPollingThread;
 import org.streams.agent.send.utils.MapTrackerMemory;
+import org.streams.commons.file.impl.SimpleFileDateExtractor;
 
 /**
  * 
  * Tests that the instance finds new files, and registers updates
  * 
  */
-public class TestDirectoryPollingThread extends TestCase{
+public class TestDirectoryPollingThread extends TestCase {
 
 	File baseDir;
 
@@ -39,6 +39,7 @@ public class TestDirectoryPollingThread extends TestCase{
 		MapTrackerMemory memory = new MapTrackerMemory();
 
 		DirectoryPollingThread dpth = new DirectoryPollingThread("test1",
+				new SimpleFileDateExtractor(),
 				memory);
 		dpth.setDirectory(updateFileSizeDecrementDir.getAbsolutePath());
 		dpth.setFileFilter(new WildcardFileFilter("*.log"));
@@ -90,6 +91,7 @@ public class TestDirectoryPollingThread extends TestCase{
 		MapTrackerMemory memory = new MapTrackerMemory();
 
 		DirectoryPollingThread dpth = new DirectoryPollingThread("test1",
+				new SimpleFileDateExtractor(),
 				memory);
 		dpth.setDirectory(updateFilesDir.getAbsolutePath());
 		dpth.setFileFilter(new WildcardFileFilter("*.log"));
@@ -139,6 +141,7 @@ public class TestDirectoryPollingThread extends TestCase{
 		MapTrackerMemory memory = new MapTrackerMemory();
 
 		DirectoryPollingThread dpth = new DirectoryPollingThread("test1",
+				new SimpleFileDateExtractor(),
 				memory);
 		dpth.setDirectory(createFilesDir.getAbsolutePath());
 		dpth.setFileFilter(new WildcardFileFilter("*.log"));
@@ -165,7 +168,8 @@ public class TestDirectoryPollingThread extends TestCase{
 
 		MapTrackerMemory memory = new MapTrackerMemory();
 
-		DirectoryPollingThread dpth = new DirectoryPollingThread("test", memory);
+		DirectoryPollingThread dpth = new DirectoryPollingThread("test",
+				new SimpleFileDateExtractor(), memory);
 		dpth.setDirectory(createFilesDir.getAbsolutePath());
 		dpth.setFileFilter(new WildcardFileFilter("*.log"));
 
@@ -211,7 +215,7 @@ public class TestDirectoryPollingThread extends TestCase{
 			// create new files
 			File file = new File(createFilesDir, "testFile_" + i + ".log");
 			FileUtils.writeStringToFile(file, "Test Data");
-			
+
 			newFilesArr[i] = file;
 
 			File noreadfile = new File(updateFilesDir, "testFile_" + i + ".txt");

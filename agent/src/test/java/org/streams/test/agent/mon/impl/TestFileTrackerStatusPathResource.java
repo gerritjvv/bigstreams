@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.util.Arrays;
+import java.util.Date;
 
 import junit.framework.TestCase;
 
@@ -106,13 +107,13 @@ public class TestFileTrackerStatusPathResource extends TestCase {
 
 		memory.updateFile(new FileTrackingStatus(1L, 10L, new File("test1.txt")
 				.getAbsolutePath(), FileTrackingStatus.STATUS.READY, 3, 4L,
-				"testType1"));
+				"testType1", new Date(), new Date()));
 		memory.updateFile(new FileTrackingStatus(1L, 10L, new File("test2.txt")
 				.getAbsolutePath(), FileTrackingStatus.STATUS.READING, 3, 4L,
-				"testType2"));
+				"testType2", new Date(), new Date()));
 		memory.updateFile(new FileTrackingStatus(1L, 10L, new File("test3.txt")
 				.getAbsolutePath(), FileTrackingStatus.STATUS.DONE, 3, 4L,
-				"testType3"));
+				"testType3", new Date(), new Date()));
 
 		this.memory = memory;
 

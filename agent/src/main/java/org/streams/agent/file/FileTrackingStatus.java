@@ -1,5 +1,6 @@
 package org.streams.agent.file;
 
+import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -21,11 +22,21 @@ import java.util.Map;
  * The agent will be reading batches of lines or bytes from a file and update
  * the linePointer and filePointer accordingly.
  */
-public class FileTrackingStatus implements Cloneable{
+public class FileTrackingStatus implements Cloneable {
 
 	public static enum STATUS {
 		READY, READING, DELETED, CHANGED, DONE, READ_ERROR
 	}
+
+	/**
+	 * Date that appears in the file name if any.<br/>
+	 * This includes up to the file hour
+	 */
+	Date fileDate;
+	/**
+	 * Date that the file was sent i.e. its status was marked as DONE.
+	 */
+	Date sentDate;
 
 	long lastModificationTime = 0L;
 	long fileSize = 0L;
@@ -40,7 +51,7 @@ public class FileTrackingStatus implements Cloneable{
 
 	public FileTrackingStatus(long lastModificationTime, long fileSize,
 			String path, STATUS status, int linePointer, long filePointer,
-			String logType) {
+			String logType, Date fileDate, Date sentDate) {
 		super();
 		this.lastModificationTime = lastModificationTime;
 		this.fileSize = fileSize;
@@ -49,6 +60,8 @@ public class FileTrackingStatus implements Cloneable{
 		this.linePointer = linePointer;
 		this.filePointer = filePointer;
 		this.logType = logType;
+		this.fileDate = fileDate;
+		this.sentDate = sentDate;
 	}
 
 	/**
@@ -138,7 +151,8 @@ public class FileTrackingStatus implements Cloneable{
 		this.linePointer = bytePointer;
 	}
 
-	public Object clone(){
+	public Object clone() {
+
 		FileTrackingStatus file = new FileTrackingStatus();
 		file.setPath(path);
 		file.setFilePointer(filePointer);
@@ -147,10 +161,12 @@ public class FileTrackingStatus implements Cloneable{
 		file.setLinePointer(linePointer);
 		file.setLogType(logType);
 		file.setStatus(status);
-		
+		file.setFileDate(fileDate);
+		file.setSentDate(sentDate);
+
 		return file;
 	}
-	
+
 	/**
 	 * Reads data from a key[=:]value comma/semi comma seperated string
 	 * 
@@ -172,8 +188,8 @@ public class FileTrackingStatus implements Cloneable{
 					values.put(split[0], split[1]);
 				}
 			}
-			
-			//only change those values that are specified in the values map
+
+			// only change those values that are specified in the values map
 			if (values.size() > 0) {
 
 				if (values.containsKey("lastModificationTime")) {
@@ -227,6 +243,22 @@ public class FileTrackingStatus implements Cloneable{
 		} else if (!path.equals(other.path))
 			return false;
 		return true;
+	}
+
+	public Date getFileDate() {
+		return fileDate;
+	}
+
+	public void setFileDate(Date fileDate) {
+		this.fileDate = fileDate;
+	}
+
+	public Date getSentDate() {
+		return sentDate;
+	}
+
+	public void setSentDate(Date sentDate) {
+		this.sentDate = sentDate;
 	}
 
 }

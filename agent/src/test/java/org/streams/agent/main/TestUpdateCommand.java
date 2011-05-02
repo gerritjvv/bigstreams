@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.InputStreamReader;
+import java.util.Date;
 
 import junit.framework.TestCase;
 
@@ -16,7 +17,6 @@ import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.FileTrackingStatusFormatter;
 import org.streams.agent.file.impl.db.DBFileTrackerMemoryImpl;
-import org.streams.agent.main.Bootstrap;
 import org.streams.commons.cli.CommandLineParser;
 import org.streams.commons.cli.CommandLineProcessor;
 import org.streams.commons.cli.CommandLineProcessorFactory;
@@ -102,7 +102,7 @@ public class TestUpdateCommand extends TestCase {
 
 			memory.updateFile(new FileTrackingStatus(1L, 10L,
 					testFileReadyPath, FileTrackingStatus.STATUS.READY, 3, 4L,
-					"testType1"));
+					"testType1", new Date(), new Date()));
 		}
 
 		testFileDonePath = new File(baseDir, "test" + (fileCount / 2) + ".txt")
@@ -112,7 +112,8 @@ public class TestUpdateCommand extends TestCase {
 			testFileDonePath = new File(baseDir, "test" + ((fileCount / 2) + i)
 					+ ".txt").getAbsolutePath();
 			memory.updateFile(new FileTrackingStatus(1L, 10L, testFileDonePath,
-					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1"));
+					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1",
+					new Date(), new Date()));
 		}
 
 		return memory;

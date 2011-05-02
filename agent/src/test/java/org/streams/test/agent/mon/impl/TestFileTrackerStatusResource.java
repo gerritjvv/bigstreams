@@ -4,6 +4,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Date;
 
 import junit.framework.TestCase;
 
@@ -193,7 +194,7 @@ public class TestFileTrackerStatusResource extends TestCase {
 		for (int i = 0; i < pagingTotal; i++) {
 			memory.updateFile(new FileTrackingStatus(1L, 10L, "test" + i
 					+ ".txt", FileTrackingStatus.STATUS.READY, 3, 4L,
-					"testType1"));
+					"testType1", new Date(), new Date()));
 
 		}
 
@@ -241,11 +242,11 @@ public class TestFileTrackerStatusResource extends TestCase {
 		final MapTrackerMemory memory = new MapTrackerMemory();
 
 		memory.updateFile(new FileTrackingStatus(1L, 10L, "test1.txt",
-				FileTrackingStatus.STATUS.READY, 3, 4L, "testType1"));
+				FileTrackingStatus.STATUS.READY, 3, 4L, "testType1", new Date(), new Date()));
 		memory.updateFile(new FileTrackingStatus(1L, 10L, "test2.txt",
-				FileTrackingStatus.STATUS.READING, 3, 4L, "testType2"));
+				FileTrackingStatus.STATUS.READING, 3, 4L, "testType2", new Date(), new Date()));
 		memory.updateFile(new FileTrackingStatus(1L, 10L, "test3.txt",
-				FileTrackingStatus.STATUS.DONE, 3, 4L, "testType3"));
+				FileTrackingStatus.STATUS.DONE, 3, 4L, "testType3", new Date(), new Date()));
 
 		this.memory = memory;
 

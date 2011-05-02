@@ -60,6 +60,7 @@ import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
+import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.impl.IntegerCounterPerSecondMetric;
 import org.streams.commons.status.Status;
 
@@ -139,17 +140,20 @@ public class TestFilesSendWorkerConflict extends TestCase {
 		FileStreamer fileLineStreamer = new FileLineStreamerImpl(codec, pf,
 				500L);
 
+		RandomDistAddressSelector selector = new RandomDistAddressSelector(
+				new InetSocketAddress("localhost", testPort));
+
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
 				ccFact, fileLineStreamer);
 		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
-				new InetSocketAddress("localhost", testPort), memory,
-				new IntegerCounterPerSecondMetric("TEST", new Status() {
+				selector, memory, new IntegerCounterPerSecondMetric("TEST",
+						new Status() {
 
-					@Override
-					public void setCounter(String status, int counter) {
+							@Override
+							public void setCounter(String status, int counter) {
 
-					}
-				}));
+							}
+						}));
 
 		FilesSendWorkerImpl worker = new FilesSendWorkerImpl(queue,
 				agentStatus, memory, fileSendTask);

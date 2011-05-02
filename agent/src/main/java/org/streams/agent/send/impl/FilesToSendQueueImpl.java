@@ -7,7 +7,7 @@ import java.util.List;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.send.FilesToSendQueue;
-
+import org.streams.commons.util.concurrent.KeyLock;
 
 /**
  * 
@@ -18,7 +18,7 @@ import org.streams.agent.send.FilesToSendQueue;
 public class FilesToSendQueueImpl implements FilesToSendQueue {
 
 	/**
-	 * When the List queue is empty this class will cask the FileTrackerMemory for files.<br/>
+	 * When the List queue is empty this class will ask the FileTrackerMemory for files.<br/>
 	 * The maximum number of changed files to be retrieved is set by this default value. default == 10.<br/>
 	 */
 	private static final int DEFAULT_FILES_GET_MAX = 10;
@@ -27,6 +27,9 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 
 	List<FileTrackingStatus> queue = new ArrayList<FileTrackingStatus>();
 
+	private KeyLock keyLock = new KeyLock();
+	
+	
 	public FilesToSendQueueImpl() {
 		
 	}
@@ -75,16 +78,28 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 			if (readyList != null)
 				queue.addAll(readyList);
 
+			// pool the queue again
+			status = poll();
 		}
-
-		// pool the queue again
-		status = poll();
-
-		// check for null again, and if not set the status to READING locking
-		// the file
-		if (status != null) {
-			status.setStatus(FileTrackingStatus.STATUS.READING);
-			trackerMemory.updateFile(status);
+		
+		try {
+			if(status != null){
+				if(keyLock.acquireLock(makeKey(status), 1000L)){
+				    // check for null again, and if not set the status to READING locking
+					// the file
+					status.setStatus(FileTrackingStatus.STATUS.READING);
+					trackerMemory.updateFile(status);
+				}else{
+					//this file is already being read by some other process.
+					//try poll to get the next item in queue
+					status = poll();
+				}
+				
+			}
+		} catch (InterruptedException e) {
+			//do not do anything if interrupted, return immediately
+			Thread.interrupted();
+			return null;
 		}
 
 		return status;
@@ -92,6 +107,16 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 
 	public synchronized void setTrackerMemory(FileTrackerMemory trackerMemory) {
 		this.trackerMemory = trackerMemory;
+	}
+
+	private static final String makeKey(FileTrackingStatus status){
+		return status.getLogType() + ":" + status.getPath();
+	}
+	
+	
+	@Override
+	public void releaseLock(FileTrackingStatus status) {
+		keyLock.releaseLock(makeKey(status));
 	}
 
 }

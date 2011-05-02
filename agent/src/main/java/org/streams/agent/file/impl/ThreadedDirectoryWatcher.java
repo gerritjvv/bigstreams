@@ -7,6 +7,8 @@ import org.apache.commons.io.filefilter.IOFileFilter;
 import org.streams.agent.file.DirectoryWatchListener;
 import org.streams.agent.file.DirectoryWatcher;
 import org.streams.agent.file.FileTrackerMemory;
+import org.streams.commons.file.FileDateExtractor;
+import org.streams.commons.file.impl.SimpleFileDateExtractor;
 
 
 /**
@@ -27,14 +29,14 @@ public class ThreadedDirectoryWatcher implements DirectoryWatcher {
 	int pollingInterval = 20000;
 	
 	final DirectoryPollingThread pollingThread;
-	
-	public ThreadedDirectoryWatcher(String logType, FileTrackerMemory memory){
-		pollingThread = new DirectoryPollingThread(logType, memory);
+
+	public ThreadedDirectoryWatcher(String logType, FileDateExtractor fileDateExtractor, FileTrackerMemory memory){
+		pollingThread = new DirectoryPollingThread(logType, fileDateExtractor, memory);
 		
 	}
-	public ThreadedDirectoryWatcher(String logType, int pollingInterval,  FileTrackerMemory memory){
+	public ThreadedDirectoryWatcher(String logType, int pollingInterval,  FileDateExtractor fileDateExtractor, FileTrackerMemory memory){
 		this.pollingInterval = pollingInterval;
-		pollingThread = new DirectoryPollingThread(logType, memory);
+		pollingThread = new DirectoryPollingThread(logType, fileDateExtractor, memory);
 	}
 	
 	public void start() {

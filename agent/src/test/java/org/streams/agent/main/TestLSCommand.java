@@ -3,6 +3,7 @@ package org.streams.agent.main;
 import java.io.BufferedReader;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,6 @@ import org.streams.agent.cli.impl.LSCommand;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.impl.db.DBFileTrackerMemoryImpl;
-import org.streams.agent.main.Bootstrap;
 import org.streams.agent.mon.impl.FileTrackingStatusResource;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.commons.cli.CommandLineParser;
@@ -345,13 +345,13 @@ public class TestLSCommand extends TestCase {
 		for (int i = 0; i < fileCount / 2; i++) {
 			memory.updateFile(new FileTrackingStatus(1L, 10L, "test" + i
 					+ ".txt", FileTrackingStatus.STATUS.READY, 3, 4L,
-					"testType1"));
+					"testType1", new Date(), new Date()));
 		}
 
 		for (int i = 0; i < fileCount / 2; i++) {
 			memory.updateFile(new FileTrackingStatus(1L, 10L, "test"
 					+ ((fileCount / 2) + i) + ".txt",
-					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1"));
+					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1", new Date(), new Date()));
 		}
 
 		return memory;
@@ -374,13 +374,13 @@ public class TestLSCommand extends TestCase {
 		for (int i = 0; i < fileCount / 2; i++) {
 			memory.updateFile(new FileTrackingStatus(1L, 10L, "test" + i
 					+ ".txt", FileTrackingStatus.STATUS.READY, 3, 4L,
-					"testType1"));
+					"testType1", new Date(), new Date()));
 		}
 
 		for (int i = 0; i < fileCount / 2; i++) {
 			memory.updateFile(new FileTrackingStatus(1L, 10L, "test"
 					+ ((fileCount / 2) + i) + ".txt",
-					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1"));
+					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1", new Date(), new Date()));
 		}
 
 		return memory;

@@ -3,6 +3,7 @@ package org.streams.agent.file.impl;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -15,6 +16,7 @@ import org.streams.agent.file.DirectoryWatchListener;
 import org.streams.agent.file.DirectoryWatcher;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
+import org.streams.commons.file.FileDateExtractor;
 
 /**
  * 
@@ -62,8 +64,13 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 
 	AtomicBoolean isClosed = new AtomicBoolean(false);
 
-	public DirectoryPollingThread(FileTrackerMemory fileTrackerMemory) {
+	FileDateExtractor fileDateExtractor;
+	
+	public DirectoryPollingThread(
+			FileDateExtractor fileDateExtractor,
+			FileTrackerMemory fileTrackerMemory) {
 		logType = "DEFAULT";
+		this.fileDateExtractor = fileDateExtractor;
 		this.fileTrackerMemory = fileTrackerMemory;
 	}
 
@@ -71,9 +78,11 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 	 * 
 	 * @param logType
 	 */
-	public DirectoryPollingThread(String logType,
+	public DirectoryPollingThread(String logType, 
+			FileDateExtractor fileDateExtractor,
 			FileTrackerMemory fileTrackerMemory) {
 		this.logType = logType;
+		this.fileDateExtractor = fileDateExtractor;
 		this.fileTrackerMemory = fileTrackerMemory;
 	}
 
@@ -87,7 +96,7 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 			File directory = new File(dir);
 
 			IOFileFilter filter = null;
-			
+
 			// we need to check if wild cards are included in the file name
 			// if so create the filter
 			String name = directory.getName();
@@ -106,14 +115,14 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 			if (fileFilter != null) {
 				filter = fileFilter;
 			}
-			
+
 			filesIt = FileUtils.iterateFiles(directory, filter,
 					TrueFileFilter.INSTANCE);
 
 			// find new files or updated
 			while (filesIt.hasNext() && !isClosed.get()) {
 				File file = (File) filesIt.next();
-				
+
 				FileTrackingStatus status = fileTrackerMemory
 						.getFileStatus(file);
 				if (status == null) {
@@ -165,12 +174,22 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 	private FileTrackingStatus createFileStatus(
 			FileTrackingStatus.STATUS status, File file) {
 
+		Date fileDate = fileDateExtractor.parse(file);
+		if(fileDate == null){
+			fileDate = new Date();
+			if(LOG.isDebugEnabled()){
+				LOG.debug("Using current date as file date for file " + file);
+			}
+		}
+		
 		FileTrackingStatus fileTrackingStatus = new FileTrackingStatus();
 		fileTrackingStatus.setPath(file.getAbsolutePath());
 		fileTrackingStatus.setStatus(status);
 		fileTrackingStatus.setLastModificationTime(file.lastModified());
 		fileTrackingStatus.setLogType(logType);
 		fileTrackingStatus.setFileSize(file.length());
+		fileTrackingStatus.setFileDate(fileDate);
+		
 		return fileTrackingStatus;
 	}
 

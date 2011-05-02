@@ -3,6 +3,7 @@ package org.streams.agent.send.impl;
 import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.Date;
 
 import org.apache.log4j.Logger;
 import org.streams.agent.file.FileLinePointer;
@@ -11,6 +12,7 @@ import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.send.ClientResource;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
+import org.streams.commons.io.net.AddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 
 /**
@@ -33,7 +35,8 @@ public class FileSendTaskImpl implements FileSendTask {
 	/**
 	 * Collector socket address
 	 */
-	InetSocketAddress collectorAddress;
+	AddressSelector collectorAddressSelector;
+	
 	/**
 	 * Used to manage the persistence of the file status and pointers.
 	 */
@@ -48,10 +51,10 @@ public class FileSendTaskImpl implements FileSendTask {
 	 * @param memory
 	 */
 	public FileSendTaskImpl(ClientResourceFactory clientResourceFactory,
-			InetSocketAddress collectorAddress, FileTrackerMemory memory, CounterMetric fileKilobytesReadMetric) {
+			AddressSelector collectorAddressSelector, FileTrackerMemory memory, CounterMetric fileKilobytesReadMetric) {
 		super();
 		this.clientResourceFactory = clientResourceFactory;
-		this.collectorAddress = collectorAddress;
+		this.collectorAddressSelector = collectorAddressSelector;
 		this.memory = memory;
 		this.fileKilobytesReadMetric = fileKilobytesReadMetric;
 	}
@@ -75,6 +78,10 @@ public class FileSendTaskImpl implements FileSendTask {
 		String logType = fileStatus.getLogType();
 
 		ClientResource clientResource = clientResourceFactory.get();
+
+		InetSocketAddress collectorAddress = collectorAddressSelector.nextAddress();
+		LOG.info("Sending to collector: " + collectorAddress.getHostName() + ": " + collectorAddress.getPort());
+		
 		clientResource.open(collectorAddress, fileLinePointer, file);
 
 		boolean interrupted = false;
@@ -131,6 +138,8 @@ public class FileSendTaskImpl implements FileSendTask {
 					// no more data was sent this means the file has been read
 					// completely
 					fileStatus.setStatus(FileTrackingStatus.STATUS.DONE);
+					fileStatus.setSentDate(new Date());
+					
 					memory.updateFile(fileStatus);
 					break;
 				} else {

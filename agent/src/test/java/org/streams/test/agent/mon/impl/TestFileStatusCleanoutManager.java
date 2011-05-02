@@ -2,6 +2,7 @@ package org.streams.test.agent.mon.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Date;
 
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
@@ -73,7 +74,7 @@ public class TestFileStatusCleanoutManager extends TestCase {
 			File file = new File(baseDir, "test_" + i);
 			
 			memory.updateFile(new FileTrackingStatus(1L, 10L, file.getAbsolutePath(), FileTrackingStatus.STATUS.READY, 3, 4L,
-					"testType1"));
+					"testType1", new Date(), new Date()));
 		}
 		
 		int counter = 0;
@@ -86,7 +87,7 @@ public class TestFileStatusCleanoutManager extends TestCase {
 				file.createNewFile();
 			}
 			memory.updateFile(new FileTrackingStatus(2L, 10L, file.getAbsolutePath(),
-					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1"));
+					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1", new Date(), new Date()));
 		}
 
 		return memory;

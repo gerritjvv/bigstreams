@@ -5,7 +5,9 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -72,7 +74,11 @@ import org.streams.commons.app.impl.AppLifeCycleManagerImpl;
 import org.streams.commons.app.impl.RestletService;
 import org.streams.commons.cli.AppStartCommand;
 import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.file.FileDateExtractor;
+import org.streams.commons.file.impl.SimpleFileDateExtractor;
 import org.streams.commons.io.Protocol;
+import org.streams.commons.io.net.AddressSelector;
+import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricsAppService;
 
@@ -316,6 +322,16 @@ public class AgentDI {
 		return fileStatusCleanoutManager;
 	}
 
+	@Bean
+	public FileDateExtractor fileDateExtractor(){
+		
+		final AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
+		
+		return new SimpleFileDateExtractor(conf.getFileDateExtractPattern(), 
+				conf.getFileDateExtractFormat());
+		
+	}
+	
 	/**
 	 * Creates an anonymous instance of DirectoryWatcherFactory that would
 	 * return an instance of ThreadedDirectoryWatcher An internal Map is used to
@@ -332,6 +348,7 @@ public class AgentDI {
 	public DirectoryWatcherFactory directoryWatcherFactory() throws Exception {
 
 		final AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
+		final FileDateExtractor fileDateExtractor = beanFactory.getBean(FileDateExtractor.class);
 		
 		final FileTrackerMemory fileTrackerMemory = beanFactory
 				.getBean(FileTrackerMemory.class);
@@ -348,7 +365,9 @@ public class AgentDI {
 					int pollingInterval = conf.getPollingInterval();
 					
 					watcher = new ThreadedDirectoryWatcher(logType,
-							pollingInterval, fileTrackerMemory);
+							pollingInterval,
+							fileDateExtractor,
+							fileTrackerMemory);
 					watcher.setDirectory(directory.getAbsolutePath());
 
 					map.put(directory, watcher);
@@ -483,18 +502,31 @@ public class AgentDI {
 							+ AgentProperties.COLLECTOR);
 		}
 
-		// parse the collector url, and error is thrown by the URL class if the
-		// collector url is not correctly formed
-		URL url = new URL(collector);
-		InetSocketAddress collectorAddress = new InetSocketAddress(
-				url.getHost(), url.getPort());
-
 		return new FileSendTaskImpl(
 				beanFactory.getBean(ClientResourceFactory.class),
-				collectorAddress, beanFactory.getBean(FileTrackerMemory.class),
+				beanFactory.getBean("collectorAddressSelector", AddressSelector.class), 
+				beanFactory.getBean(FileTrackerMemory.class),
 				beanFactory.getBean("fileKilobytesReadMetric",
 						CounterMetric.class));
 
+	}
+	
+	@Bean
+	public AddressSelector collectorAddressSelector() throws MalformedURLException{
+		AgentConfiguration agentConf = beanFactory.getBean(AgentConfiguration.class);
+		
+		String[] collectorAddresses = agentConf.getCollectorAddress().split("[,;]");
+		Collection<InetSocketAddress> addressColl = new ArrayList<InetSocketAddress>(collectorAddresses.length);
+		
+		for(String addressStr : collectorAddresses){
+			
+			URL url = new URL(addressStr);
+			
+			addressColl.add(new InetSocketAddress(url.getHost(), url.getPort()));
+			
+		}
+
+		return new RandomDistAddressSelector(addressColl);
 	}
 
 	@Bean

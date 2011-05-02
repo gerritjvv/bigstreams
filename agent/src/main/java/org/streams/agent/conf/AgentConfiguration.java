@@ -2,7 +2,10 @@ package org.streams.agent.conf;
 
 import java.io.File;
 import java.lang.reflect.Field;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
+import java.util.regex.Pattern;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.hadoop.io.compress.GzipCodec;
@@ -82,6 +85,15 @@ public class AgentConfiguration {
 
 	Configuration configuration;
 
+	/**
+	 * The regex pattern to use to extract the file date from the filename
+	 */
+	Pattern fileDateExtractPattern;
+	/**
+	 * Date format to parse the date extracted using the fileDateExtractPattern.
+	 */
+	DateFormat fileDateExtractFormat;
+	
 	public AgentConfiguration() {
 
 	}
@@ -91,6 +103,15 @@ public class AgentConfiguration {
 
 		this.configuration = configuration;
 
+		fileDateExtractPattern = Pattern.compile(
+				configuration.getString(
+				AgentProperties.FILENAME_DATE_EXTRACT_PATTERN,
+				"\\d{4,4}-\\d\\d-\\d\\d-\\d\\d")
+				);
+		fileDateExtractFormat = new SimpleDateFormat(
+				configuration.getString(AgentProperties.FILENAME_DATE_FORMAT, "yyyy-MM-dd-HH")
+				);
+		
 		metricRefreshPeriod = configuration.getLong(
 				AgentProperties.METRIC_REFRESH_PERIOD, 10000L);
 
@@ -288,6 +309,22 @@ public class AgentConfiguration {
 
 	public void setCollectorAddress(String collectorAddress) {
 		this.collectorAddress = collectorAddress;
+	}
+
+	public Pattern getFileDateExtractPattern() {
+		return fileDateExtractPattern;
+	}
+
+	public void setFileDateExtractPattern(Pattern fileDateExtractPattern) {
+		this.fileDateExtractPattern = fileDateExtractPattern;
+	}
+
+	public DateFormat getFileDateExtractFormat() {
+		return fileDateExtractFormat;
+	}
+
+	public void setFileDateExtractFormat(DateFormat fileDateExtractFormat) {
+		this.fileDateExtractFormat = fileDateExtractFormat;
 	}
 
 }

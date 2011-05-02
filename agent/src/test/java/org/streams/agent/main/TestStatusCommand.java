@@ -5,6 +5,7 @@ import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.InputStreamReader;
+import java.util.Date;
 
 import junit.framework.TestCase;
 
@@ -16,7 +17,6 @@ import org.streams.agent.cli.impl.AgentCommandLineParser;
 import org.streams.agent.cli.impl.StatusCommand;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.FileTrackingStatusFormatter;
-import org.streams.agent.main.Bootstrap;
 import org.streams.agent.mon.impl.FileTrackingStatusPathResource;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.commons.cli.CommandLineParser;
@@ -264,7 +264,7 @@ public class TestStatusCommand extends TestCase {
 
 			memory.updateFile(new FileTrackingStatus(1L, 10L,
 					testFileReadyPath, FileTrackingStatus.STATUS.READY, 3, 4L,
-					"testType1"));
+					"testType1", new Date(), new Date()));
 		}
 
 		testFileDonePath = new File(".", "test" + (fileCount / 2) + ".txt")
@@ -274,7 +274,7 @@ public class TestStatusCommand extends TestCase {
 			testFileDonePath = new File(".", "test" + ((fileCount / 2) + i)
 					+ ".txt").getAbsolutePath();
 			memory.updateFile(new FileTrackingStatus(1L, 10L, testFileDonePath,
-					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1"));
+					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1", new Date(), new Date()));
 		}
 
 		return memory;

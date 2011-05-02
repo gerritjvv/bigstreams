@@ -15,6 +15,7 @@ import org.streams.agent.file.impl.ThreadedDirectoryWatcher;
 import org.streams.agent.main.Bootstrap;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.commons.cli.CommandLineProcessorFactory;
+import org.streams.commons.file.impl.SimpleFileDateExtractor;
 
 
 /**
@@ -47,7 +48,7 @@ public class TestDirectoryWatcher extends TestCase {
 
 	@Override
 	protected void tearDown() throws Exception {
-		FileUtils.deleteDirectory(testDirectoryFile);
+		//do not delete any directories here.
 	}
 
 	@Test
@@ -62,6 +63,7 @@ public class TestDirectoryWatcher extends TestCase {
 		WildcardFileFilter fileFilter = new WildcardFileFilter("*test*");
 
 		DirectoryWatcher watch = new ThreadedDirectoryWatcher("Test",
+				new SimpleFileDateExtractor(),
 				fileTrackerMemory);
 		watch.setDirectory(testMethodDir.getAbsolutePath());
 		watch.setFileTrackerMemory(fileTrackerMemory);
@@ -141,6 +143,7 @@ public class TestDirectoryWatcher extends TestCase {
 
 	}
 	
+	@SuppressWarnings("rawtypes")
 	@Test
 	public void testDirectoryWatcherFileCreateUnseenFileGlob() throws InterruptedException,
 			IOException {
@@ -191,6 +194,7 @@ public class TestDirectoryWatcher extends TestCase {
 		WildcardFileFilter fileFilter = new WildcardFileFilter("*test*");
 
 		DirectoryWatcher watch = new ThreadedDirectoryWatcher("Test",
+				new SimpleFileDateExtractor(),
 				fileTrackerMemory);
 		watch.setDirectory(testMethodDir.getAbsolutePath());
 		watch.setFileFilter(fileFilter);

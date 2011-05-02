@@ -1,6 +1,7 @@
 package org.streams.agent.file.impl.db;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -27,11 +28,11 @@ import org.streams.agent.file.FileTrackingStatus;
 @Entity
 @Table(name = "file_tracking_status", uniqueConstraints = { @UniqueConstraint(columnNames = { "path" }) })
 @NamedQueries(value = {
-		@NamedQuery(name = "fileTrackingStatus.byStatusReady", query = "from FileTrackingStatusEntity f where f.status='READY'", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
-		@NamedQuery(name = "fileTrackingStatus.byStatus", query = "from FileTrackingStatusEntity f where f.status=:status", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
-		@NamedQuery(name = "fileTrackingStatus.list", query = "from FileTrackingStatusEntity f", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
-		@NamedQuery(name = "fileTrackingStatus.byPathUpdate", query = "from FileTrackingStatusEntity f where f.path=:path"),
-		@NamedQuery(name = "fileTrackingStatus.byPath", query = "from FileTrackingStatusEntity f where f.path=:path", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileTrackingStatus.byStatusReady", query = "from FileTrackingStatusEntity f where f.status='READY' ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileTrackingStatus.byStatus", query = "from FileTrackingStatusEntity f where f.status=:status ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileTrackingStatus.list", query = "from FileTrackingStatusEntity f ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileTrackingStatus.byPathUpdate", query = "from FileTrackingStatusEntity f where f.path=:path ORDER BY f.fileDate DESC"),
+		@NamedQuery(name = "fileTrackingStatus.byPath", query = "from FileTrackingStatusEntity f where f.path=:path ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileTrackingStatus.countByStatus", query = "select COUNT(*) as count from FileTrackingStatusEntity f WHERE f.status=:status", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileTrackingStatus.count", query = "select COUNT(*) as count from FileTrackingStatusEntity f", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }) 
 	})
@@ -52,12 +53,15 @@ public class FileTrackingStatusEntity implements Serializable {
 	long filePointer = 0L;
 	String logType;
 
+	Date fileDate;
+	Date sentDate;
+	
 	public FileTrackingStatusEntity(){}
 	
 	
 	public FileTrackingStatusEntity(long lastModificationTime, long fileSize,
 			String path, String status, int linePointer, long filePointer,
-			String logType) {
+			String logType, Date fileDate, Date sentDate) {
 		super();
 		this.lastModificationTime = lastModificationTime;
 		this.fileSize = fileSize;
@@ -66,6 +70,8 @@ public class FileTrackingStatusEntity implements Serializable {
 		this.linePointer = linePointer;
 		this.filePointer = filePointer;
 		this.logType = logType;
+		this.fileDate = fileDate;
+		this.sentDate = sentDate;
 	}
 
 
@@ -142,6 +148,26 @@ public class FileTrackingStatusEntity implements Serializable {
 		this.logType = logType;
 	}
 
+
+	public Date getFileDate() {
+		return fileDate;
+	}
+
+	@Column(name = "file_date", nullable = false)
+	public void setFileDate(Date fileDate) {
+		this.fileDate = fileDate;
+	}
+
+	public Date getSentDate() {
+		return sentDate;
+	}
+
+
+	@Column(name = "sent_date", nullable = true)
+	public void setSentDate(Date sentDate) {
+		this.sentDate = sentDate;
+	}
+	
 	/**
 	 * Creates a FileTrackingStatusEntity instance without an id value
 	 * @param fileTrackingStatus
@@ -155,7 +181,10 @@ public class FileTrackingStatusEntity implements Serializable {
 				fileTrackingStatus.getStatus().toString().toUpperCase(),
 				fileTrackingStatus.getLinePointer(),
 				fileTrackingStatus.getFilePointer(),
-				fileTrackingStatus.getLogType().toLowerCase());
+				fileTrackingStatus.getLogType().toLowerCase(),
+				fileTrackingStatus.getFileDate(),
+				fileTrackingStatus.getSentDate());
+		
 	}
 	
 	/**
@@ -171,7 +200,8 @@ public class FileTrackingStatusEntity implements Serializable {
 		setLogType(status.getLogType());
 		setPath(status.getPath());
 		setStatus(status.getStatus().toString().toUpperCase());
-		
+		setFileDate(status.getFileDate());
+		setSentDate(status.getSentDate());
 	}
 	
 	/**
@@ -183,7 +213,8 @@ public class FileTrackingStatusEntity implements Serializable {
 
 		return new FileTrackingStatus(getLastModificationTime(), getFileSize(),
 				getPath(), FileTrackingStatus.STATUS.valueOf(getStatus()),
-				getLinePointer(), getFilePointer(), getLogType().toLowerCase());
+				getLinePointer(), getFilePointer(), getLogType().toLowerCase(),
+				getFileDate(), getSentDate());
 
 	}
 

@@ -4,9 +4,14 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
 import java.io.Writer;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -23,8 +28,12 @@ public class FileTrackingStatusFormatter {
 		TXT, JSON
 	}
 
+	private static Logger LOG = Logger.getLogger(FileTrackingStatusFormatter.class);
+	
 	private static final ObjectMapper mapper = new ObjectMapper();
-
+	private static final DateFormat simpleDateFormat = new SimpleDateFormat("yyyy-MM-dd-HH");
+	
+	
 	/**
 	 * Reads a collection of FileTrackingStatus.<br/>
 	 * If plain text is a list of line separated plain text.<br/>
@@ -134,7 +143,7 @@ public class FileTrackingStatusFormatter {
 		// --- Again time constraints prevail :(
 
 		FileTrackingStatus file = null;
-
+		
 		String[] split = str.split("\t");
 		if (split != null && split.length > 0) {
 			file = new FileTrackingStatus();
@@ -146,7 +155,16 @@ public class FileTrackingStatusFormatter {
 			file.setLastModificationTime(Long.valueOf(split[4]));
 			file.setFilePointer(Long.valueOf(split[5]));
 			file.setLinePointer(Integer.parseInt(split[6]));
-
+			try {
+				file.setFileDate(simpleDateFormat.parse(split[7]));
+			} catch (ParseException e) {
+				LOG.error(e.toString(), e);
+			}
+			try {
+				file.setSentDate(simpleDateFormat.parse(split[8]));
+			} catch (ParseException e) {
+				LOG.error(e.toString(), e);
+			}
 		}
 		return file;
 	}
@@ -162,10 +180,23 @@ public class FileTrackingStatusFormatter {
 		// more elegant implementation.
 		// --- Again time constraints prevail :(
 
+		Date fileDate = file.getFileDate();
+		Date sentDate = file.getSentDate();
+		
+		if(fileDate == null){
+			fileDate = new Date();
+		}
+		if(sentDate == null){
+			sentDate = new Date();
+		}
+		
 		return file.getFileSize() + "\t" + file.getLogType() + "\t"
 				+ file.getStatus() + "\t" + file.getPath() + "\t"
 				+ file.getLastModificationTime() + "\t" + file.getFilePointer()
-				+ "\t" + file.getLinePointer();
+				+ "\t" + file.getLinePointer() 
+				+ "\t" + simpleDateFormat.format(fileDate)
+				+ "\t" + simpleDateFormat.format(sentDate);
+		
 	}
 
 }

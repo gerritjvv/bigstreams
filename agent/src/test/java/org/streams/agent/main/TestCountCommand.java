@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -13,7 +14,6 @@ import org.junit.Test;
 import org.restlet.Component;
 import org.streams.agent.cli.impl.CountCommand;
 import org.streams.agent.file.FileTrackingStatus;
-import org.streams.agent.main.Bootstrap;
 import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.commons.cli.CommandLineParser;
 import org.streams.commons.cli.CommandLineProcessor;
@@ -206,13 +206,13 @@ public class TestCountCommand extends TestCase {
 		for (int i = 0; i < fileCount / 2; i++) {
 			memory.updateFile(new FileTrackingStatus(1L, 10L, "test" + i
 					+ ".txt", FileTrackingStatus.STATUS.READY, 3, 4L,
-					"testType1"));
+					"testType1", new Date(), new Date()));
 		}
 
 		for (int i = 0; i < fileCount / 2; i++) {
 			memory.updateFile(new FileTrackingStatus(1L, 10L, "test"
 					+ ((fileCount / 2) + i) + ".txt",
-					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1"));
+					FileTrackingStatus.STATUS.DONE, 3, 4L, "testType1", new Date(), new Date()));
 		}
 
 		return memory;

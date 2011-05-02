@@ -79,10 +79,13 @@ public class FilesSendWorkerImpl implements Runnable {
 			try{
 				
 				fileStatus = pollInterruptibly();
-				fileObj = new File(fileStatus.getPath());
-				
-				//delegate the actual work of sending the file data to the FileSendTask.
-				fileSendTask.sendFileData(fileStatus);
+				try{
+					fileObj = new File(fileStatus.getPath());
+					//delegate the actual work of sending the file data to the FileSendTask.
+					fileSendTask.sendFileData(fileStatus);
+				}finally{
+					queue.releaseLock(fileStatus);
+				}
 				
 				//sleep for a second between files
 				Thread.sleep(waitBetweenFileSends);

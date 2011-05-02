@@ -2,6 +2,7 @@ package org.streams.test.agent.file.db;
 
 import java.io.File;
 import java.util.Collection;
+import java.util.Date;
 
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
@@ -32,6 +33,8 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			status.setLogType("TestLogType1");
 			status.setPath("/test/testPath1.txt");
 			status.setStatus(FileTrackingStatus.STATUS.READY);
+			status.setFileDate(new Date());
+			status.setSentDate(new Date());
 			
 			memory.updateFile(status);
 			
@@ -65,6 +68,8 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 				status.setLogType("TestLogType1");
 				status.setPath("/test/testPath" + i + ".txt");
 				status.setStatus(FileTrackingStatus.STATUS.READY);
+				status.setFileDate(new Date());
+				status.setSentDate(new Date());
 				
 				if(i == 1){
 					file1 = status;
@@ -91,6 +96,11 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 	}
 	
 	@Test
+	public void setListOrder(){
+		
+	}
+	
+	@Test
 	public void testList() throws Exception {
 
 		
@@ -105,6 +115,8 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 				status.setLogType("TestLogType1");
 				status.setPath("/test/testPath" + i + ".txt");
 				status.setStatus(FileTrackingStatus.STATUS.READY);
+				status.setFileDate(new Date());
+				status.setSentDate(new Date());
 				
 				memory.updateFile(status);
 			}

@@ -244,16 +244,12 @@ public class DBFileTrackerMemoryImpl implements FileTrackerMemory {
 
 				entityManager.persist(entity);
 
-				// LOG.info("Updated -> Created updated entry " +
-				// fileTrackingStatus.getPath());
-
 			} catch (NoResultException noResultExcp) {
 				// the entity does not exist yet
 				FileTrackingStatusEntity entity = FileTrackingStatusEntity
 						.createEntity(fileTrackingStatus);
 				entityManager.persist(entity);
-				// LOG.info("Updated -> Created new entry " +
-				// fileTrackingStatus.getPath());
+				
 			}
 
 		} finally {
