@@ -81,8 +81,15 @@ public class FilesSendWorkerImpl implements Runnable {
 				fileStatus = pollInterruptibly();
 				try{
 					fileObj = new File(fileStatus.getPath());
-					//delegate the actual work of sending the file data to the FileSendTask.
-					fileSendTask.sendFileData(fileStatus);
+					//lets see if the file exists.
+					//if it doesn't mark as DELETED.
+					if(!fileObj.exists()){
+						fileStatus.setStatus(FileTrackingStatus.STATUS.DELETED);
+						memory.updateFile(fileStatus);
+					}else{
+						//delegate the actual work of sending the file data to the FileSendTask.
+						fileSendTask.sendFileData(fileStatus);
+					}
 				}finally{
 					queue.releaseLock(fileStatus);
 				}

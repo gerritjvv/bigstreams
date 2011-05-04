@@ -119,7 +119,8 @@ public class FileTrackingStatusResource extends ServerResource {
 		FileTrackingStatus.STATUS status = null;
 
 		if (statusName == null || statusName.trim().length() < 1) {
-			; // do nothing for the moment
+			//set status to READY
+			status = FileTrackingStatus.STATUS.READY;
 		} else {
 			try {
 				status = FileTrackingStatus.STATUS.valueOf(statusName);

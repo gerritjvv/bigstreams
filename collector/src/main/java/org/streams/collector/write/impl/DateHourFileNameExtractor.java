@@ -58,7 +58,7 @@ public class DateHourFileNameExtractor implements LogFileNameExtractor {
 		return buff.toString();
 	}
 
-	private static final String extractDateTime(String fileName) {
+	public static final String extractDateTime(String fileName) {
 
 		Matcher m = dateTimePattern.matcher(fileName);
 

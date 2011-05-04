@@ -2,6 +2,7 @@ package org.streams.collector.server.impl;
 
 import java.io.DataInputStream;
 import java.io.IOException;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -130,10 +131,10 @@ public class LogWriterHandler extends SimpleChannelHandler {
 		final String agentName = header.getHost();
 		final String fileName = header.getFileName();
 		final String logType = header.getLogType();
-
+		
 		final FileTrackingStatus fileStatus = new FileTrackingStatus(
-				header.getFilePointer(), header.getFileSize(),
-				header.getLinePointer(), agentName, fileName, logType);
+				new Date(), header.getFilePointer(), header.getFileSize(),
+				header.getLinePointer(), agentName, fileName, logType, header.getFileDate());
 
 		ChannelFuture future = null;
 		int bytesWritten = -1;

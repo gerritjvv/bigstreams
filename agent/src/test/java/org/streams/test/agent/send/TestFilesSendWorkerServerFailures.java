@@ -44,6 +44,7 @@ import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.ServerUtil;
 import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
+import org.streams.commons.file.impl.SimpleFileDateExtractor;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.impl.ProtocolImpl;
 import org.streams.commons.io.net.impl.RandomDistAddressSelector;
@@ -259,7 +260,7 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 				5000L);
 
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
-				ccFact, fileLineStreamer);
+				ccFact, fileLineStreamer, new SimpleFileDateExtractor());
 		
 		RandomDistAddressSelector selector = new RandomDistAddressSelector(new InetSocketAddress("localhost", port));
 		

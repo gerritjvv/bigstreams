@@ -81,13 +81,14 @@ public class FileSendTaskImpl implements FileSendTask {
 
 		InetSocketAddress collectorAddress = collectorAddressSelector.nextAddress();
 		LOG.info("Sending to collector: " + collectorAddress.getHostName() + ": " + collectorAddress.getPort());
-		
-		clientResource.open(collectorAddress, fileLinePointer, file);
 
 		boolean interrupted = false;
 		LOG.info("FILE SEND START " + fileStatus.getPath());
 		
 		try{
+			
+			clientResource.open(collectorAddress, fileLinePointer, file);
+
 			while (!(interrupted = Thread.interrupted())) {
 	
 				long uniqueId = System.nanoTime();

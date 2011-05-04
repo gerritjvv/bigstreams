@@ -4,6 +4,7 @@ import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResource;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileStreamer;
+import org.streams.commons.file.FileDateExtractor;
 
 /**
  * 
@@ -14,16 +15,18 @@ public class ClientResourceFactoryImpl implements ClientResourceFactory {
 
 	FileStreamer fileStreamer;
 	ClientConnectionFactory connectionFactory;
-
+	FileDateExtractor fileDateExtractor;
+	
 	public ClientResourceFactoryImpl(ClientConnectionFactory connectionFactory,
-			FileStreamer fileStreamer) {
+			FileStreamer fileStreamer, FileDateExtractor fileDateExtractor) {
 		this.connectionFactory = connectionFactory;
 		this.fileStreamer = fileStreamer;
+		this.fileDateExtractor = fileDateExtractor;
 	}
 
 	@Override
 	public ClientResource get() {
-		return new ClientResourceImpl(connectionFactory, fileStreamer);
+		return new ClientResourceImpl(connectionFactory, fileStreamer, fileDateExtractor);
 	}
 
 	/**

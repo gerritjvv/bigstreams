@@ -187,11 +187,8 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			}
 
 			FileUtils.forceMkdir(file.getParentFile());
-			if (!file.createNewFile() && !file.createNewFile()) {
-				throw new IOException("Error creating file "
-						+ file.getAbsolutePath());
-			}
-
+			file.createNewFile();
+			
 			// wait for file creation. This is needed if the file is stored
 			// via NFS or other.
 			// a 30 second limit is created

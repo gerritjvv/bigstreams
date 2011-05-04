@@ -14,21 +14,33 @@ public class FileTrackingStatus implements Serializable{
 	 */
 	private static final long serialVersionUID = 1L;
 	
+	/**
+	 * This is the last modified or read date.
+	 * E.g. if used by the coordination service, this means the last read date.
+	 */
 	Date date;
 	long filePointer;
 	long fileSize;
+	
+	long lastModifiedTime;
+	
 	int linePointer;
 	
 	String agentName;
 	String fileName;
 	String logType;
 
+	/**
+	 * The file date has no influence on the hashcode equals or other.
+	 */
+	Date fileDate;
+	
 	public FileTrackingStatus() {
 		date = new Date();
 	}
 
 	public FileTrackingStatus(Date date, long filePointer, long fileSize,int linePointer,
-			String agentName, String fileName, String logType) {
+			String agentName, String fileName, String logType, Date fileDate) {
 		super();
 		this.date = date;
 		this.filePointer = filePointer;
@@ -37,6 +49,7 @@ public class FileTrackingStatus implements Serializable{
 		this.fileName = fileName;
 		this.logType = logType;
 		this.linePointer = linePointer;
+		this.fileDate = fileDate;
 	}
 
 	public long getFilePointer() {
@@ -132,6 +145,22 @@ public class FileTrackingStatus implements Serializable{
 
 	public void setDate(Date date) {
 		this.date = date;
+	}
+
+	public Date getFileDate() {
+		return fileDate;
+	}
+
+	public void setFileDate(Date fileDate) {
+		this.fileDate = fileDate;
+	}
+
+	public long getLastModifiedTime() {
+		return lastModifiedTime;
+	}
+
+	public void setLastModifiedTime(long lastModifiedTime) {
+		this.lastModifiedTime = lastModifiedTime;
 	}
 
 }

@@ -27,7 +27,7 @@ public class TestFileTrackingStatusFormatter extends TestCase{
 		List<FileTrackingStatus> coll = new ArrayList<FileTrackingStatus>();
 		
 		for(int i = 0; i < 10; i++){
-			coll.add(new FileTrackingStatus(new Date(), 0, 10, 0, "test", "test"+ i, "test"+i));
+			coll.add(new FileTrackingStatus(new Date(), 0, 10, 0, "test", "test"+ i, "test"+i, new Date()));
 		}
 		StringWriter writer = new StringWriter();
 		

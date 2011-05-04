@@ -68,7 +68,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			throws CoordinationException {
 
 		SyncPointer pointer = null;
-		;
+		
 		Throwable error = null;
 
 		InetSocketAddress lockInetAddress = stickyLockInetAddress.get();

@@ -57,6 +57,7 @@ import org.streams.agent.send.utils.MessageEventBag;
 import org.streams.agent.send.utils.MessageFrameDecoder;
 import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
+import org.streams.commons.file.impl.SimpleFileDateExtractor;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
@@ -144,7 +145,7 @@ public class TestFilesSendWorkerConflict extends TestCase {
 				new InetSocketAddress("localhost", testPort));
 
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
-				ccFact, fileLineStreamer);
+				ccFact, fileLineStreamer, new SimpleFileDateExtractor());
 		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
 				selector, memory, new IntegerCounterPerSecondMetric("TEST",
 						new Status() {

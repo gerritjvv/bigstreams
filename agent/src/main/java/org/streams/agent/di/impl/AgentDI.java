@@ -480,7 +480,8 @@ public class AgentDI {
 	public ClientResourceFactory clientResourceFactory() {
 		return new ClientResourceFactoryImpl(
 				beanFactory.getBean(ClientConnectionFactory.class),
-				beanFactory.getBean(FileStreamer.class));
+				beanFactory.getBean(FileStreamer.class),
+				beanFactory.getBean(FileDateExtractor.class));
 	}
 
 	/**

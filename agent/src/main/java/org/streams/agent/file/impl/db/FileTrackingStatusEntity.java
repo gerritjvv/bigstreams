@@ -153,7 +153,7 @@ public class FileTrackingStatusEntity implements Serializable {
 		return fileDate;
 	}
 
-	@Column(name = "file_date", nullable = false)
+	@Column(name = "file_date", nullable = true)
 	public void setFileDate(Date fileDate) {
 		this.fileDate = fileDate;
 	}

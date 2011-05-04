@@ -9,6 +9,7 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -89,8 +90,8 @@ public class TestLocalFileWriter extends TestCase {
 
 				public Boolean call() throws Exception {
 
-					FileTrackingStatus status = new FileTrackingStatus(0, file
-							.length(), 0, "agent1", file.getName(), "type1");
+					FileTrackingStatus status = new FileTrackingStatus(new Date(), 0, file
+							.length(), 0, "agent1", file.getName(), "type1", new Date());
 
 					BufferedReader reader = new BufferedReader(new FileReader(
 							file));
@@ -202,8 +203,8 @@ public class TestLocalFileWriter extends TestCase {
 				@Override
 				public Boolean call() throws Exception {
 
-					FileTrackingStatus status = new FileTrackingStatus(0, file
-							.length(), 0, "agent1", file.getName(), "type1");
+					FileTrackingStatus status = new FileTrackingStatus(new Date(), 0, file
+							.length(), 0, "agent1", file.getName(), "type1", new Date());
 					BufferedReader reader = new BufferedReader(new FileReader(
 							file));
 					try {
@@ -339,9 +340,9 @@ public class TestLocalFileWriter extends TestCase {
 		// to the writer
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		String line = null;
-		FileTrackingStatus fileStatus = new FileTrackingStatus(0L,
+		FileTrackingStatus fileStatus = new FileTrackingStatus(new Date(), 0L,
 				testFile.length(), 0, "agent1", testFile.getAbsolutePath(),
-				"type1");
+				"type1", new Date());
 		try {
 			writer.init();
 

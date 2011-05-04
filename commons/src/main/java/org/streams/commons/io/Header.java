@@ -1,5 +1,7 @@
 package org.streams.commons.io;
 
+import java.util.Date;
+
 import org.codehaus.jackson.map.ObjectMapper;
 
 public class Header {
@@ -20,12 +22,14 @@ public class Header {
 	long filePointer = 0L;
 	int linePointer = 0;
 	long uniqueId;
-
+	
+	Date fileDate;
+	
 	public Header() {
 	}
 
 	public Header(String host, String fileName, String logType, long uniqueId,
-			String codecClassName, long filePointer, long fileSize, int linePointer) {
+			String codecClassName, long filePointer, long fileSize, int linePointer, Date fileDate) {
 		super();
 		this.host = host;
 		this.fileName = fileName;
@@ -35,14 +39,24 @@ public class Header {
 		this.filePointer = filePointer;
 		this.fileSize = fileSize;
 		this.linePointer = linePointer;
+		this.fileDate = fileDate;
 	}
 
+	
 	public String getCodecClassName() {
 		return codecClassName;
 	}
 
 	public void setCodecClassName(String codecClassName) {
 		this.codecClassName = codecClassName;
+	}
+
+	public Date getFileDate() {
+		return fileDate;
+	}
+
+	public void setFileDate(Date fileDate) {
+		this.fileDate = fileDate;
 	}
 
 	public String getHost() {
@@ -153,6 +167,5 @@ public class Header {
 			return false;
 		return true;
 	}
-
 
 }

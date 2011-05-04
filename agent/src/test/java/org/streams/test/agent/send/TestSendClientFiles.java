@@ -37,6 +37,7 @@ import org.streams.agent.send.utils.ServerUtil;
 import org.streams.commons.cli.CommandLineProcessorFactory;
 import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.compression.impl.CompressionPoolFactoryImpl;
+import org.streams.commons.file.impl.SimpleFileDateExtractor;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.impl.ProtocolImpl;
@@ -80,7 +81,7 @@ public class TestSendClientFiles extends TestCase {
 						workerService), 10000L, 10000L, new ProtocolImpl(pf));
 
 		ClientResourceImpl clientResource = new ClientResourceImpl(ccFact,
-				fileLineStreamer);
+				fileLineStreamer, new SimpleFileDateExtractor());
 
 		try {
 			runTest(clientResource);
