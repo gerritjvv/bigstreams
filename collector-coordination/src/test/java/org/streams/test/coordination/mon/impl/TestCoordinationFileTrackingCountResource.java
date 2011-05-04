@@ -1,5 +1,7 @@
 package org.streams.test.coordination.mon.impl;
 
+import java.util.Date;
+
 import junit.framework.TestCase;
 
 import org.apache.commons.configuration.Configuration;
@@ -11,8 +13,8 @@ import org.streams.commons.cli.CommandLineProcessorFactory;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.coordination.CoordinationProperties;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
-
 
 public class TestCoordinationFileTrackingCountResource extends TestCase {
 
@@ -28,14 +30,14 @@ public class TestCoordinationFileTrackingCountResource extends TestCase {
 	public void testCountQuery() throws Exception {
 
 		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		int fileCount = 10;
 
 		// prepare data
 		for (int i = 0; i < fileCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10L, 0,
-					"test" + i, "test" + i, "type" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0,
+					10L, 0, "test" + i, "test" + i, "type" + i, new Date());
 			memory.setStatus(stat);
 		}
 
@@ -63,15 +65,16 @@ public class TestCoordinationFileTrackingCountResource extends TestCase {
 	 * @throws Exception
 	 */
 	public void testLs() throws Exception {
+		
 		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		int fileCount = 10;
 
 		// prepare data
 		for (int i = 0; i < fileCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10L, 0,
-					"test" + i, "test" + i, "type" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0,
+					10L, 0, "test" + i, "test" + i, "type" + i, new Date());
 			memory.setStatus(stat);
 		}
 

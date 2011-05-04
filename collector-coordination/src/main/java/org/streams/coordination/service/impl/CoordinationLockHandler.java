@@ -1,6 +1,8 @@
 package org.streams.coordination.service.impl;
 
 import java.net.InetSocketAddress;
+import java.net.SocketAddress;
+import java.util.Date;
 
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -17,6 +19,8 @@ import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusKey;
 import org.streams.commons.file.SyncPointer;
 import org.streams.coordination.file.FileTrackerStorage;
+import org.streams.coordination.file.history.FileTrackerHistoryItem;
+import org.streams.coordination.file.history.FileTrackerHistoryMemory;
 import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.CoordinationStatus.STATUS;
 import org.streams.coordination.service.LockMemory;
@@ -47,6 +51,8 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 	LockMemory lockMemory;
 	FileTrackerStorage memory;
 
+	FileTrackerHistoryMemory fileTrackerHistoryMemory;
+
 	/**
 	 * The port to use for pinging for lock holders
 	 */
@@ -54,13 +60,13 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 	public CoordinationLockHandler(CoordinationStatus coordinationStatus,
 			LockMemory lockMemory, FileTrackerStorage memory, int pingPort,
-			long lockTimeout) {
+			long lockTimeout, FileTrackerHistoryMemory fileTrackerHistoryMemory) {
 		this.coordinationStatus = coordinationStatus;
 		this.lockMemory = lockMemory;
 		this.memory = memory;
 		this.pingPort = pingPort;
 		this.lockTimeOut = lockTimeout;
-
+		this.fileTrackerHistoryMemory = fileTrackerHistoryMemory;
 	}
 
 	@Override
@@ -73,6 +79,10 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 		final FileTrackingStatus fileStatus = objMapper.readValue(channelInput,
 				FileTrackingStatus.class);
+
+		SocketAddress remoteAddressObj = e.getRemoteAddress();
+		String collectorAddress = (remoteAddressObj == null) ? "unknown"
+				: remoteAddressObj.toString();
 
 		// NOTE: Correct usage for thread correctness is important here.
 		// The first thing we MUST do here is try to attain a SyncPointer Lock
@@ -91,6 +101,12 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 				buffer.writeInt(409); // conflict code
 				buffer.writeBytes(CONFLICT_MESSAGE);
 
+				//----- Add FileTracking History
+				fileTrackerHistoryMemory
+						.addAsyncToHistory(new FileTrackerHistoryItem(new Date(),
+								fileStatus.getAgentName(), collectorAddress,
+								FileTrackerHistoryItem.STATUS.ALREADY_LOCKED));
+
 			} else {
 				// if a syncpointer is returned the resource was not locked and
 				// is
@@ -107,10 +123,21 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 				buffer.writeInt(200);
 				buffer.writeBytes(msgBytes, 0, msgBytes.length);
 
-				LOG.info("LOCK( " + syncPointer.getLockId() + ") - "
-						+ fileStatus.getAgentName() + "."
-						+ fileStatus.getLogType() + "."
-						+ fileStatus.getFileName());
+				//------- Add FileTracking History
+				FileTrackerHistoryItem.STATUS status =
+					(syncPointer.getFilePointer() == fileStatus.getFilePointer()) ?
+							FileTrackerHistoryItem.STATUS.OK : FileTrackerHistoryItem.STATUS.OUTOF_SYNC;
+				
+				fileTrackerHistoryMemory.addAsyncToHistory(new  FileTrackerHistoryItem(new Date(), fileStatus.getAgentName(),
+						collectorAddress, status));
+				//------- Finish History add
+				
+				if (LOG.isDebugEnabled()) {
+					LOG.debug("LOCK( " + syncPointer.getLockId() + ") - "
+							+ fileStatus.getAgentName() + "."
+							+ fileStatus.getLogType() + "."
+							+ fileStatus.getFileName());
+				}
 			}
 
 			ChannelFuture future = e.getChannel().write(buffer);
@@ -118,7 +145,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		} catch (Exception t) {
 			// we catch any exception here to ensure that in case of an error we
 			// do release the lock held if any optained
-			LOG.info("ERROR MAKING LOCK " + fileStatus.getAgentName() + "."
+			LOG.error("ERROR MAKING LOCK " + fileStatus.getAgentName() + "."
 					+ fileStatus.getLogType() + "." + fileStatus.getFileName());
 			// re-throw the error
 			throw t;
@@ -162,9 +189,9 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 
 			if (fileStatus == null) {
 				fileStatus = requestFileStatus;
-
 				memory.setStatus(fileStatus);
 			}
+			
 			coordinationStatus.incCounter("LOCKS", 1);
 			coordinationStatus.setStatus(STATUS.OK, "running");
 			return pointer;

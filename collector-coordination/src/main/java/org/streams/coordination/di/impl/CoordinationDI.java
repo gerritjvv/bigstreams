@@ -37,11 +37,19 @@ import org.streams.coordination.cli.startup.check.impl.PersistenceCheck;
 import org.streams.coordination.cli.startup.service.impl.CoordinationServerService;
 import org.streams.coordination.cli.startup.service.impl.HazelcastStartupService;
 import org.streams.coordination.cli.startup.service.impl.StatusCleanoutService;
+import org.streams.coordination.file.AgentContact;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
 import org.streams.coordination.file.DistributedMapNames;
+import org.streams.coordination.file.LogTypeContact;
+import org.streams.coordination.file.history.FileTrackerHistoryItem;
+import org.streams.coordination.file.history.FileTrackerHistoryMemory;
+import org.streams.coordination.file.history.impl.hazelcast.FileTrackerHistoryMemoryImpl;
 import org.streams.coordination.file.impl.hazelcast.FileTrackingStatusHazelcastMapStore;
 import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.mon.CoordinationStatus;
+import org.streams.coordination.mon.history.impl.CoordinationFileTrackingHistoryResource;
+import org.streams.coordination.mon.history.impl.CoordinationHistoryAgentsLatestResource;
+import org.streams.coordination.mon.history.impl.CoordinationHistoryCollectorsLatestResource;
 import org.streams.coordination.mon.impl.CoordinationAgentCountResource;
 import org.streams.coordination.mon.impl.CoordinationAgentNamesResource;
 import org.streams.coordination.mon.impl.CoordinationFileTrackingCountResource;
@@ -62,6 +70,7 @@ import org.streams.coordination.service.impl.LockValue;
 
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.IMap;
+import com.hazelcast.core.MultiMap;
 
 @Configuration
 @Import(MetricsDI.class)
@@ -93,9 +102,9 @@ public class CoordinationDI {
 				beanFactory.getBean(MetricsAppService.class),
 				beanFactory.getBean(LockTimeoutCheckAppService.class));
 
-		List<? extends StartupCheck> postStartupCheckList = Arrays.asList(
-				beanFactory.getBean(HazelcastServiceCheck.class));
-		
+		List<? extends StartupCheck> postStartupCheckList = Arrays
+				.asList(beanFactory.getBean(HazelcastServiceCheck.class));
+
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				postStartupCheckList);
 	}
@@ -103,7 +112,8 @@ public class CoordinationDI {
 	@Bean
 	public HazelcastStartupService hazelcastStartupService() {
 		return new HazelcastStartupService(
-				beanFactory.getBean(org.apache.commons.configuration.Configuration.class),
+				beanFactory
+						.getBean(org.apache.commons.configuration.Configuration.class),
 				beanFactory.getBean(FileTrackingStatusHazelcastMapStore.class));
 	}
 
@@ -169,6 +179,18 @@ public class CoordinationDI {
 				CoordinationLogTypeCountResource.class,
 				Template.MODE_STARTS_WITH);
 
+		attachFinder(router, "/agent/{agent}/history",
+				CoordinationFileTrackingHistoryResource.class,
+				Template.MODE_STARTS_WITH);
+		
+		attachFinder(router, "/agents/latest",
+				CoordinationHistoryAgentsLatestResource.class,
+				Template.MODE_STARTS_WITH);
+		
+		attachFinder(router, "/collectors/latest",
+				CoordinationHistoryCollectorsLatestResource.class,
+				Template.MODE_STARTS_WITH);
+		
 		Application app = new Application() {
 
 			@Override
@@ -267,8 +289,26 @@ public class CoordinationDI {
 				beanFactory.getBean(CoordinationStatus.class),
 				beanFactory.getBean(LockMemory.class),
 				beanFactory.getBean(HazelcastFileTrackerStorage.class), port,
-				lockTimeout);
+				lockTimeout,
+				beanFactory.getBean(FileTrackerHistoryMemory.class));
 
+	}
+
+	@Bean
+	public FileTrackerHistoryMemory fileTrackerHistoryMemory() {
+		MultiMap<String, FileTrackerHistoryItem> historyMap = beanFactory
+				.getBean(HazelcastInstance.class).getMultiMap(
+						DistributedMapNames.MAP.FILE_TRACKER_HISTORY_MAP
+								.toString());
+
+		IMap<String, FileTrackerHistoryItem> latestMap = beanFactory.getBean(
+				HazelcastInstance.class).getMap(
+				DistributedMapNames.MAP.FILE_TRACKER_HISTORY_LATEST_MAP
+						.toString());
+
+		int threads = 10;
+
+		return new FileTrackerHistoryMemoryImpl(historyMap, latestMap, threads);
 	}
 
 	@Bean
@@ -284,11 +324,20 @@ public class CoordinationDI {
 
 	@Bean
 	public HazelcastFileTrackerStorage hazelcastFileTrackerStorage() {
-		IMap<FileTrackingStatusKey, FileTrackingStatus> fileTrackerMemory = beanFactory
-				.getBean(HazelcastInstance.class).getMap(
-						DistributedMapNames.MAP.FILE_TRACKER_MAP.toString());
+		HazelcastInstance hazelcastInstance = beanFactory
+				.getBean(HazelcastInstance.class);
 
-		return new HazelcastFileTrackerStorage(fileTrackerMemory);
+		IMap<FileTrackingStatusKey, FileTrackingStatus> fileTrackerMemory = hazelcastInstance
+				.getMap(DistributedMapNames.MAP.FILE_TRACKER_MAP.toString());
+
+		IMap<String, AgentContact> agentSet = hazelcastInstance
+				.getMap(DistributedMapNames.MAP.AGENT_NAMES.toString());
+
+		IMap<String, LogTypeContact> logTypeSet = hazelcastInstance
+				.getMap(DistributedMapNames.MAP.LOG_TYPES.toString());
+
+		return new HazelcastFileTrackerStorage(fileTrackerMemory, logTypeSet,
+				agentSet);
 	}
 
 	@Bean
@@ -301,34 +350,52 @@ public class CoordinationDI {
 	public synchronized HazelcastInstance hazelcastInstance() throws Exception {
 		HazelcastStartupService startupService = beanFactory
 				.getBean(HazelcastStartupService.class);
+
 		startupService.start();
 
 		return startupService.getHazelcastInstance();
 
 	}
 
+	//------------- FileTrackerStatus History
+	@Bean
+	public CoordinationFileTrackingHistoryResource coordinationFileTrackingHistoryResource(){
+		return new CoordinationFileTrackingHistoryResource(beanFactory.getBean(FileTrackerHistoryMemory.class)); 
+	}
+	@Bean
+	public CoordinationHistoryAgentsLatestResource coordinationHistoryAgentsLatestResource(){
+		return new CoordinationHistoryAgentsLatestResource(beanFactory.getBean(FileTrackerHistoryMemory.class)); 
+	}
+	
+	@Bean
+	public CoordinationHistoryCollectorsLatestResource coordinationHistoryCollectorsLatestResource(){
+		return new CoordinationHistoryCollectorsLatestResource(beanFactory.getBean(FileTrackerHistoryMemory.class)); 
+	}
+	
+	//---------------------------------------
+	
 	@Bean
 	public CoordinationFileTrackingCountResource coordinationFileTrackingCountResource() {
-		return new CoordinationFileTrackingCountResource(beanFactory.getBean(
-				"collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
+		return new CoordinationFileTrackingCountResource(
+				beanFactory.getBean(HazelcastFileTrackerStorage.class));
 	}
 
 	@Bean
 	public CoordinationFileTrackingResource coordinationFileTrackingResource() {
-		return new CoordinationFileTrackingResource(beanFactory.getBean(
-				"collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
+		return new CoordinationFileTrackingResource(
+				beanFactory.getBean(HazelcastFileTrackerStorage.class));
 	}
 
 	@Bean
 	public CoordinationAgentNamesResource coordinationAgentNamesResource() {
-		return new CoordinationAgentNamesResource(beanFactory.getBean(
-				"collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
+		return new CoordinationAgentNamesResource(
+				beanFactory.getBean(HazelcastFileTrackerStorage.class));
 	}
 
 	@Bean
 	public CoordinationAgentCountResource coordinationAgentCountResource() {
-		return new CoordinationAgentCountResource(beanFactory.getBean(
-				"collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
+		return new CoordinationAgentCountResource(
+				beanFactory.getBean(HazelcastFileTrackerStorage.class));
 	}
 
 	@Bean
@@ -344,14 +411,14 @@ public class CoordinationDI {
 
 	@Bean
 	public CoordinationLogTypesResource coordinationLogTypesResource() {
-		return new CoordinationLogTypesResource(beanFactory.getBean(
-				"collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
+		return new CoordinationLogTypesResource(
+				beanFactory.getBean(HazelcastFileTrackerStorage.class));
 	}
 
 	@Bean
 	public CoordinationLogTypeCountResource coordinationLogTypeCountResource() {
-		return new CoordinationLogTypeCountResource(beanFactory.getBean(
-				"collectorFileTrackerMemory", CollectorFileTrackerMemory.class));
+		return new CoordinationLogTypeCountResource(
+				beanFactory.getBean(HazelcastFileTrackerStorage.class));
 	}
 
 	@Bean
@@ -385,8 +452,8 @@ public class CoordinationDI {
 			throws Exception {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
-		CollectorFileTrackerMemory fileTrackerMemory = beanFactory.getBean(
-				"collectorFileTrackerMemory", CollectorFileTrackerMemory.class);
+		CollectorFileTrackerMemory fileTrackerMemory = beanFactory
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		long historyTimeLimit = configuration.getLong(
 				CoordinationProperties.PROP.STATUS_HISTORY_LIMIT.toString(),

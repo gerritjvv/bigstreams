@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -17,6 +18,7 @@ import org.streams.commons.cli.CommandLineParser;
 import org.streams.commons.cli.CommandLineProcessorFactory.PROFILE;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
 
 
@@ -55,10 +57,10 @@ public class TestLSAgentsCommand extends TestCase {
 
 		Collection<String> coll = new ArrayList<String>();
 		String line = null;
-
+		
 		for (int i = 0; i < agentCount; i += 2) {
 			BufferedReader reader = getLS(true, true, null, i, 2);
-
+			
 			// we are using the command line parser which will print out a line
 			// for
 			// each file tracking status
@@ -125,13 +127,15 @@ public class TestLSAgentsCommand extends TestCase {
 		bootstrap.loadProfiles(PROFILE.DB, PROFILE.CLI, PROFILE.REST_CLIENT,
 				PROFILE.COORDINATION);
 
-		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+		CollectorFileTrackerMemory memory = (CollectorFileTrackerMemory) bootstrap
+				.getBean(HazelcastFileTrackerStorage.class);
 
+		assertNotNull(memory);
+		
 		// add 10 files
 		for (int i = 0; i < agentCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test" + i,
-					"test" + i, "test" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10, 0, "test" + i,
+					"test" + i, "test" + i, new Date());
 			memory.setStatus(stat);
 		}
 

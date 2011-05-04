@@ -1,5 +1,6 @@
 package org.streams.test.coordination.service.impl;
 
+import java.util.Date;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -40,8 +41,8 @@ public class TestHazelcastLockMemory extends TestCase {
 		 * (long filePointer, long fileSize,int linePointer, String agentName,
 		 * String fileName, String logType)
 		 */
-		final FileTrackingStatus status = new FileTrackingStatus(0L, 0L, 1,
-				"agent1", "file1", "type1");
+		final FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 1,
+				"agent1", "file1", "type1", new Date());
 
 		final AtomicInteger lockCount = new AtomicInteger(0);
 
@@ -89,8 +90,8 @@ public class TestHazelcastLockMemory extends TestCase {
 		 * (long filePointer, long fileSize,int linePointer, String agentName,
 		 * String fileName, String logType)
 		 */
-		final FileTrackingStatus status = new FileTrackingStatus(0L, 0L, 1,
-				"agent1", "file1", "type1");
+		final FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 1,
+				"agent1", "file1", "type1", new Date());
 
 		SyncPointer pointer = memory.setLock(status, "localhost1");
 		assertNotNull(pointer);
@@ -116,8 +117,8 @@ public class TestHazelcastLockMemory extends TestCase {
 		 * (long filePointer, long fileSize,int linePointer, String agentName,
 		 * String fileName, String logType)
 		 */
-		final FileTrackingStatus status = new FileTrackingStatus(0L, 0L, 1,
-				"agent1", "file1", "type1");
+		final FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 1,
+				"agent1", "file1", "type1", new Date());
 
 		SyncPointer pointer = memory.setLock(status, "localhost1");
 

@@ -1,15 +1,16 @@
 package org.streams.test.coordination.cli.impl;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
-import junit.framework.TestCase;
-
-import org.junit.After;
-import org.junit.Before;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.restlet.Component;
 import org.streams.commons.cli.CommandLineParser;
@@ -17,15 +18,15 @@ import org.streams.commons.cli.CommandLineProcessorFactory.PROFILE;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusFormatter;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
 
+public class TestCountAgentsCommand {
 
-public class TestCountAgentsCommand extends TestCase {
+	static Bootstrap bootstrap;
+	static final int agentCount = 10;
 
-	Bootstrap bootstrap;
-	int agentCount = 10;
-
-	FileTrackingStatusFormatter formatter = new FileTrackingStatusFormatter();
+	static final FileTrackingStatusFormatter formatter = new FileTrackingStatusFormatter();
 
 	/**
 	 * Tests the CountCommand via the CommandLineParser using Rest
@@ -82,19 +83,19 @@ public class TestCountAgentsCommand extends TestCase {
 		return Long.parseLong(reader.readLine());
 	}
 
-	@Before
-	public void setUp() throws Exception {
+	@BeforeClass
+	public static void setUpTest() {
 		bootstrap = new Bootstrap();
 		bootstrap.loadProfiles(PROFILE.DB, PROFILE.CLI, PROFILE.REST_CLIENT,
 				PROFILE.COORDINATION);
 
-		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+		CollectorFileTrackerMemory memory = (CollectorFileTrackerMemory) bootstrap
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		// add 10 files
 		for (int i = 0; i < agentCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test" + i,
-					"test" + i, "test" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
+					0, "test" + i, "test" + i, "test" + i, new Date());
 			memory.setStatus(stat);
 		}
 
@@ -102,15 +103,15 @@ public class TestCountAgentsCommand extends TestCase {
 		// the count agent must only return the number of agents not the number
 		// of files.
 		for (int i = 0; i < agentCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test" + i,
-					"test_2nd" + i, "test_2nd" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
+					0, "test" + i, "test_2nd" + i, "test_2nd" + i, new Date());
 			memory.setStatus(stat);
 		}
 
 	}
 
-	@After
-	public void tearDown() throws Exception {
+	@AfterClass
+	public static void tearDownClass() throws Exception {
 		bootstrap.close();
 	}
 

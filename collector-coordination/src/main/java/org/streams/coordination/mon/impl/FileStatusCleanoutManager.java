@@ -61,9 +61,10 @@ public class FileStatusCleanoutManager implements Callable<Integer>, Runnable {
 		// historyTimeLimit.
 		// a maximum of 1000 files will be done.
 		long currentTime = System.currentTimeMillis();
-
-		Collection<FileTrackingStatus> list = memory.getFilesByQuery(" ( "
-				+ currentTime + " - lastModifiedTime ) > " + historyTimeLimit,
+		long t = currentTime - historyTimeLimit;
+		
+		Collection<FileTrackingStatus> list = memory.getFilesByQuery(
+				"lastModifiedTime < " + t,
 				0, 1000);
 
 		int counter = 0;

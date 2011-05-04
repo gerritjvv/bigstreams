@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -17,8 +18,8 @@ import org.streams.commons.cli.CommandLineProcessorFactory.PROFILE;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusFormatter;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
-
 
 public class TestCountCommand extends TestCase {
 
@@ -27,9 +28,9 @@ public class TestCountCommand extends TestCase {
 
 	FileTrackingStatusFormatter formatter = new FileTrackingStatusFormatter();
 
-	
 	/**
-	 * Tests the CountCommand via the CommandLineParser using a json online without query
+	 * Tests the CountCommand via the CommandLineParser using a json online
+	 * without query
 	 * 
 	 * @throws Exception
 	 */
@@ -38,11 +39,12 @@ public class TestCountCommand extends TestCase {
 
 		long count = getCount(true, true, null);
 		assertEquals(fileCount, count);
-		
+
 	}
 
 	/**
-	 * Tests the CountCommand via the CommandLineParser using a json offline without query
+	 * Tests the CountCommand via the CommandLineParser using a json offline
+	 * without query
 	 * 
 	 * @throws Exception
 	 */
@@ -51,11 +53,12 @@ public class TestCountCommand extends TestCase {
 
 		long count = getCount(false, true, null);
 		assertEquals(fileCount, count);
-		
+
 	}
 
 	/**
-	 * Tests the CountCommand via the CommandLineParser using a json online with query
+	 * Tests the CountCommand via the CommandLineParser using a json online with
+	 * query
 	 * 
 	 * @throws Exception
 	 */
@@ -64,11 +67,12 @@ public class TestCountCommand extends TestCase {
 
 		long count = getCount(true, true, "agentName='test0'");
 		assertEquals(1, count);
-		
+
 	}
 
 	/**
-	 * Tests the CountCommand via the CommandLineParser using a json offline with query
+	 * Tests the CountCommand via the CommandLineParser using a json offline
+	 * with query
 	 * 
 	 * @throws Exception
 	 */
@@ -77,11 +81,11 @@ public class TestCountCommand extends TestCase {
 
 		long count = getCount(true, true, "agentName='test0'");
 		assertEquals(1, count);
-		
-	}	
-	
-	private long getCount(boolean online, boolean json,
-			String queryString) throws Exception {
+
+	}
+
+	private long getCount(boolean online, boolean json, String queryString)
+			throws Exception {
 
 		bootstrap.printBeans();
 		// if(true)return;
@@ -102,13 +106,13 @@ public class TestCountCommand extends TestCase {
 			args.add("-query");
 			args.add(queryString);
 		}
-		
+
 		parser.parse(out, args.toArray(new String[] {}));
 
 		System.out.println(new String(out.toByteArray()));
 
-		BufferedReader reader =  new BufferedReader(new StringReader(
-				new String(out.toByteArray())));
+		BufferedReader reader = new BufferedReader(new StringReader(new String(
+				out.toByteArray())));
 
 		return Long.parseLong(reader.readLine());
 	}
@@ -119,13 +123,13 @@ public class TestCountCommand extends TestCase {
 		bootstrap.loadProfiles(PROFILE.DB, PROFILE.CLI, PROFILE.REST_CLIENT,
 				PROFILE.COORDINATION);
 
-		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+		CollectorFileTrackerMemory memory = (CollectorFileTrackerMemory) bootstrap
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		// add 10 files
 		for (int i = 0; i < fileCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test" + i,
-					"test" + i, "test" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
+					0, "test" + i, "test" + i, "test" + i, new Date());
 			memory.setStatus(stat);
 		}
 

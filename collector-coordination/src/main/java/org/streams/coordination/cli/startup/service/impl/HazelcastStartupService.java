@@ -7,18 +7,16 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
 import org.streams.commons.app.ApplicationService;
+import org.streams.coordination.CoordinationProperties;
 import org.streams.coordination.file.DistributedMapNames;
 
 import com.hazelcast.config.ClasspathXmlConfig;
 import com.hazelcast.config.Config;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapStoreConfig;
-import com.hazelcast.core.EntryEvent;
-import com.hazelcast.core.EntryListener;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
 import com.hazelcast.core.MapStore;
-import com.hazelcast.core.Member;
 
 /**
  * 
@@ -56,7 +54,7 @@ public class HazelcastStartupService implements ApplicationService {
 	}
 
 	@Override
-	public void start() throws Exception {
+	public synchronized void start() throws Exception {
 
 		if (!started.getAndSet(true)) {
 			Config config = new ClasspathXmlConfig(Thread.currentThread()
@@ -72,7 +70,7 @@ public class HazelcastStartupService implements ApplicationService {
 			mapStoreConfig.setImplementation(mapStore);
 			mapStoreConfig.setWriteDelaySeconds(0);
 
-			int backupCount = conf.getInt("filetrackermap.backupcount", 1);
+			int backupCount = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_MAP_BACKUP.toString(), 1);
 
 			LOG.info("Using backupcount of: " + backupCount);
 
@@ -81,56 +79,81 @@ public class HazelcastStartupService implements ApplicationService {
 			mapConfig.setEvictionDelaySeconds(0);
 			mapConfig.setMaxIdleSeconds(0);
 			mapConfig.setTimeToLiveSeconds(0);
-
 			mapConfig.setMapStoreConfig(mapStoreConfig);
-
+			
 			Map<String, MapConfig> maps = new HashMap<String, MapConfig>();
 			maps.put(DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString(),
 					lockMemoryMapConfig);
 			maps.put(DistributedMapNames.MAP.FILE_TRACKER_MAP.toString(),
 					mapConfig);
 
+			//----------- User Agent names Map
+			int agentNamesMax = conf.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX.toString(), 
+					(Integer)CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX.getDefaultValue());
+			
+			int agentNamesBackup = conf.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP.toString(), 
+					(Integer)CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP.getDefaultValue());
+			
+			MapConfig agentNamesMapConfig = new MapConfig();
+			agentNamesMapConfig.setMaxSize(agentNamesMax);
+			agentNamesMapConfig.setBackupCount(agentNamesBackup);
+			
+			maps.put(DistributedMapNames.MAP.AGENT_NAMES.toString(), agentNamesMapConfig);
+			
+			//----------- Log Types map
+			
+			int logTypesMax = conf.getInt(CoordinationProperties.PROP.LOG_TYPE_STORAGE_MAX.toString(), 
+					(Integer)CoordinationProperties.PROP.LOG_TYPE_STORAGE_MAX.getDefaultValue());
+			
+			int logTypesBackup = conf.getInt(CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP.toString(), 
+					(Integer)CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP.getDefaultValue());
+			
+			MapConfig logTypesMapConfig = new MapConfig();
+			logTypesMapConfig.setMaxSize(logTypesMax);
+			logTypesMapConfig.setBackupCount(logTypesBackup);
+			
+			maps.put(DistributedMapNames.MAP.LOG_TYPES.toString(), logTypesMapConfig);
+			
+			
+			//--- File Tracker History Map Config
+			MapConfig historyMapConfig = new MapConfig();
+			
+			int historyMax = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX.toString(), 
+					(Integer)CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX.getDefaultValue());
+			
+			int historyBackup = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP.toString(), 
+					(Integer)CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP.getDefaultValue());
+			
+			historyMapConfig.setMaxSize(historyMax);
+			historyMapConfig.setBackupCount(historyBackup);
+			
+			maps.put(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_MAP.toString(),
+					historyMapConfig);
+			
+			//--- Latest history is the same configuration as the history map
+			maps.put(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_LATEST_MAP.toString(),
+					historyMapConfig);
+			
+			
 			config.setMapConfigs(maps);
 
-			hazelcastInstance = Hazelcast.init(config);
-
-			Hazelcast.getMap(
-					DistributedMapNames.MAP.FILE_TRACKER_MAP.toString())
-					.addEntryListener(new EntryListener<Object, Object>() {
-
-						@Override
-						public void entryUpdated(
-								EntryEvent<Object, Object> event) {
-								
-								mapStore.store(event.getKey(), event.getValue());
-						}
-
-						@Override
-						public void entryRemoved(
-								EntryEvent<Object, Object> event) {
-							mapStore.delete(event.getKey());
-						}
-
-						@Override
-						public void entryEvicted(
-								EntryEvent<Object, Object> event) {
-						}
-
-						@Override
-						public void entryAdded(EntryEvent<Object, Object> event) {
-							mapStore.store(event.getKey(), event.getValue());
-						}
-					}, true);
-
-			LOG.info("Started HazelcastInstance with configuration : " + config);
+			try{
+				hazelcastInstance = Hazelcast.init(config);
+			}catch(java.lang.IllegalStateException excp){
+				LOG.error(excp.toString(), excp);
+				Hazelcast.getLifecycleService().shutdown();
+				hazelcastInstance = Hazelcast.newHazelcastInstance(config);
+			}
+			
+			
 		}
 	}
 
 	@Override
 	public void shutdown() {
-
-		Hazelcast.getLifecycleService().shutdown();
-
+		if (hazelcastInstance != null) {
+			hazelcastInstance.getLifecycleService().shutdown();
+		}
 	}
 
 	public HazelcastInstance getHazelcastInstance() {

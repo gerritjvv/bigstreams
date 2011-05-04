@@ -9,6 +9,7 @@ import org.codehaus.jackson.map.JsonMappingException;
 import org.restlet.data.Range;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
+import org.streams.coordination.file.AgentContact;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
 
 
@@ -28,7 +29,7 @@ public class CoordinationAgentNamesResource extends ServerResource {
 	}
 
 	@Get
-	public Collection<String> getFileTrackingStatusList() throws JsonGenerationException, JsonMappingException, IOException {
+	public Collection<AgentContact> getFileTrackingStatusList() throws JsonGenerationException, JsonMappingException, IOException {
 		List<Range> ranges = getRanges();
 
 		int from = 0, max = 1000;

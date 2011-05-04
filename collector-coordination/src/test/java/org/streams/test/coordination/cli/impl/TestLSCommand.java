@@ -5,6 +5,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -19,6 +20,7 @@ import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusFormatter;
 import org.streams.commons.file.FileTrackingStatusFormatter.FORMAT;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
 
 
@@ -235,13 +237,13 @@ public class TestLSCommand extends TestCase {
 		bootstrap.loadProfiles(PROFILE.DB, PROFILE.CLI, PROFILE.REST_CLIENT,
 				PROFILE.COORDINATION);
 
-		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+		CollectorFileTrackerMemory memory = (CollectorFileTrackerMemory) bootstrap
+		.getBean(HazelcastFileTrackerStorage.class);
 
 		// add 10 files
 		for (int i = 0; i < fileCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test" + i,
-					"test" + i, "test" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
+					0, "test" + i, "test" + i, "test" + i, new Date());
 			memory.setStatus(stat);
 		}
 

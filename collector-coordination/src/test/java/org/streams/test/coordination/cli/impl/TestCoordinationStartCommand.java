@@ -20,7 +20,6 @@ import org.streams.coordination.mon.CoordinationStatus;
 import org.streams.coordination.mon.impl.CoordinationStatusImpl;
 
 import com.hazelcast.core.Hazelcast;
-import com.hazelcast.core.Member;
 
 
 public class TestCoordinationStartCommand extends TestCase {

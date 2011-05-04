@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.ByteArrayOutputStream;
 import java.io.StringReader;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import junit.framework.TestCase;
@@ -17,6 +18,7 @@ import org.streams.commons.cli.CommandLineProcessorFactory.PROFILE;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusFormatter;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
 
 
@@ -93,12 +95,12 @@ public class TestCountLogTypesCommand extends TestCase {
 				PROFILE.COORDINATION);
 
 		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		// add 10 files
 		for (int i = 0; i < logTypeCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test" + i,
-					"test" + i, "test" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10, 0, "test" + i,
+					"test" + i, "test" + i, new Date());
 			memory.setStatus(stat);
 		}
 
@@ -106,8 +108,8 @@ public class TestCountLogTypesCommand extends TestCase {
 		// the count agent must only return the number of log type not the number
 		// of files.
 		for (int i = 0; i < logTypeCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test_2nd" + i,
-					"test_2nd" + i, "test" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10, 0, "test_2nd" + i,
+					"test_2nd" + i, "test" + i, new Date());
 			memory.setStatus(stat);
 		}
 

@@ -16,7 +16,18 @@ public interface CoordinationProperties {
 		COORDINATION_LOCK_TIMEOUT("coordination.lock.timeout", 120000L),
 		COORDINATION_LOCK_TIMEOUTCHECK_PERIOD("coordination.lock.timeoutcheck.period", 240000L),
 		
-		METRIC_REFRESH_PERIOD("metric.refresh.period", 10000L);
+		METRIC_REFRESH_PERIOD("metric.refresh.period", 10000L),
+		
+		FILE_TRACKER_STATUS_MAP_BACKUP("filetrackermap.backupcount", 1),
+		AGENT_NAMES_STORAGE_MAX("agentnames.storage.max", 1000),
+		AGENT_NAMES_STORAGE_BACKUP("agentnames.storage.backup", 1),
+		LOG_TYPE_STORAGE_MAX("logtype.storage.max", 1000),
+		LOG_TYPE_STORAGE_BACKUP("logtype.storage.backup", 1),
+		FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX("filetrackermap.history.storage.max", 1000),
+		//the max items that the multi map can store per key
+		FILE_TRACKER_STATUS_HISTORY_STORAGE_COLLECTION_MAX("filetrackermap.history.storage.collection.max", 100),
+		FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP("filetrackermap.history.storage.backup", 1);
+		
 		
 		String name;
 		Object defaultValue;

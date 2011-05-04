@@ -26,7 +26,6 @@ public class HazelcastServiceCheck extends AbstractStartupCheck {
 
 	}
 
-	@SuppressWarnings("unchecked")
 	@Override
 	public void runCheck() throws Exception {
 

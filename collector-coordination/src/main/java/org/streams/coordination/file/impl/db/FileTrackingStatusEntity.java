@@ -1,6 +1,7 @@
 package org.streams.coordination.file.impl.db;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
@@ -49,6 +50,7 @@ public class FileTrackingStatusEntity implements Serializable {
 	 */
 	private static final long serialVersionUID = 1L;
 
+	Date date;
 	Long id;
 	long fileSize = 0L;
 	long filePointer = 0L;
@@ -60,18 +62,23 @@ public class FileTrackingStatusEntity implements Serializable {
 	String fileName;
 	String logType;
 
+	Date fileDate;
+	
 	public FileTrackingStatusEntity() {
+		date = new Date();
 	}
 
-	public FileTrackingStatusEntity(long filePointer, long fileSize,
-			int linePointer, String agentName, String fileName, String logType) {
+	public FileTrackingStatusEntity(Date date, long filePointer, long fileSize,
+			int linePointer, String agentName, String fileName, String logType, Date fileDate) {
 		super();
+		this.date = date;
 		this.fileSize = fileSize;
 		this.filePointer = filePointer;
 		this.linePointer = linePointer;
 		this.agentName = agentName;
 		this.fileName = fileName;
 		this.logType = logType;
+		this.fileDate = fileDate;
 	}
 
 	@Id
@@ -154,8 +161,8 @@ public class FileTrackingStatusEntity implements Serializable {
 	 * @return
 	 */
 	public FileTrackingStatus createStatusObject() {
-		return new FileTrackingStatus(filePointer, fileSize, linePointer, agentName,
-				fileName, logType);
+		return new FileTrackingStatus(date, filePointer, fileSize, linePointer, agentName,
+				fileName, logType, fileDate);
 	}
 
 	/**
@@ -167,10 +174,10 @@ public class FileTrackingStatusEntity implements Serializable {
 	 */
 	public static FileTrackingStatusEntity createEntity(
 			FileTrackingStatus status) {
-		return new FileTrackingStatusEntity(status.getFilePointer(),
+		return new FileTrackingStatusEntity(status.getDate(), status.getFilePointer(),
 				status.getFileSize(), status.getLinePointer(),
 				status.getAgentName(), status.getFileName(),
-				status.getLogType());
+				status.getLogType(), status.getFileDate());
 	}
 
 	/**
@@ -186,7 +193,25 @@ public class FileTrackingStatusEntity implements Serializable {
 		setFileName(status.getFileName());
 		setLogType(status.getLogType());
 		setLinePointer(status.getLinePointer());
+		setDate(status.getDate());
+		setFileDate(status.getFileDate());
+	}
 
+	public Date getDate() {
+		return date;
+	}
+
+	public void setDate(Date date) {
+		this.date = date;
+	}
+
+	public Date getFileDate() {
+		return fileDate;
+	}
+
+	@Column(name = "file_date", nullable = true)
+	public void setFileDate(Date fileDate) {
+		this.fileDate = fileDate;
 	}
 
 }

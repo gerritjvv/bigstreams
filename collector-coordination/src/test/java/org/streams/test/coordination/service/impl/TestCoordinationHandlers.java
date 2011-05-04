@@ -1,6 +1,7 @@
 package org.streams.test.coordination.service.impl;
 
 import java.net.InetSocketAddress;
+import java.util.Date;
 import java.util.Set;
 import java.util.TreeSet;
 
@@ -65,8 +66,8 @@ public class TestCoordinationHandlers extends TestCase {
 						"localhost", lockPort)), new RandomDistAddressSelector(
 						new InetSocketAddress("localhost", unlockPort)));
 
-		FileTrackingStatus status = new FileTrackingStatus(0, 10, 0, "test1",
-				"test1", "test1");
+		FileTrackingStatus status = new FileTrackingStatus(new Date(), 0, 10, 0, "test1",
+				"test1", "test1", new Date());
 
 		try {
 			SyncPointer syncPointer = client.getAndLock(status);
@@ -131,8 +132,8 @@ public class TestCoordinationHandlers extends TestCase {
 
 			try {
 				// we expect an error here
-				client.saveAndFreeLock(new SyncPointer(new FileTrackingStatus(
-						0L, 0L, 1, "a", "f", "t")));
+				client.saveAndFreeLock(new SyncPointer(new FileTrackingStatus(new Date(), 
+						0L, 0L, 1, "a", "f", "t", new Date())));
 				assertTrue(false);
 			} catch (Throwable t) {
 				assertTrue(true);
@@ -178,8 +179,8 @@ public class TestCoordinationHandlers extends TestCase {
 
 			// save 10 different sync pointers
 			for (int i = 0; i < 10; i++) {
-				FileTrackingStatus fileStatus = new FileTrackingStatus(0L, 10L,
-						0, "agent" + i, "file" + i, "type" + i);
+				FileTrackingStatus fileStatus = new FileTrackingStatus(new Date(), 0L, 10L,
+						0, "agent" + i, "file" + i, "type" + i, new Date());
 				SyncPointer syncPointer = client.getAndLock(fileStatus);
 
 				assertNotNull(syncPointer);

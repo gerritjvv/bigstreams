@@ -4,7 +4,9 @@
 	<persistence-unit name="coordinationFileTracking"
 		transaction-type="RESOURCE_LOCAL">
 		<provider>org.hibernate.ejb.HibernatePersistence</provider>
-		<class>org.streams.coordination.file.impl.db.FileTrackingStatusEntity</class>
+        <class>org.streams.coordination.file.impl.db.FileTrackingStatusEntity</class>
+        <class>org.streams.coordination.file.impl.db.AgentContactEntity</class>
+        <class>org.streams.coordination.file.impl.db.LogTypeContactEntity</class>
 		<properties>
 
 			<!-- Hibernate database connection settings -->

@@ -26,7 +26,7 @@ public interface CollectorFileTrackerMemory extends FileTrackerStorage{
 	 * @param max
 	 * @return
 	 */
-	Collection<String> getLogTypes(int from, int max);
+	Collection<LogTypeContact> getLogTypes(int from, int max);
 
 	/**
 	 * 
@@ -70,7 +70,7 @@ public interface CollectorFileTrackerMemory extends FileTrackerStorage{
 	/**
 	 * Gets a list of agent names from the persistence.
 	 */
-	Collection<String> getAgents(int from, int max);
+	Collection<AgentContact> getAgents(int from, int max);
 
 	/**
 	 * Gets the Files for an agent

@@ -1,6 +1,7 @@
 package org.streams.coordination.service.impl;
 
 import java.net.InetSocketAddress;
+import java.util.Date;
 
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -135,7 +136,8 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 			fileStatus.setFilePointer(syncPointer.getFilePointer());
 			fileStatus.setFileSize(syncPointer.getFileSize());
 			fileStatus.setLinePointer(syncPointer.getLinePointer());
-
+			fileStatus.setDate(new Date());
+			
 			memory.setStatus(fileStatus);
 
 			coordinationStatus.decCounter("LOCKS", 1);

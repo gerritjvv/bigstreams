@@ -10,6 +10,7 @@ import org.restlet.data.Range;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.LogTypeContact;
 
 
 /**
@@ -28,7 +29,7 @@ public class CoordinationLogTypesResource extends ServerResource {
 	}
 
 	@Get("json")
-	public Collection<String> getFileTrackingStatusList() throws JsonGenerationException, JsonMappingException, IOException {
+	public Collection<LogTypeContact> getFileTrackingStatusList() throws JsonGenerationException, JsonMappingException, IOException {
 		List<Range> ranges = getRanges();
 
 		int from = 0, max = 1000;

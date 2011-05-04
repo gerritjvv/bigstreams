@@ -132,6 +132,7 @@ public class CountCommand implements CommandLineProcessor {
 	}
 
 	@Autowired(required = false)
+	@Named("collectorFileTrackerMemory")
 	public void setMemory(CollectorFileTrackerMemory memory) {
 		this.memory = memory;
 	}

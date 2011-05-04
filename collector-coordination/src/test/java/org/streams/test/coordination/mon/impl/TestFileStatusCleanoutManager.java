@@ -1,6 +1,7 @@
 package org.streams.test.coordination.mon.impl;
 
 import java.io.File;
+import java.util.Date;
 
 import junit.framework.TestCase;
 
@@ -8,9 +9,9 @@ import org.junit.Test;
 import org.streams.commons.cli.CommandLineProcessorFactory;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
 import org.streams.coordination.mon.impl.FileStatusCleanoutManager;
-
 
 /**
  * Tests that the FileStatusCleanoutManager deletes the files correctly based on
@@ -28,6 +29,7 @@ public class TestFileStatusCleanoutManager extends TestCase {
 
 	private long timeLimit;
 
+	
 	/**
 	 * Assert that we can delete only half of the data
 	 * 
@@ -62,15 +64,15 @@ public class TestFileStatusCleanoutManager extends TestCase {
 				CommandLineProcessorFactory.PROFILE.DB,
 				CommandLineProcessorFactory.PROFILE.COORDINATION);
 
-		memory = bootstrap.getBean(CollectorFileTrackerMemory.class);
+		memory = bootstrap.getBean(HazelcastFileTrackerStorage.class);
 
 		// create half of the file entries in db
 		for (int i = 0; i < fileCount / 2; i++) {
 
 			// the last modified time is set when calling the setStatus method
 			// on the CollectorFileTrackerMemory
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test" + i,
-					"test" + i, "test" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
+					0, "test" + i, "test" + i, "test" + i, new Date());
 			memory.setStatus(stat);
 		}
 
@@ -84,8 +86,8 @@ public class TestFileStatusCleanoutManager extends TestCase {
 
 			// the last modified time is set when calling the setStatus method
 			// on the CollectorFileTrackerMemory
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10, 0, "test2nd"
-					+ i, "test2nd" + i, "test2nd" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
+					0, "test2nd" + i, "test2nd" + i, "test2nd" + i, new Date());
 			memory.setStatus(stat);
 		}
 

@@ -28,7 +28,9 @@ import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusFormatter;
 import org.streams.commons.file.FileTrackingStatusFormatter.FORMAT;
 import org.streams.coordination.CoordinationProperties;
+import org.streams.coordination.file.AgentContact;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.LogTypeContact;
 
 
 /**
@@ -118,10 +120,10 @@ public class LSCommand implements CommandLineProcessor {
 				} else {
 					LOG.info("Connecting via rest");
 					if (cmdLine.hasOption("agent")) {
-						writeOutputStrings(getItemNamesHttp("/agents/list", from, max),
+						writeOutputStrings(getItemNamesHttp(AgentContact.class, "/agents/list", from, max),
 								writer, cmdLine);
 					}else if ( cmdLine.hasOption("logType")){
-						writeOutputStrings(getItemNamesHttp("/logTypes/list", from, max),
+						writeOutputStrings(getItemNamesHttp(LogTypeContact.class, "/logTypes/list", from, max),
 								writer, cmdLine);
 					} else {
 						writeOutput(getFilesHttp("", from, max), writer,
@@ -142,7 +144,7 @@ public class LSCommand implements CommandLineProcessor {
 	 * @param max
 	 * @return
 	 */
-	private Collection<String> getLogTypeNamesDB(int from, int max) {
+	private Collection<LogTypeContact> getLogTypeNamesDB(int from, int max) {
 		return memory.getLogTypes(from, max);
 	}
 	
@@ -156,7 +158,7 @@ public class LSCommand implements CommandLineProcessor {
 	 * @throws ResourceExceptionstatus
 	 * @throws IOException
 	 */
-	private Collection<String> getItemNamesHttp(String addressPath, int from, int max)
+	private <T> Collection<T> getItemNamesHttp(Class<T> cls, String addressPath, int from, int max)
 			throws ResourceException, IOException {
 
 		int clientPort = configuration.getInt(
@@ -179,8 +181,8 @@ public class LSCommand implements CommandLineProcessor {
 			clientResource.release();
 		}
 
-		Collection<String> coll = objectMapper.readValue(writer.toString(),
-				new TypeReference<Collection<String>>() {
+		Collection<T> coll = objectMapper.readValue(writer.toString(),
+				new TypeReference<Collection<T>>() {
 				});
 
 		return coll;
@@ -233,12 +235,12 @@ public class LSCommand implements CommandLineProcessor {
 	 * @throws JsonMappingException
 	 * @throws JsonGenerationException
 	 */
-	private void writeOutputStrings(Collection<String> agents,
+	private <T> void writeOutputStrings(Collection<T> objs,
 			PrintWriter writer, CommandLine cmdLine)
 			throws JsonGenerationException, JsonMappingException, IOException {
 
-		for (String agentName : agents) {
-			writer.println(agentName);
+		for (T obj : objs) {
+			writer.println(obj.toString());
 		}
 	}
 
@@ -277,7 +279,7 @@ public class LSCommand implements CommandLineProcessor {
 	 * @param max
 	 * @return
 	 */
-	private Collection<String> getAgentNamesDB(int from, int max) {
+	private Collection<AgentContact> getAgentNamesDB(int from, int max) {
 		if (from < 0) {
 			from = 0;
 			max = 1000;
@@ -307,6 +309,7 @@ public class LSCommand implements CommandLineProcessor {
 	}
 
 	@Autowired(required=false)
+	@Named("collectorFileTrackerMemory")
 	public void setMemory(CollectorFileTrackerMemory memory) {
 		this.memory = memory;
 	}

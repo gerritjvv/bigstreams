@@ -1,6 +1,7 @@
 package org.streams.test.coordination.mon.impl;
 
 import java.util.Collection;
+import java.util.Date;
 
 import junit.framework.TestCase;
 
@@ -15,8 +16,8 @@ import org.streams.commons.cli.CommandLineProcessorFactory;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.coordination.CoordinationProperties;
 import org.streams.coordination.file.CollectorFileTrackerMemory;
+import org.streams.coordination.file.impl.hazelcast.HazelcastFileTrackerStorage;
 import org.streams.coordination.main.Bootstrap;
-
 
 public class TestCoordinationFileTrackingResource extends TestCase {
 
@@ -26,19 +27,20 @@ public class TestCoordinationFileTrackingResource extends TestCase {
 
 	/**
 	 * Test a simple ls request
+	 * 
 	 * @throws Exception
 	 */
 	public void testLsQuery() throws Exception {
-		
+
 		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		int fileCount = 10;
 
 		// prepare data
 		for (int i = 0; i < fileCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10L, 0,
-					"test" + i, "test" + i, "type" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0,
+					10L, 0, "test" + i, "test" + i, "type" + i, new Date());
 			memory.setStatus(stat);
 		}
 
@@ -47,22 +49,20 @@ public class TestCoordinationFileTrackingResource extends TestCase {
 				(Integer) CoordinationProperties.PROP.COORDINATION_PORT
 						.getDefaultValue());
 
-		
-		String address = "http://localhost:"
-			+ port + "/files/list";
-		
-	
+		String address = "http://localhost:" + port + "/files/list";
+
 		ClientResource clientResource = new ClientResource(address);
-		clientResource.getReference().addQueryParameter("query", "agentName='test1'");
-		
+		clientResource.getReference().addQueryParameter("query",
+				"agentName='test1'");
+
 		Representation rep = clientResource.get(MediaType.APPLICATION_JSON);
 
 		ObjectMapper objMapper = new ObjectMapper();
 		Collection<FileTrackingStatus> statusList = objMapper.readValue(
-			rep.getText(),
+				rep.getText(),
 				new TypeReference<Collection<FileTrackingStatus>>() {
 				});
-		
+
 		assertNotNull(statusList);
 		assertEquals(1, statusList.size());
 		assertEquals("test1", statusList.iterator().next().getAgentName());
@@ -70,18 +70,19 @@ public class TestCoordinationFileTrackingResource extends TestCase {
 
 	/**
 	 * Test a simple ls request
+	 * 
 	 * @throws Exception
 	 */
 	public void testLs() throws Exception {
 		CollectorFileTrackerMemory memory = bootstrap
-				.getBean(CollectorFileTrackerMemory.class);
+				.getBean(HazelcastFileTrackerStorage.class);
 
 		int fileCount = 10;
 
 		// prepare data
 		for (int i = 0; i < fileCount; i++) {
-			FileTrackingStatus stat = new FileTrackingStatus(0, 10L, 0,
-					"test" + i, "test" + i, "type" + i);
+			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0,
+					10L, 0, "test" + i, "test" + i, "type" + i, new Date());
 			memory.setStatus(stat);
 		}
 
@@ -123,5 +124,5 @@ public class TestCoordinationFileTrackingResource extends TestCase {
 		component.stop();
 		bootstrap.close();
 	}
-	
+
 }

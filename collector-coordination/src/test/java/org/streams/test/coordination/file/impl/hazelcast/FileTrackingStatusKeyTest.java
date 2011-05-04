@@ -1,5 +1,6 @@
 package org.streams.test.coordination.file.impl.hazelcast;
 
+import java.util.Date;
 import java.util.Map;
 
 import junit.framework.TestCase;
@@ -19,7 +20,7 @@ public class FileTrackingStatusKeyTest extends TestCase{
 		String agent = "a";
 		String logType = "l";
 		String fileName = "f";
-		FileTrackingStatus status = new FileTrackingStatus(0L, 0L, 0, agent, fileName, logType );
+		FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 0, agent, fileName, logType, new Date());
 		
 		assertEquals(logType + agent + fileName, new FileTrackingStatusKey(status).getKey());
 		
