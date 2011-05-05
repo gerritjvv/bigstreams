@@ -10,6 +10,8 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.NoResultException;
 import javax.persistence.Query;
 
+import org.apache.commons.lang.StringUtils;
+import org.streams.agent.file.AbstractFileTrackerMemory;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.FileTrackingStatus.STATUS;
@@ -29,10 +31,9 @@ import org.streams.agent.file.FileTrackingStatus.STATUS;
  * Simple from - max results paging is supported.<br/>
  * A default value for max results is used and set at 1000.<br/>
  */
-public class DBFileTrackerMemoryImpl implements FileTrackerMemory {
+public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implements FileTrackerMemory {
 
-	private static final int DEFAULT_MAX_RESULTS = 1000;
-
+	
 	EntityManagerFactory entityManagerFactory;
 
 	public EntityManagerFactory getEntityManagerFactory() {
@@ -226,10 +227,13 @@ public class DBFileTrackerMemoryImpl implements FileTrackerMemory {
 	 * </ul>
 	 */
 	@Override
-	public void updateFile(FileTrackingStatus fileTrackingStatus) {
+	public void updateFile(final FileTrackingStatus fileTrackingStatus) {
 		EntityManager entityManager = entityManagerFactory
 				.createEntityManager();
-
+		
+		boolean statusChanged = false;
+		String prevStatus = null;
+		
 		try {
 			entityManager.getTransaction().begin();
 
@@ -240,21 +244,38 @@ public class DBFileTrackerMemoryImpl implements FileTrackerMemory {
 			try {
 				FileTrackingStatusEntity entity = (FileTrackingStatusEntity) query
 						.getSingleResult();
+				
+				prevStatus = entity.getStatus();
+				//true if the statuses are not equal
+				statusChanged = 
+					!StringUtils.equalsIgnoreCase(prevStatus, fileTrackingStatus.getStatus().toString());
+				
 				entity.update(fileTrackingStatus);
-
 				entityManager.persist(entity);
-
+				
 			} catch (NoResultException noResultExcp) {
 				// the entity does not exist yet
 				FileTrackingStatusEntity entity = FileTrackingStatusEntity
 						.createEntity(fileTrackingStatus);
 				entityManager.persist(entity);
-				
+				statusChanged = true;
 			}
 
 		} finally {
 			entityManager.getTransaction().commit();
 			entityManager.close();
+			
+			//send event notification
+			if(statusChanged){
+				FileTrackingStatus.STATUS prevStatusObj = null;
+				if(prevStatus != null){
+					prevStatusObj = FileTrackingStatus.STATUS.valueOf(prevStatus);
+				}else{
+					prevStatusObj = FileTrackingStatus.STATUS.READY;
+				}
+				
+				notifyStatusChange(prevStatusObj, fileTrackingStatus);
+			}
 		}
 
 	}

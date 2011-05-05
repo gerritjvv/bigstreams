@@ -2,6 +2,7 @@ package org.streams.test.agent.send;
 
 import static org.junit.Assert.assertEquals;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -32,7 +33,7 @@ import org.streams.agent.send.utils.MapTrackerMemory;
 public class TestFileSendWorkerMultiUpdatesConflict {
 
 	@Test
-	public void testConflic() throws InterruptedException {
+	public void testConflic() throws InterruptedException, IOException {
 		final MapTrackerMemory memory = new MapTrackerMemory();
 		final int threadCount = 10;
 		
@@ -119,11 +120,19 @@ public class TestFileSendWorkerMultiUpdatesConflict {
 	 * file size is used as a unique identifier
 	 * @param fileSize
 	 * @return
+	 * @throws IOException 
 	 */
-	private FileTrackingStatus createFileTrackingStatus(int fileSize) {
+	private FileTrackingStatus createFileTrackingStatus(int fileSize) throws IOException {
 
+		String path = "target/tests/TestFileSendWorkerMultiUpdatesConflict.txt";
+		File file = new File(path);
+		if(!file.exists()){
+			file.mkdirs();
+			file.createNewFile();
+		}
+		
 		FileTrackingStatus fileToSendStatus = new FileTrackingStatus();
-		fileToSendStatus.setPath("testfile");
+		fileToSendStatus.setPath(path);
 		fileToSendStatus.setFileSize(fileSize);
 		fileToSendStatus.setLogType("Test");
 		fileToSendStatus.setStatus(FileTrackingStatus.STATUS.READY);

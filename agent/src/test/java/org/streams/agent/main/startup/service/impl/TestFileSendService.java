@@ -1,10 +1,12 @@
 package org.streams.agent.main.startup.service.impl;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import junit.framework.TestCase;
 
+import org.apache.commons.io.FileUtils;
 import org.junit.Test;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
@@ -24,18 +26,21 @@ import org.streams.agent.send.utils.MapTrackerMemory;
  */
 public class TestFileSendService extends TestCase {
 
+	File baseDir = null;
 	
 	@Test
 	public void testFileSendServiceStartShutdown() throws Exception {
 
 		// create file queue
 		FileTrackerMemory memory = new MapTrackerMemory();
-
+		
 		int filecount = 10;
 		// create 10 files
 		for (int i = 0; i < filecount; i++) {
 			FileTrackingStatus file = new FileTrackingStatus();
-			file.setPath("testfile" + i);
+			File path = new File(baseDir, "testfile" + i);
+			path.createNewFile();
+			file.setPath(path.getAbsolutePath());
 			file.setLogType("test");
 			file.setStatus(FileTrackingStatus.STATUS.READY);
 			memory.updateFile(file);
@@ -70,6 +75,20 @@ public class TestFileSendService extends TestCase {
 
 	}
 
+
+	@Override
+	protected void setUp() throws Exception {
+		baseDir = new File("target/tests/TestFileSendService");
+		baseDir.mkdirs();
+	}
+
+
+	@Override
+	protected void tearDown() throws Exception {
+		FileUtils.deleteDirectory(baseDir);
+	}
+
+	
 	private class ClientResourceFactoryMock implements ClientResourceFactory {
 
 		@Override
@@ -83,5 +102,6 @@ public class TestFileSendService extends TestCase {
 		}
 
 	}
+
 
 }

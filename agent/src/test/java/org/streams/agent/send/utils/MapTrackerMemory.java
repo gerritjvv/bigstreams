@@ -9,16 +9,18 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 
+import org.apache.commons.lang.StringUtils;
+import org.streams.agent.file.AbstractFileTrackerMemory;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.FileTrackingStatus.STATUS;
-
 
 /**
  * Implements the FileTrackerMemory using a HashMap.
  * 
  */
-public class MapTrackerMemory implements FileTrackerMemory {
+public class MapTrackerMemory extends AbstractFileTrackerMemory implements
+		FileTrackerMemory {
 
 	Map<String, FileTrackingStatus> map = new HashMap<String, FileTrackingStatus>();
 
@@ -93,7 +95,34 @@ public class MapTrackerMemory implements FileTrackerMemory {
 
 	@Override
 	public void updateFile(FileTrackingStatus fileTrackingStatus) {
+		boolean statusChanged = false;
+		FileTrackingStatus.STATUS prevStatus = null;
+		
+		FileTrackingStatus prevFileTrackingStatus = map.get(fileTrackingStatus
+				.getPath());
+		if (prevFileTrackingStatus == null) {
+			statusChanged = true;
+			prevStatus = FileTrackingStatus.STATUS.READY;
+		} else {
+			prevStatus = prevFileTrackingStatus.getStatus();
+			
+			// if both are the same instance notify change because we can never
+			// tell if the status changed.
+			if (fileTrackingStatus == prevFileTrackingStatus) {
+				statusChanged = true;
+			} else {
+				statusChanged = StringUtils.equals(prevFileTrackingStatus
+						.getStatus().toString(), fileTrackingStatus.getStatus()
+						.toString());
+			}
+		}
+
 		map.put(fileTrackingStatus.getPath(), fileTrackingStatus);
+
+		// send event notification
+		if (statusChanged) {
+			notifyStatusChange(prevStatus, fileTrackingStatus);
+		}
 	}
 
 	@Override

@@ -126,7 +126,15 @@ public class LogDirConf {
 	public Collection<File> getDirectories() {
 		return logDirs.keySet();
 	}
-
+	
+	/**
+	 * Returns the log types
+	 * @return
+	 */
+	public Collection<String> getTypes(){
+		return logDirs.values();
+	}
+	
 	/**
 	 * Returns the log type for a file
 	 * 

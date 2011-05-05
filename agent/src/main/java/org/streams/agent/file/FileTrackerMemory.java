@@ -14,10 +14,13 @@ public interface FileTrackerMemory {
 	FileTrackingStatus getFileStatus(File path);
 	FileTrackingStatus delete(File path);
 	
-
+	
 	long getFileCount();
 	long getFileCount(FileTrackingStatus.STATUS status);
 	
 	void updateFile(FileTrackingStatus fileTrackingStatus);
 
+	void addListener(FileTrackerStatusListener listener);
+	void removeListener(FileTrackerStatusListener listener);
+	
 }
