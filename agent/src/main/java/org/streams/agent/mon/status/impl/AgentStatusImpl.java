@@ -18,6 +18,10 @@ public class AgentStatusImpl implements AgentStatus {
 
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
+	FILE_LOG_MANAGE_STATUS logManageStatus = FILE_LOG_MANAGE_STATUS.OK;
+	
+	String logManageMsg = "Working";
+	
 	public int getCounter(String name) {
 		return getSetCounter(name).get();
 	}
@@ -69,5 +73,32 @@ public class AgentStatusImpl implements AgentStatus {
 	public void setCounter(String status, int counter) {
 		getSetCounter(status).set(counter);
 	}
+
+	/**
+	 * Gets the FileActionManager message
+	 * @return FILE_LOG_MANAGE_STATUS
+	 */
+	public FILE_LOG_MANAGE_STATUS getLogManageStatus() {
+		return logManageStatus;
+	}
+
+	/**
+	 * Sets the FileActionManager message and status
+	 * @param logManageStatus
+	 * @param logManageMsg
+	 */
+	public void setLogManageStatus(FILE_LOG_MANAGE_STATUS logManageStatus, String logManageMsg) {
+		this.logManageStatus = logManageStatus;
+		this.logManageMsg = logManageMsg;
+	}
+
+	/**
+	 * Gets the FileActionManager message
+	 * @return String
+	 */
+	public String getLogManageMsg() {
+		return logManageMsg;
+	}
+
 
 }

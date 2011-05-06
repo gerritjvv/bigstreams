@@ -11,6 +11,14 @@ public interface AgentStatus extends Status{
 		SERVER_ERROR, CLIENT_ERROR, UNKOWN_ERROR, OK
 	};
 	
+	enum FILE_LOG_MANAGE_STATUS{
+		ERROR, OK
+	}
+	
+	public FILE_LOG_MANAGE_STATUS getLogManageStatus();
+	public void setLogManageStatus(FILE_LOG_MANAGE_STATUS logManageStatus, String logManageMsg);
+	public String getLogManageMsg();
+	
 	/**
 	 * Sets the live status of the application
 	 * @param status

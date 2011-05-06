@@ -5,6 +5,7 @@
 		transaction-type="RESOURCE_LOCAL">
 		<provider>org.hibernate.ejb.HibernatePersistence</provider>
 		<class>org.streams.agent.file.impl.db.FileTrackingStatusEntity</class>
+		<class>org.streams.agent.file.actions.impl.db.FileLogActionEventEntity</class>
 		<properties>
 
 			<!-- Hibernate database connection settings -->

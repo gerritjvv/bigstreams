@@ -31,7 +31,6 @@ public class ExecAction extends FileLogManageAction {
 		if (file.exists()) {
 			List<String> cmdList = new ArrayList<String>();
 			cmdList.addAll(Arrays.asList(cmd.split(" ")));
-			cmdList.add(file.getAbsolutePath());
 
 			Process process = new ProcessBuilder(cmdList).start();
 			try {

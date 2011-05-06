@@ -23,4 +23,6 @@ public interface FileTrackerMemory {
 	void addListener(FileTrackerStatusListener listener);
 	void removeListener(FileTrackerStatusListener listener);
 	
+	
+	
 }
