@@ -64,6 +64,7 @@ public class FileTrackerHistoryMemoryImplTest {
 				.getLastestAgentStatus();
 		assertNotNull(agentStatus);
 		assertNotNull(agentStatus.get(latestItem.getAgent()));
+		Thread.sleep(500L);
 		assertEquals(100, memory.getAgentHistoryCount(latestItem.getAgent()));
 
 		memory.deleteAgentHistory(latestItem.getAgent());
