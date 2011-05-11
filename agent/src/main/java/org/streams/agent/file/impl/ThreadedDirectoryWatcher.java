@@ -8,7 +8,6 @@ import org.streams.agent.file.DirectoryWatchListener;
 import org.streams.agent.file.DirectoryWatcher;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.commons.file.FileDateExtractor;
-import org.streams.commons.file.impl.SimpleFileDateExtractor;
 
 
 /**
