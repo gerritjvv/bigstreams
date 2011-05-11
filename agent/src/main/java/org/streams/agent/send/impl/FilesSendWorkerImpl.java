@@ -103,6 +103,14 @@ public class FilesSendWorkerImpl implements Runnable {
 				//this thread was interrupted
 				interrupted = true;
 				break;
+			}catch(java.util.concurrent.RejectedExecutionException rejectedException){
+				//if we see this error it means that some thread executor service has been closed.
+				//this only happens when the application is shutdown.
+				//We need to recougnise this and shutdown.
+				LOG.error("Application might have been shutdown un cleanly: threads rejected", rejectedException);
+				LOG.error("Forcing shutdown");
+				System.exit(-1);
+				
 			}catch(Throwable t){
 				//any unexpected error in this method will result in the thread terminating
 				try{

@@ -33,4 +33,8 @@ public class DeleteAction extends FileLogManageAction{
 		
 	}
 
+	public String getName(){
+		return "delete";
+	}
+	
 }

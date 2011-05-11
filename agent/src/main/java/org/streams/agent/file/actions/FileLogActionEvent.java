@@ -13,10 +13,19 @@ public class FileLogActionEvent {
 	
 	FileTrackingStatus status = null;
 
-	public FileLogActionEvent(Long id, FileTrackingStatus status) {
+	int delay;
+	
+	/**
+	 * The actionName
+	 */
+	String actionName;
+	
+	public FileLogActionEvent(Long id, FileTrackingStatus status, String actionName, int delay) {
 		super();
 		this.id = id;
 		this.status = status;
+		this.actionName = actionName;
+		this.delay = delay;
 	}
 
 	/**
@@ -43,6 +52,21 @@ public class FileLogActionEvent {
 		this.status = status;
 	}
 	
-	
+	public int getDelay() {
+		return delay;
+	}
+
+	public void setDelay(int delay) {
+		this.delay = delay;
+	}
+
+	public String getActionName() {
+		return actionName;
+	}
+
+	public void setActionName(String actionName) {
+		this.actionName = actionName;
+	}
+
 	
 }

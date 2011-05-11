@@ -1,13 +1,20 @@
 package org.streams.agent.file.actions.impl;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.collections.MultiMap;
 import org.apache.commons.collections.map.MultiValueMap;
 import org.apache.log4j.Logger;
+import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackerStatusListener;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.file.FileTrackingStatus.STATUS;
@@ -32,16 +39,32 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 			.getLogger(FileLogActionManager.class);
 
 	ExecutorService threadService;
+
+	ScheduledExecutorService scheduledService;
+
 	FileLogManagerMemory memory;
+	FileTrackerMemory fileMemory;
 
 	MultiMap actionsByLogTypeMap;
+	Map<String, FileLogManageAction> actionsByNameMap = new HashMap<String, FileLogManageAction>();
+
 	AgentStatus agentStatus;
 
+	int eventParkThreshold = 5;
+
+	/**
+	 * This is an internal map used so that the backgroun thread doesn't run
+	 * events already scheduled.
+	 */
+	private final ConcurrentHashMap<Long, FileLogActionEvent> scheduledEvents = new ConcurrentHashMap<Long, FileLogActionEvent>();
+
 	public FileLogActionManager(AgentStatus agentStatus,
-			ExecutorService threadService, FileLogManagerMemory memory,
+			ExecutorService threadService, FileTrackerMemory fileMemory,
+			FileLogManagerMemory memory,
 			Collection<? extends FileLogManageAction> actions) {
 		this.agentStatus = agentStatus;
 		this.threadService = threadService;
+		this.fileMemory = fileMemory;
 		this.memory = memory;
 
 		// build an index of actions by log type
@@ -50,8 +73,75 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 			actionsByLogTypeMap = new MultiValueMap();
 			for (FileLogManageAction action : actions) {
 				actionsByLogTypeMap.put(action.getLogType(), action);
+				actionsByNameMap.put(action.getLogType() + action.getStatus()
+						+ action.getName(), action);
 			}
 
+		}
+
+		// create a schedule service
+		// expired events are checked every X seconds. X == eventParkThreshold
+		scheduledService = Executors.newScheduledThreadPool(1);
+
+		scheduledService.scheduleAtFixedRate(new Runnable() {
+			public void run() {
+				try {
+					checkExpiredEvents();
+				} catch (Throwable t) {
+					LOG.error(t.toString(), t);
+				}
+			}
+		}, 1000L, getEventParkThreshold() * 1000, TimeUnit.MILLISECONDS);
+
+	}
+
+	/**
+	 * Queries the memory for expired events, passing the eventParkThreashold.
+	 * Any events without actions are removed.
+	 */
+	public void checkExpiredEvents() throws Throwable {
+
+		Throwable lastException = null;
+
+		for (FileLogActionEvent event : memory
+				.listExpiredEvents(getEventParkThreshold())) {
+
+			// get the action from the event action name
+			FileLogManageAction action = actionsByNameMap.get(event.getStatus()
+					.getLogType()
+					+ event.getStatus().getStatus()
+					+ event.getActionName());
+
+			if (action == null) {
+				// if the action does not exist any more because the
+				// configuration was changed
+				// then remove the event.
+				LOG.warn("Action: " + event.getActionName()
+						+ " does not exist any more, removing event");
+
+				// remove the event
+				try {
+					// when throwing an error here we cannot do anything with
+					// it, but we cannot let it pass
+					// cause it will interrupt excution of other events.
+					memory.removeEvent(event.getId());
+				} catch (Throwable t) {
+					// if this is an interrupted exception throw it.
+					if (t instanceof InterruptedException) {
+						throw t;
+					}
+					// else store it for later throw
+					lastException = t;
+				}
+
+			} else {
+				scheduleEvent(event, action);
+			}
+
+		}
+
+		if (lastException != null) {
+			throw lastException;
 		}
 
 	}
@@ -64,14 +154,40 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 		Collection<FileLogManageAction> actions = locateByLogTypeStatus(
 				status.getLogType(), status.getStatus());
 		if (actions != null && actions.size() > 0) {
+			// we require the FileTrackingStatus to have a last modification
+			// time
+			// if its zero here we log the error and set the modification time
+			// to current time
+			if (status.getLastModificationTime() < 100) {
+				LOG.warn("lastmodificationTime property not set for: "
+						+ status.getPath()
+						+ " setting property to current time");
+				status.setLastModificationTime(System.currentTimeMillis());
+			}
 
-			// register the event with the persistence layer
-			FileLogActionEvent event = memory
-					.registerEvent(new FileLogActionEvent(null, status));
 			// schedule for execution.
 			for (FileLogManageAction action : actions) {
-				scheduleEvent(event, action);
+
+				// register the event with the persistence layer
+				FileLogActionEvent event = memory
+						.registerEvent(new FileLogActionEvent(null, status,
+								action.getName(), action.getDelayInSeconds()));
+
+				if (action.getDelayInSeconds() <= eventParkThreshold) {
+					// if not delay time, schedule immediately
+					scheduleEvent(event, action);
+				} else {
+					// park event by doing nothing
+					if (LOG.isDebugEnabled()) {
+						LOG.debug("Parking event action status: "
+								+ status.getStatus() + " action: "
+								+ action.getName() + " delay: "
+								+ action.getDelayInSeconds());
+					}
+				}
+
 			}
+
 		}
 
 	}
@@ -110,12 +226,39 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 	 */
 	private void scheduleEvent(final FileLogActionEvent event,
 			final FileLogManageAction action) {
-		threadService.submit(new Runnable() {
-			public void run() {
-				processEvent(event, action);
-			}
-		});
 
+		// check that we do not schedule events doubly
+		if (scheduledEvents.putIfAbsent(event.getId(), event) == null) {
+
+			threadService.submit(new Runnable() {
+				public void run() {
+					processEvent(event, action);
+				}
+			});
+
+		}
+	}
+
+	protected long getTimeDiff(FileLogActionEvent event) {
+		// sleep the time required by the event.
+		int delay = event.getDelay();
+		long diff = 0;
+
+		if (delay > 0) {
+
+			// we calculate the delay based on the time stamp of the event
+			long delayMillis = delay * 1000;
+			long timeStamp = event.getStatus().getLastModificationTime();
+
+			if (timeStamp < 0) {
+				timeStamp = 0;
+			}
+
+			diff = delayMillis - (System.currentTimeMillis() - timeStamp);
+
+		}
+
+		return diff;
 	}
 
 	/**
@@ -128,35 +271,40 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 			FileLogManageAction action) {
 
 		try {
-			// sleep the time required by the event.
-			int delay = action.getDelayInSeconds();
+			boolean shouldRun = true;
 
-			if (delay > 0) {
-
-				// we calculate the delay based on the time stamp of the event
-				long delayMillis = delay * 1000;
-				long timeStamp = event.getStatus().getLastModificationTime();
-
-				if (timeStamp < 0) {
-					timeStamp = 0;
-				}
-
-				long diff = delayMillis
-						- (System.currentTimeMillis() - timeStamp);
-
+			if (event.getDelay() > 0) {
+				long diff = getTimeDiff(event);
 				if (diff > 0) {
 					Thread.sleep(diff);
 				}
 
+				// we only ever want to execute this event if the status is
+				// still the same after delay.
+				// so we check it just before execution of the action.
+				FileTrackingStatus status = fileMemory.getFileStatus(new File(
+						event.getStatus().getPath()));
+
+				// check status no null, status.getStatus not null and status
+				shouldRun = !(status == null || status.getStatus() == null || !status
+						.getStatus().equals(action.getStatus()));
 			}
 
 			try {
-				action.run(event.getStatus());
+				if (shouldRun) {
+					action.run(event.getStatus());
+				} else {
+					if (LOG.isDebugEnabled()) {
+						LOG.debug("File status changed between event notification and file action run for file: "
+								+ event.getStatus().getPath());
+					}
+				}
 				agentStatus.setLogManageStatus(
 						AgentStatus.FILE_LOG_MANAGE_STATUS.OK, "Working");
 			} finally {
 				// remove event after execution
 				memory.removeEvent(event.getId());
+				scheduledEvents.remove(event.getId());
 			}
 		} catch (InterruptedException it) {
 			Thread.interrupted();
@@ -194,6 +342,7 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 
 	@Override
 	public void shutdown() {
+		scheduledService.shutdown();
 		threadService.shutdown();
 		try {
 			threadService.awaitTermination(30, TimeUnit.SECONDS);
@@ -203,6 +352,25 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 		}
 
 		threadService.shutdownNow();
+		scheduledService.shutdownNow();
+	}
+
+	public int getEventParkThreshold() {
+		return eventParkThreshold;
+	}
+
+	/**
+	 * This value can never be lower than 5 seconds.
+	 * 
+	 * @param eventParkThreshold
+	 */
+	public void setEventParkThreshold(int eventParkThreshold) {
+		if (eventParkThreshold < 5) {
+			LOG.error("eventParkThreshold cannot be lower than 5 seconds setting to 5");
+			this.eventParkThreshold = 5;
+		} else {
+			this.eventParkThreshold = eventParkThreshold;
+		}
 	}
 
 }

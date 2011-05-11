@@ -61,4 +61,8 @@ public class ExecAction extends FileLogManageAction {
 		cmd = config.trim();
 	}
 
+	public String getName(){
+		return "exec";
+	}
+	
 }

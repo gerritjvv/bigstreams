@@ -27,6 +27,9 @@ import org.streams.agent.file.actions.FileLogActionEvent;
 @NamedQueries(value = {
 		@NamedQuery(name = "fileLogActionEventEntity.byStatus", query = "from FileLogActionEventEntity f where f.status=:status ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileLogActionEventEntity.list", query = "from FileLogActionEventEntity f ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileLogActionEventEntity.byPath", query = "from FileLogActionEventEntity f where f.path=:path ORDER BY f.lastModificationTime DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileLogActionEventEntity.byDelay", query = "from FileLogActionEventEntity f where f.delay > :delay ORDER BY f.lastModificationTime DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileLogActionEventEntity.listExpired", query = "from FileLogActionEventEntity f where f.delay > :delay AND ((f.delay*1000) - (:currentTime - f.lastModificationTime)) < 1 ORDER BY f.lastModificationTime DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 })
 public class FileLogActionEventEntity implements Serializable{
 
@@ -38,6 +41,16 @@ public class FileLogActionEventEntity implements Serializable{
 	@Id
 	@GeneratedValue(strategy=GenerationType.AUTO)
 	Long id;
+	
+	/**
+	 * The time in seconds an action should wait before running.<br/>
+	 * This value does not affect the object comparison or hash.
+	 */
+	@Column(name="delay_seconds", nullable=true)
+	int delay = 0;
+	
+	@Column(name="action_name", nullable=false)
+	String actionName;
 	
 	/**
 	 * Date that appears in the file name if any.<br/>
@@ -91,7 +104,7 @@ public class FileLogActionEventEntity implements Serializable{
 	
 	public FileLogActionEvent createEventObject(){
 		return new FileLogActionEvent(getId(),
-				createStatusObject());
+				createStatusObject(), actionName, delay);
 	}
 	
 	/**
@@ -99,7 +112,10 @@ public class FileLogActionEventEntity implements Serializable{
 	 * @param status
 	 * @return FileLogActionEventEntity
 	 */
-	public static FileLogActionEventEntity createEntity(FileTrackingStatus status){
+	public static FileLogActionEventEntity createEntity(FileLogActionEvent event){
+		
+		FileTrackingStatus status = event.getStatus();
+		
 		FileLogActionEventEntity entity = new FileLogActionEventEntity();
 		entity.setFileDate(status.getFileDate());
 		entity.setFilePointer(status.getFilePointer());
@@ -110,6 +126,8 @@ public class FileLogActionEventEntity implements Serializable{
 		entity.setPath(status.getPath());
 		entity.setSentDate(status.getSentDate());
 		entity.setStatus(status.getStatus());
+		entity.setActionName(event.getActionName());
+		entity.setDelay(event.getDelay());
 		
 		return entity;
 	}
@@ -194,10 +212,28 @@ public class FileLogActionEventEntity implements Serializable{
 		this.logType = logType;
 	}
 
+	public int getDelay() {
+		return delay;
+	}
+
+	public void setDelay(int delay) {
+		this.delay = delay;
+	}
+
+	public String getActionName() {
+		return actionName;
+	}
+
+	public void setActionName(String actionName) {
+		this.actionName = actionName;
+	}
+
 	@Override
 	public int hashCode() {
 		final int prime = 31;
 		int result = 1;
+		result = prime * result
+				+ ((actionName == null) ? 0 : actionName.hashCode());
 		result = prime * result
 				+ ((fileDate == null) ? 0 : fileDate.hashCode());
 		result = prime * result + (int) (filePointer ^ (filePointer >>> 32));
@@ -213,7 +249,7 @@ public class FileLogActionEventEntity implements Serializable{
 		result = prime * result + ((status == null) ? 0 : status.hashCode());
 		return result;
 	}
-	
+
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj)
@@ -223,6 +259,11 @@ public class FileLogActionEventEntity implements Serializable{
 		if (getClass() != obj.getClass())
 			return false;
 		FileLogActionEventEntity other = (FileLogActionEventEntity) obj;
+		if (actionName == null) {
+			if (other.actionName != null)
+				return false;
+		} else if (!actionName.equals(other.actionName))
+			return false;
 		if (fileDate == null) {
 			if (other.fileDate != null)
 				return false;
@@ -260,8 +301,5 @@ public class FileLogActionEventEntity implements Serializable{
 			return false;
 		return true;
 	}
-	
-	
-
 	
 }

@@ -10,6 +10,8 @@ import org.streams.agent.file.FileTrackingStatus;
  */
 public abstract class FileLogManageAction {
 
+	String name;
+	
 	/**
 	 * To be run only when this status is reached.
 	 */
@@ -73,4 +75,7 @@ public abstract class FileLogManageAction {
 	public void setDelayInSeconds(int delayInSeconds) {
 		this.delayInSeconds = delayInSeconds;
 	}
+
+	public abstract String getName();
+
 }

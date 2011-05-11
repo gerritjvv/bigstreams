@@ -11,8 +11,25 @@ import org.streams.agent.file.actions.FileLogManageActionFactory;
 /**
  * 
  * Default action manage factory.<br/>
- * 
+ * <pre>
  * [logtype] [status] [delay in seconds] [action name] [rest of config]\n
+ * </pre>
+ * <br/>
+ * Wild cards:<br/>
+ * Logtype, and status can have wild cards which means that they are notified for each and every type and status.<br/>
+ * E.g.<br/>
+ * <pre>
+ *  "*  mystatus 0 move /test/"
+ * </pre>
+ * <br/>
+ * The above example will move all logs with status "mystatus" to the directory test.
+ * <br/>
+ * <pre>
+ *  "* READ_ERROR delete"
+ * </pre>
+ * The above example will delete all logs that have status READ_ERROR.
+ * </pre>
+ * </br>
  */
 public class DefaultFileLogManageActionFactory implements
 		FileLogManageActionFactory {
@@ -39,6 +56,10 @@ public class DefaultFileLogManageActionFactory implements
 
 	LogDirConf logDirConf;
 
+	/**
+	 * Create an instance passing the current LogDirConf object ot it.
+	 * @param logDirConf
+	 */
 	public DefaultFileLogManageActionFactory(LogDirConf logDirConf) {
 		super();
 		this.logDirConf = logDirConf;

@@ -64,4 +64,8 @@ public class MoveAction extends FileLogManageAction {
 		return destinationDir;
 	}
 
+	public String getName(){
+		return "move";
+	}
+	
 }

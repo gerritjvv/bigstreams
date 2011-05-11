@@ -3,6 +3,8 @@ package org.streams.agent.file.actions.impl.db;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.SortedSet;
+import java.util.TreeSet;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -11,11 +13,12 @@ import javax.persistence.NoResultException;
 import org.streams.agent.file.FileTrackingStatus.STATUS;
 import org.streams.agent.file.actions.FileLogActionEvent;
 import org.streams.agent.file.actions.FileLogManagerMemory;
+import org.streams.agent.file.actions.LastModificationTimeComparator;
 
 /**
  * 
  * Implements the DB storage logic for the FileLogManagerMemory.
- *
+ * 
  */
 public class DBFileLogManagerMemory implements FileLogManagerMemory {
 
@@ -35,27 +38,25 @@ public class DBFileLogManagerMemory implements FileLogManagerMemory {
 	 */
 	@Override
 	public FileLogActionEvent registerEvent(FileLogActionEvent event) {
-		
-		
-		//create entity first;
-		FileLogActionEventEntity entity = FileLogActionEventEntity.createEntity(event.getStatus());
-		
-		
+
+		// create entity first;
+		FileLogActionEventEntity entity = FileLogActionEventEntity
+				.createEntity(event);
+
 		EntityManager entityManager = entityManagerFactory
 				.createEntityManager();
 
-		
 		try {
 			entityManager.getTransaction().begin();
 			entityManager.persist(entity);
-			
+
 			event.setId(entity.getId());
-			
+
 		} finally {
 			entityManager.getTransaction().commit();
 			entityManager.close();
 		}
-		
+
 		return event;
 	}
 
@@ -82,6 +83,43 @@ public class DBFileLogManagerMemory implements FileLogManagerMemory {
 			entityManager.close();
 		}
 
+	}
+
+	/**
+	 * fileLogActionEventEntity.byPath
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public SortedSet<FileLogActionEvent> listEventsForFile(String fileName) {
+		SortedSet<FileLogActionEvent> statusColl = new TreeSet<FileLogActionEvent>(
+				LastModificationTimeComparator.INSTANCE);
+
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
+		try {
+			entityManager.getTransaction().begin();
+
+			List<FileLogActionEventEntity> statusEntityList = entityManager
+					.createNamedQuery("fileLogActionEventEntity.byPath")
+					.setParameter("path", fileName).getResultList();
+
+			if (!(statusEntityList == null || statusEntityList.size() < 1)) {
+				// create empty list
+
+				// transform each FileTackingStatusEntity into
+				// FileTrackingStatus object
+				for (FileLogActionEventEntity entity : statusEntityList) {
+					statusColl.add(entity.createEventObject());
+				}
+			}
+
+		} finally {
+			entityManager.getTransaction().commit();
+			entityManager.close();
+		}
+
+		return statusColl;
 	}
 
 	@Override
@@ -132,9 +170,91 @@ public class DBFileLogManagerMemory implements FileLogManagerMemory {
 		return statusColl;
 	}
 
+	/**
+	 * 
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public Collection<FileLogActionEvent> listEventsWithDelay(int threshold) {
+		SortedSet<FileLogActionEvent> statusColl = new TreeSet<FileLogActionEvent>(
+				LastModificationTimeComparator.INSTANCE);
+
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
+		try {
+			entityManager.getTransaction().begin();
+
+			List<FileLogActionEventEntity> statusEntityList = entityManager
+					.createNamedQuery("fileLogActionEventEntity.byDelay")
+					.setParameter("delay", threshold).getResultList();
+
+			if (!(statusEntityList == null || statusEntityList.size() < 1)) {
+				// create empty list
+
+				// transform each FileTackingStatusEntity into
+				// FileTrackingStatus object
+				for (FileLogActionEventEntity entity : statusEntityList) {
+					statusColl.add(entity.createEventObject());
+				}
+			}
+
+		} finally {
+			entityManager.getTransaction().commit();
+			entityManager.close();
+		}
+
+		return statusColl;
+
+	}
+
 	@Override
 	public void close() {
 
+	}
+
+	/**
+	 * fileLogActionEventEntity.listExpired
+	 */
+	@SuppressWarnings("unchecked")
+	@Override
+	public Collection<FileLogActionEvent> listExpiredEvents(int threshold) {
+		Collection<FileLogActionEvent> statusColl = null;
+		
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
+		try {
+			entityManager.getTransaction().begin();
+
+			long currentTime = System.currentTimeMillis();
+			
+			List<FileLogActionEventEntity> statusEntityList = entityManager
+					.createNamedQuery("fileLogActionEventEntity.listExpired")
+					.setParameter("delay", threshold)
+					.setParameter("currentTime", currentTime).getResultList();
+
+			if (!(statusEntityList == null || statusEntityList.size() < 1)) {
+				// create empty list
+
+				statusColl = new ArrayList<FileLogActionEvent>(statusEntityList.size());
+				
+				// transform each FileTackingStatusEntity into
+				// FileTrackingStatus object
+				for (FileLogActionEventEntity entity : statusEntityList) {
+					statusColl.add(entity.createEventObject());
+				}
+			}else{
+				statusColl = new ArrayList<FileLogActionEvent>();
+			}
+
+		} finally {
+			entityManager.getTransaction().commit();
+			entityManager.close();
+		}
+
+		return statusColl;
+		
 	}
 
 }
