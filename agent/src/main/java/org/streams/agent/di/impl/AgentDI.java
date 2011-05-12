@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.inject.Inject;
 import javax.persistence.EntityManagerFactory;
@@ -46,9 +47,13 @@ import org.streams.agent.conf.LogDirConf;
 import org.streams.agent.file.DirectoryWatcher;
 import org.streams.agent.file.DirectoryWatcherFactory;
 import org.streams.agent.file.FileTrackerMemory;
+import org.streams.agent.file.actions.FileLogManagerMemory;
+import org.streams.agent.file.actions.LogActionsConf;
+import org.streams.agent.file.actions.impl.FileLogActionManager;
 import org.streams.agent.file.impl.ThreadedDirectoryWatcher;
 import org.streams.agent.mon.impl.AgentShutdownResource;
 import org.streams.agent.mon.impl.AgentStatusResource;
+import org.streams.agent.mon.impl.FileLogActionManagerResource;
 import org.streams.agent.mon.impl.FileStatusCleanoutManager;
 import org.streams.agent.mon.impl.FileTrackingStatusCountResource;
 import org.streams.agent.mon.impl.FileTrackingStatusPathResource;
@@ -150,11 +155,35 @@ public class AgentDI {
 				beanFactory.getBean(DirectoryPollingService.class),
 				beanFactory.getBean(RestletService.class),
 				beanFactory.getBean(FilesSendService.class),
-				beanFactory.getBean(MetricsAppService.class));
+				beanFactory.getBean(MetricsAppService.class),
+				beanFactory.getBean(FileLogActionManager.class));
 
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				null);
 	}
+
+	@Bean
+	public FileLogActionManager fileLogActionManager() throws Exception{
+		
+		int threads = beanFactory.getBean(AgentConfiguration.class).getLogManageActionThreads();
+		
+		if(threads < 1){
+			threads = 2;
+		}
+
+		//this object will register itself as an event listener with the file memory
+		FileLogActionManager manager = new FileLogActionManager(
+				beanFactory.getBean(AgentStatus.class),
+				Executors.newFixedThreadPool(threads),
+				beanFactory.getBean(FileTrackerMemory.class),
+				beanFactory.getBean(FileLogManagerMemory.class),
+				beanFactory.getBean(LogActionsConf.class).getActions()
+				);
+		
+		
+		return manager;
+	}
+	
 
 	@Bean
 	@Lazy
@@ -269,7 +298,20 @@ public class AgentDI {
 			}
 
 		};
+		
+		Finder logActionManagerResource = new Finder() {
+
+			@Override
+			public ServerResource find(Request request, Response response) {
+				return fileLogActionManagerResource();
+			}
+
+		};
+		
 		final Router router = new Router();
+		router.attach("/files/actions", logActionManagerResource,
+				Template.MODE_STARTS_WITH);
+		
 		router.attach("/files/list/{status}", finderStatus);
 		router.attach("/files/list", finderStatus);
 		router.attach("/files/list/", finderStatus);
@@ -296,6 +338,13 @@ public class AgentDI {
 		return app;
 	}
 
+	@Bean
+	public FileLogActionManagerResource fileLogActionManagerResource(){
+		FileLogActionManagerResource resource = new FileLogActionManagerResource();
+		resource.setMemory(beanFactory.getBean(FileLogManagerMemory.class));
+		return resource;
+	}
+	
 	@Bean
 	@Lazy
 	public AgentStatusResource agentStatusResource() {

@@ -4,9 +4,13 @@ import javax.inject.Singleton;
 import javax.persistence.EntityManagerFactory;
 import javax.persistence.Persistence;
 
+import org.springframework.beans.factory.BeanFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.streams.agent.file.FileTrackerMemory;
+import org.streams.agent.file.actions.FileLogManagerMemory;
+import org.streams.agent.file.actions.impl.db.DBFileLogManagerMemory;
 import org.streams.agent.file.impl.db.DBFileTrackerMemoryImpl;
 
 
@@ -21,6 +25,10 @@ public class DBDI {
 	private static final Object syncLock = new Object();
 	private static EntityManagerFactory entityManagerFactory;
 
+	@Autowired(required = true)
+	BeanFactory beanFactory;
+
+	
 	// ----------- DB Beans ---------------------------------//
 	/**
 	 * Scope is singleton.<br/>
@@ -56,6 +64,11 @@ public class DBDI {
 		memory.setEntityManagerFactory(fileTrackingEntityManagerFactory());
 
 		return memory;
+	}
+	
+	@Bean
+	public FileLogManagerMemory fileLogManagerMemory(){
+		return new DBFileLogManagerMemory(beanFactory.getBean(EntityManagerFactory.class));
 	}
 
 }

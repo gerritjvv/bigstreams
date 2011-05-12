@@ -94,6 +94,12 @@ public class AgentConfiguration {
 	 */
 	DateFormat fileDateExtractFormat;
 	
+	/**
+	 * The amount of threads that the log action manage framework has to execute
+	 * actions when file log status
+	 */
+	int logManageActionThreads;
+	
 	public AgentConfiguration() {
 
 	}
@@ -167,6 +173,9 @@ public class AgentConfiguration {
 
 		collectorAddress = configuration.getString(AgentProperties.COLLECTOR);
 
+		
+		logManageActionThreads = configuration.getInt(AgentProperties.LOG_MANAGE_ACTION_THREADS, 2);
+		
 	}
 
 	public Configuration getConfiguration() {
@@ -325,6 +334,14 @@ public class AgentConfiguration {
 
 	public void setFileDateExtractFormat(DateFormat fileDateExtractFormat) {
 		this.fileDateExtractFormat = fileDateExtractFormat;
+	}
+
+	public int getLogManageActionThreads() {
+		return logManageActionThreads;
+	}
+
+	public void setLogManageActionThreads(int logManageActionThreads) {
+		this.logManageActionThreads = logManageActionThreads;
 	}
 
 }

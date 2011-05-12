@@ -67,6 +67,8 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 		this.fileMemory = fileMemory;
 		this.memory = memory;
 
+		fileMemory.addListener(this);
+
 		// build an index of actions by log type
 		if (actions != null) {
 
@@ -168,12 +170,12 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 			// schedule for execution.
 			for (FileLogManageAction action : actions) {
 
-				// register the event with the persistence layer
+				// register the event with the persistence layer, the event time stamp is set to now
 				FileLogActionEvent event = memory
 						.registerEvent(new FileLogActionEvent(null, status,
 								action.getName(), action.getDelayInSeconds()));
-
-				if (action.getDelayInSeconds() <= eventParkThreshold) {
+				
+				if (isImmediateSchedule(action)) {
 					// if not delay time, schedule immediately
 					scheduleEvent(event, action);
 				} else {
@@ -190,6 +192,15 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 
 		}
 
+	}
+
+	/**
+	 * 
+	 * @param action
+	 * @return boolean true if the action should be scheduled immediately
+	 */
+	private final boolean isImmediateSchedule(FileLogManageAction action) {
+		return action.getDelayInSeconds() <= eventParkThreshold;
 	}
 
 	/**
@@ -248,7 +259,7 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 
 			// we calculate the delay based on the time stamp of the event
 			long delayMillis = delay * 1000;
-			long timeStamp = event.getStatus().getLastModificationTime();
+			long timeStamp = event.getTimeStamp();
 
 			if (timeStamp < 0) {
 				timeStamp = 0;
@@ -322,18 +333,15 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 		// on start check and replay all events
 		for (FileLogActionEvent event : memory.listEvents()) {
 
-			FileTrackingStatus status = event.getStatus();
-			Collection<FileLogManageAction> actions = locateByLogTypeStatus(
-					status.getLogType(), status.getStatus());
-			if (actions == null || actions.size() < 1) {
-				// remove event for which action does not exist anymore
+			String actionName = event.getActionName();
+
+			FileLogManageAction action = actionsByNameMap.get(actionName);
+			if (action == null) {
 				memory.removeEvent(event.getId());
 			} else {
-				LOG.info("Scheduling event for " + status.getPath()
-						+ " status: " + status.getStatus());
-				for (FileLogManageAction action : actions) {
+				if (isImmediateSchedule(action)) {
 					scheduleEvent(event, action);
-				}
+				}// else park event
 			}
 
 		}
@@ -345,6 +353,7 @@ public class FileLogActionManager implements FileTrackerStatusListener,
 		scheduledService.shutdown();
 		threadService.shutdown();
 		try {
+			LOG.debug("Waiting for threads to shutdown...");
 			threadService.awaitTermination(30, TimeUnit.SECONDS);
 		} catch (InterruptedException e) {
 			Thread.interrupted();

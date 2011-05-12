@@ -20,6 +20,8 @@ public class FileLogActionEvent {
 	 */
 	String actionName;
 	
+	long timeStamp = System.currentTimeMillis();
+	
 	public FileLogActionEvent(Long id, FileTrackingStatus status, String actionName, int delay) {
 		super();
 		this.id = id;
@@ -66,6 +68,14 @@ public class FileLogActionEvent {
 
 	public void setActionName(String actionName) {
 		this.actionName = actionName;
+	}
+
+	public long getTimeStamp() {
+		return timeStamp;
+	}
+
+	public void setTimeStamp(long timeStamp) {
+		this.timeStamp = timeStamp;
 	}
 
 	

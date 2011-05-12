@@ -1,0 +1,7 @@
+#log action file
+/*
+ Comments can be multiline
+*/
+// or single line
+# format is
+# <logtype> <status> <delay in seconds> <action name> <any other configuration>

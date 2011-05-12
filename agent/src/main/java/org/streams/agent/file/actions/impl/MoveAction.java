@@ -22,8 +22,18 @@ public class MoveAction extends FileLogManageAction {
 	public void runAction(FileTrackingStatus fileStatus) throws Throwable {
 
 		File file = new File(fileStatus.getPath());
+		
+		
 		if (file.exists()) {
-
+			File destFile = new File(destinationDir, file.getName());
+			
+			if(destFile.exists()){
+				//if the destination file exists rename and move again.
+				File copyFile = new File(destFile.getParent(), destFile.getName() + "_" + System.currentTimeMillis());
+				destFile.renameTo(copyFile);
+				file = copyFile;
+			}
+			
 			FileUtils.moveFileToDirectory(file, destinationDir, true);
 			if (LOG.isDebugEnabled()) {
 				LOG.debug("Moved file " + file.getAbsolutePath() + " to "

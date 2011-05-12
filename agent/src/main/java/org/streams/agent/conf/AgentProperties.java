@@ -54,4 +54,6 @@ public interface AgentProperties {
 	 */
 	static final String FILENAME_DATE_FORMAT = "file.date.format";
 	
+	static final String LOG_MANAGE_ACTION_THREADS = "log.manage.action.threads";
+	
 }

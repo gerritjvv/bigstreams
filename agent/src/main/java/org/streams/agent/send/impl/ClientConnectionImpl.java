@@ -32,6 +32,7 @@ import org.streams.agent.send.ClientException;
 import org.streams.agent.send.FileStreamer;
 import org.streams.agent.send.ServerException;
 import org.streams.commons.io.Header;
+import org.streams.commons.io.NetworkCodes;
 import org.streams.commons.io.Protocol;
 
 /**
@@ -133,10 +134,8 @@ public class ClientConnectionImpl implements ClientConnection {
 		bootstrap.connect(inetAddress);
 
 		try {
-			System.out.println("Wait on exchanger");
 			clientHandlerContext = exchanger.exchange(null, sendTimeOut * 2,
 					TimeUnit.MILLISECONDS);
-			System.out.println("Got on exchanger");
 		} catch (InterruptedException e) {
 			// this is called if the thread is to be closed by some shutdown
 			// process.
@@ -154,9 +153,13 @@ public class ClientConnectionImpl implements ClientConnection {
 
 		if (clientHandlerContext.getClientStatusCode() != ClientHandlerContext.STATUS_OK) {
 			// client error
+			
+			//parse code:
+			NetworkCodes.CODE statusCode = NetworkCodes.findCode(clientHandlerContext.getClientStatusCode());
+			
 			Throwable t = clientHandlerContext.getErrorCause();
-			throw new ClientException("Client Error", t,
-					clientHandlerContext.getClientStatusCode());
+			throw new ClientException("Client Error: " + statusCode.msg(), t,
+					statusCode.num());
 		}
 
 		// if all when well and data was written copy the file pointer
@@ -165,15 +168,23 @@ public class ClientConnectionImpl implements ClientConnection {
 			if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.STATUS_CONFLICT) {
 				// do nothing here
 				LOG.warn("Conflict detected by collector");
-			} else if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.STATUS_ERROR) {
-				throw new ServerException("Error with server communication",
-						null, clientHandlerContext.getServerStatusCode());
-			} else if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.NO_SERVER_RESPONSE) {
-				throw new ServerException(
-						"The server did not respond within the timeout "
-								+ (sendTimeOut * 2), null,
-						clientHandlerContext.getServerStatusCode());
-			}
+				
+			} else if (clientHandlerContext.getServerStatusCode() != ClientHandlerContext.STATUS_OK) {
+				
+				NetworkCodes.CODE statusCode = NetworkCodes.findCode(clientHandlerContext.getServerStatusCode());
+				
+				if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.NO_SERVER_RESPONSE) {
+					
+					throw new ServerException(
+							"The server did not respond within the timeout "
+									+ (sendTimeOut * 2), null,
+							clientHandlerContext.getServerStatusCode());
+				}else{
+					throw new ServerException("Error with server communication : " + statusCode.msg(),
+						null, statusCode.num());
+				}
+				
+			} 
 
 			fileLinePointer.copyIncrement(clientHandlerContext
 					.getIntermediatePointer());
@@ -361,7 +372,7 @@ public class ClientConnectionImpl implements ClientConnection {
 							.setConflictFilePointer(fileLinePointer);
 				} else {
 					clientHandlerContext
-							.setServerStatusCode(ClientHandlerContext.STATUS_ERROR);
+							.setServerStatusCode(status);
 				}
 			} finally {
 				in.close();

@@ -23,7 +23,7 @@ public class ServerException extends RuntimeException{
 	}
 	
 	public String toString(){
-		return super.toString() + " code: " + code;
+		return super.toString() + "; error_code: " + code;
 	}
 	
 }

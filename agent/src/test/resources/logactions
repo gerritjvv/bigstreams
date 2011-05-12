@@ -1,0 +1,9 @@
+#log action file
+/*
+ Comments can be multiline
+*/
+// or single line
+# format is
+# <logtype> <status> <delay in seconds> <action name> <any other configuration>
+* done 5 delete
+* read_error 2 delete

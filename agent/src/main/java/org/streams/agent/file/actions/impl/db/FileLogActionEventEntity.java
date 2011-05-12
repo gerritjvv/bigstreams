@@ -29,7 +29,7 @@ import org.streams.agent.file.actions.FileLogActionEvent;
 		@NamedQuery(name = "fileLogActionEventEntity.list", query = "from FileLogActionEventEntity f ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileLogActionEventEntity.byPath", query = "from FileLogActionEventEntity f where f.path=:path ORDER BY f.lastModificationTime DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileLogActionEventEntity.byDelay", query = "from FileLogActionEventEntity f where f.delay > :delay ORDER BY f.lastModificationTime DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
-		@NamedQuery(name = "fileLogActionEventEntity.listExpired", query = "from FileLogActionEventEntity f where f.delay > :delay AND ((f.delay*1000) - (:currentTime - f.lastModificationTime)) < 1 ORDER BY f.lastModificationTime DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileLogActionEventEntity.listExpired", query = "from FileLogActionEventEntity f where f.delay > :delay AND ((f.delay*1000) - (:currentTime - f.eventTimeStamp)) < 1 ORDER BY f.lastModificationTime DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") })
 })
 public class FileLogActionEventEntity implements Serializable{
 
@@ -66,6 +66,10 @@ public class FileLogActionEventEntity implements Serializable{
 
 	@Column(name="last_modification_time")
 	long lastModificationTime = 0L;
+	
+	@Column(name="event_time_stamp", nullable=false)
+	long eventTimeStamp = 0L;
+	
 	@Column(name="file_size")
 	long fileSize = 0L;
 	@Column(name="path", nullable=false)
@@ -103,8 +107,10 @@ public class FileLogActionEventEntity implements Serializable{
 	}
 	
 	public FileLogActionEvent createEventObject(){
-		return new FileLogActionEvent(getId(),
+		FileLogActionEvent evt = new FileLogActionEvent(getId(),
 				createStatusObject(), actionName, delay);
+		evt.setTimeStamp(getEventTimeStamp());
+		return evt;
 	}
 	
 	/**
@@ -128,6 +134,7 @@ public class FileLogActionEventEntity implements Serializable{
 		entity.setStatus(status.getStatus());
 		entity.setActionName(event.getActionName());
 		entity.setDelay(event.getDelay());
+		entity.setEventTimeStamp(event.getTimeStamp());
 		
 		return entity;
 	}
@@ -300,6 +307,14 @@ public class FileLogActionEventEntity implements Serializable{
 		if (status != other.status)
 			return false;
 		return true;
+	}
+
+	public long getEventTimeStamp() {
+		return eventTimeStamp;
+	}
+
+	public void setEventTimeStamp(long eventTimeStamp) {
+		this.eventTimeStamp = eventTimeStamp;
 	}
 	
 }

@@ -92,8 +92,7 @@ public class MapFileLogManagerMemory implements FileLogManagerMemory {
 			if (event.getStatus() != null && event.getDelay() > threshold) {
 
 				long diff = event.getDelay()
-						- (currentTime - event.getStatus()
-								.getLastModificationTime());
+						- (currentTime - event.getTimeStamp());
 
 				if (diff <= 0) {
 					coll.add(event);

@@ -122,7 +122,7 @@
 					<provides>
 						<provide>streams-agent</provide>
 					</provides>
-					<needarch>i386-32</needarch>
+					<needarch>amd64-64</needarch>
 					<requires>
 					</requires>
 					<changelogFile>src/changelog</changelogFile>

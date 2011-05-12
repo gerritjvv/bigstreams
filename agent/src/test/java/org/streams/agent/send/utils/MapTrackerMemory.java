@@ -24,6 +24,8 @@ public class MapTrackerMemory extends AbstractFileTrackerMemory implements
 
 	Map<String, FileTrackingStatus> map = new HashMap<String, FileTrackingStatus>();
 
+	boolean disableEvents = false;
+	
 	public Collection<FileTrackingStatus> getFiles(String conditionExpression,
 			int from, int maxResults) {
 		throw new RuntimeException("NOT IMPLEMENTED");
@@ -120,7 +122,7 @@ public class MapTrackerMemory extends AbstractFileTrackerMemory implements
 		map.put(fileTrackingStatus.getPath(), fileTrackingStatus);
 
 		// send event notification
-		if (statusChanged) {
+		if (statusChanged && !disableEvents) {
 			notifyStatusChange(prevStatus, fileTrackingStatus);
 		}
 	}
@@ -131,6 +133,14 @@ public class MapTrackerMemory extends AbstractFileTrackerMemory implements
 		Collection<FileTrackingStatus> statusList = getFiles(status);
 
 		return (statusList == null) ? 0 : statusList.size();
+	}
+
+	public boolean isDisableEvents() {
+		return disableEvents;
+	}
+
+	public void setDisableEvents(boolean disableEvents) {
+		this.disableEvents = disableEvents;
 	}
 
 }
