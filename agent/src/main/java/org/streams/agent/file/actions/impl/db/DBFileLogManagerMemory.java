@@ -172,8 +172,12 @@ public class DBFileLogManagerMemory implements FileLogManagerMemory {
 			}
 
 		} finally {
+			try{
 			entityManager.getTransaction().commit();
 			entityManager.close();
+			}catch(Throwable t){
+				t.printStackTrace();
+			}
 		}
 		return statusColl;
 	}

@@ -184,6 +184,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			final long syncFilePointer = syncPointer.getFilePointer();
 			final long filePointer = fileStatus.getFilePointer();
 
+			
 			ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
 
 			try { // try finally for pointer lock release

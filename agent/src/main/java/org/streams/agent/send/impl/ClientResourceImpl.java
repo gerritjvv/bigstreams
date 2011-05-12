@@ -142,7 +142,7 @@ public class ClientResourceImpl implements ClientResource {
 					logType, uniqueId, fileStreamer.getCodec().getClass()
 							.getName(), fileLinePointer.getFilePointer(),
 					file.length(), fileLinePointer.getLineReadPointer(), fileDate);
-
+			
 			ret = clientConnection.sendLines(fileLinePointer, header,
 					fileStreamer, reader);
 		} finally {

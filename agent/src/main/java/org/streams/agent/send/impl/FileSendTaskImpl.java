@@ -135,6 +135,7 @@ public class FileSendTaskImpl implements FileSendTask {
 				fileStatus.setFilePointer(fileLinePointer.getFilePointer());
 				fileStatus.setLinePointer(fileLinePointer.getLineReadPointer());
 	
+				LOG.info(">>>>>> linepointer: " + fileLinePointer.getLineReadPointer());
 				if (!sentData) {
 					// no more data was sent this means the file has been read
 					// completely

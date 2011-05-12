@@ -67,8 +67,8 @@ public class FileLogActionEventEntity implements Serializable{
 	@Column(name="last_modification_time")
 	long lastModificationTime = 0L;
 	
-	@Column(name="event_time_stamp", nullable=false)
-	long eventTimeStamp = 0L;
+	@Column(name="event_time_stamp")
+	Long eventTimeStamp = new Long(0L);
 	
 	@Column(name="file_size")
 	long fileSize = 0L;
@@ -235,6 +235,16 @@ public class FileLogActionEventEntity implements Serializable{
 		this.actionName = actionName;
 	}
 
+
+	public long getEventTimeStamp() {
+		return (eventTimeStamp == null) ? 0L : eventTimeStamp.longValue();
+	}
+
+	public void setEventTimeStamp(Long eventTimeStamp) {
+		this.eventTimeStamp = (eventTimeStamp == null) ? 0L : eventTimeStamp;
+	}
+	
+	
 	@Override
 	public int hashCode() {
 		final int prime = 31;
@@ -309,12 +319,5 @@ public class FileLogActionEventEntity implements Serializable{
 		return true;
 	}
 
-	public long getEventTimeStamp() {
-		return eventTimeStamp;
-	}
-
-	public void setEventTimeStamp(long eventTimeStamp) {
-		this.eventTimeStamp = eventTimeStamp;
-	}
 	
 }
