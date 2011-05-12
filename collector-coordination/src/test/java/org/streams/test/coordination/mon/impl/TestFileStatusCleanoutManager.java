@@ -72,7 +72,7 @@ public class TestFileStatusCleanoutManager extends TestCase {
 			// the last modified time is set when calling the setStatus method
 			// on the CollectorFileTrackerMemory
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
-					0, "test" + i, "test" + i, "test" + i, new Date());
+					0, "test" + i, "test" + i, "test" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 
@@ -87,7 +87,7 @@ public class TestFileStatusCleanoutManager extends TestCase {
 			// the last modified time is set when calling the setStatus method
 			// on the CollectorFileTrackerMemory
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
-					0, "test2nd" + i, "test2nd" + i, "test2nd" + i, new Date());
+					0, "test2nd" + i, "test2nd" + i, "test2nd" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 

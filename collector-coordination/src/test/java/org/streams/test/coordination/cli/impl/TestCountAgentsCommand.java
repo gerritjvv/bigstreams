@@ -95,7 +95,7 @@ public class TestCountAgentsCommand {
 		// add 10 files
 		for (int i = 0; i < agentCount; i++) {
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
-					0, "test" + i, "test" + i, "test" + i, new Date());
+					0, "test" + i, "test" + i, "test" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 
@@ -104,7 +104,7 @@ public class TestCountAgentsCommand {
 		// of files.
 		for (int i = 0; i < agentCount; i++) {
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10,
-					0, "test" + i, "test_2nd" + i, "test_2nd" + i, new Date());
+					0, "test" + i, "test_2nd" + i, "test_2nd" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 

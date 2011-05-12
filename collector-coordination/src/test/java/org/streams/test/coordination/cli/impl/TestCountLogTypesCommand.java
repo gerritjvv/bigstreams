@@ -100,7 +100,7 @@ public class TestCountLogTypesCommand extends TestCase {
 		// add 10 files
 		for (int i = 0; i < logTypeCount; i++) {
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10, 0, "test" + i,
-					"test" + i, "test" + i, new Date());
+					"test" + i, "test" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 
@@ -109,7 +109,7 @@ public class TestCountLogTypesCommand extends TestCase {
 		// of files.
 		for (int i = 0; i < logTypeCount; i++) {
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0, 10, 0, "test_2nd" + i,
-					"test_2nd" + i, "test" + i, new Date());
+					"test_2nd" + i, "test" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 

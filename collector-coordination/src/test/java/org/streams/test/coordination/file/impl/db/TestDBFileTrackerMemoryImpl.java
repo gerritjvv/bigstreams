@@ -45,7 +45,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent1", "f1_" + i, "type1", new Date());
+						"agent1", "f1_" + i, "type1", new Date(), 1L);
 				keys.add(new FileTrackingStatusKey(status));
 				values.add(status);
 			}
@@ -86,7 +86,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent1", "f1_" + i, "type1", new Date());
+						"agent1", "f1_" + i, "type1", new Date(), 1L);
 				keys.add(new FileTrackingStatusKey(status));
 				memory.setStatus(status);
 			}
@@ -122,7 +122,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent1", "f1_" + i, "type1", new Date());
+						"agent1", "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -161,7 +161,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent1", "f1_" + i, "type1", new Date());
+						"agent1", "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -201,7 +201,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent_" + i, "f1_" + i, "type1", new Date());
+						"agent_" + i, "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -241,7 +241,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data one agent per entry
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent_" + i, "f1_" + i, "type1", new Date());
+						"agent_" + i, "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -274,7 +274,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data one agent per entry
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent_" + i, "f1_" + i, "type1", new Date());
+						"agent_" + i, "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -306,7 +306,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data one agent per entry
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent_" + i, "f1_" + i, "type_" + i, new Date());
+						"agent_" + i, "f1_" + i, "type_" + i, new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -336,7 +336,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data one agent per entry
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent_" + i, "f1_" + i, "type1", new Date());
+						"agent_" + i, "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -366,14 +366,14 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data agent1
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent1", "f1_" + i, "type1", new Date());
+						"agent1", "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
 			// generate data agent2
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"agent2", "f1_" + i, "type1", new Date());
+						"agent2", "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -403,7 +403,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate single data i.e. multiple updates
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"a1", "f1", "type1", new Date());
+						"a1", "f1", "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -414,7 +414,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 			// generate data count data
 			for (int i = 0; i < count; i++) {
 				FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0,
-						"a1_" + i, "f1_" + i, "type1", new Date());
+						"a1_" + i, "f1_" + i, "type1", new Date(), 1L);
 				memory.setStatus(status);
 			}
 
@@ -438,7 +438,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 
 		try {
 			FileTrackingStatus status = new FileTrackingStatus(new Date(), 1L, 10L, 0, "a1",
-					"f1", "type1", new Date());
+					"f1", "type1", new Date(), 1L);
 			memory.setStatus(status);
 
 			FileTrackingStatus statusGet = memory.getStatus(

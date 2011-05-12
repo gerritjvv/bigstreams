@@ -37,7 +37,7 @@ public class TestCoordinationFileTrackingCountResource extends TestCase {
 		// prepare data
 		for (int i = 0; i < fileCount; i++) {
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0,
-					10L, 0, "test" + i, "test" + i, "type" + i, new Date());
+					10L, 0, "test" + i, "test" + i, "type" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 
@@ -74,7 +74,7 @@ public class TestCoordinationFileTrackingCountResource extends TestCase {
 		// prepare data
 		for (int i = 0; i < fileCount; i++) {
 			FileTrackingStatus stat = new FileTrackingStatus(new Date(), 0,
-					10L, 0, "test" + i, "test" + i, "type" + i, new Date());
+					10L, 0, "test" + i, "test" + i, "type" + i, new Date(), 1L);
 			memory.setStatus(stat);
 		}
 

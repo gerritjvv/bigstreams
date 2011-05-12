@@ -77,6 +77,8 @@ public class FileStatusCleanoutManager implements Callable<Integer>, Runnable {
 
 			// for each file found do delete
 			for (FileTrackingStatus file : list) {
+				LOG.info("Deleting file: " + file.getLastModifiedTime() + "  -> " + file.getFileName());
+				
 				if (!memory.delete(file)) {
 					LOG.error("The file " + file.getAgentName() + " "
 							+ file.getLogType() + " " + file.getFileName()

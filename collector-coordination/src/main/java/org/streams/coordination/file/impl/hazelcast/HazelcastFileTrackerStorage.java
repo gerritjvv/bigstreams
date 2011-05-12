@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
+import java.util.Set;
 
 import org.apache.log4j.Logger;
 import org.streams.commons.file.FileTrackingStatus;
@@ -232,6 +233,11 @@ public class HazelcastFileTrackerStorage implements FileTrackerStorage,
 				.values(new SqlPredicate("agentName = '" + agentName + "'"));
 
 		return (values == null) ? 0 : values.size();
+	}
+
+	@Override
+	public Set<FileTrackingStatusKey> getKeys(int from, int max) {
+		return fileTrackerMemoryMap.keySet();
 	}
 
 }

@@ -3,10 +3,10 @@ package org.streams.commons.app.impl;
 import java.util.Collection;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.log4j.Logger;
 import org.streams.commons.app.AppLifeCycleManager;
 import org.streams.commons.app.ApplicationService;
 import org.streams.commons.app.StartupCheck;
-
 
 /**
  * 
@@ -24,6 +24,9 @@ import org.streams.commons.app.StartupCheck;
  * <p/>
  */
 public class AppLifeCycleManagerImpl implements AppLifeCycleManager {
+
+	private static final Logger LOG = Logger
+			.getLogger(AppLifeCycleManagerImpl.class);
 
 	// private static final Logger LOG = Logger
 	// .getLogger(AppLifeCycleManager.class);
@@ -81,7 +84,11 @@ public class AppLifeCycleManagerImpl implements AppLifeCycleManager {
 	public void shutdown() {
 		if (startupServices != null) {
 			for (ApplicationService startupService : startupServices) {
-				startupService.shutdown();
+				try {
+					startupService.shutdown();
+				} catch (Throwable t) {
+					LOG.error(t.toString(), t);
+				}
 			}
 		}
 

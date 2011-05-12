@@ -91,7 +91,8 @@ public class TestLocalFileWriter extends TestCase {
 				public Boolean call() throws Exception {
 
 					FileTrackingStatus status = new FileTrackingStatus(new Date(), 0, file
-							.length(), 0, "agent1", file.getName(), "type1", new Date());
+							.length(), 0, "agent1", file.getName(), "type1", new Date(), 
+							1L);
 
 					BufferedReader reader = new BufferedReader(new FileReader(
 							file));
@@ -204,7 +205,7 @@ public class TestLocalFileWriter extends TestCase {
 				public Boolean call() throws Exception {
 
 					FileTrackingStatus status = new FileTrackingStatus(new Date(), 0, file
-							.length(), 0, "agent1", file.getName(), "type1", new Date());
+							.length(), 0, "agent1", file.getName(), "type1", new Date(), 1L);
 					BufferedReader reader = new BufferedReader(new FileReader(
 							file));
 					try {
@@ -342,7 +343,7 @@ public class TestLocalFileWriter extends TestCase {
 		String line = null;
 		FileTrackingStatus fileStatus = new FileTrackingStatus(new Date(), 0L,
 				testFile.length(), 0, "agent1", testFile.getAbsolutePath(),
-				"type1", new Date());
+				"type1", new Date(), 1L);
 		try {
 			writer.init();
 

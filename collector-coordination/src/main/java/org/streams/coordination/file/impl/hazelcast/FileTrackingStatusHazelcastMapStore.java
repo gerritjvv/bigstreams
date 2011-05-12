@@ -2,6 +2,7 @@ package org.streams.coordination.file.impl.hazelcast;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusKey;
@@ -58,6 +59,11 @@ public class FileTrackingStatusHazelcastMapStore implements
 		for (FileTrackingStatusKey key : keys) {
 			memory.delete(key);
 		}
+	}
+
+	@Override
+	public Set<FileTrackingStatusKey> loadAllKeys() {
+		return memory.getKeys(0, Integer.MAX_VALUE);
 	}
 
 }

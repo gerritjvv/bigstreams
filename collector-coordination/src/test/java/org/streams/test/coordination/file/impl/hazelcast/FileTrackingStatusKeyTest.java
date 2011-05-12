@@ -20,7 +20,7 @@ public class FileTrackingStatusKeyTest extends TestCase{
 		String agent = "a";
 		String logType = "l";
 		String fileName = "f";
-		FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 0, agent, fileName, logType, new Date());
+		FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 0, agent, fileName, logType, new Date(), 1L);
 		
 		assertEquals(logType + agent + fileName, new FileTrackingStatusKey(status).getKey());
 		

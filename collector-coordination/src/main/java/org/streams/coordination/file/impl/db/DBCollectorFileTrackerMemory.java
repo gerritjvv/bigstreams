@@ -3,8 +3,10 @@ package org.streams.coordination.file.impl.db;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -42,12 +44,14 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	 */
 	public Collection<AgentContact> getAgents(int from, int max) {
 
-		Collection<AgentContactEntity> entities = getEntityList(AgentContactEntity.class, "agentContact.list", from, max);
-		Collection<AgentContact> agentContacts = new ArrayList<AgentContact>(entities.size());
-		for(AgentContactEntity entity : entities){
+		Collection<AgentContactEntity> entities = getEntityList(
+				AgentContactEntity.class, "agentContact.list", from, max);
+		Collection<AgentContact> agentContacts = new ArrayList<AgentContact>(
+				entities.size());
+		for (AgentContactEntity entity : entities) {
 			agentContacts.add(entity.createAgentContact());
 		}
-		
+
 		return agentContacts;
 	}
 
@@ -58,10 +62,10 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	 * @return true if done
 	 */
 	@Override
-	public boolean delete(FileTrackingStatus file){
+	public boolean delete(FileTrackingStatus file) {
 		return delete(new FileTrackingStatusKey(file));
 	}
-	
+
 	/**
 	 * Delete the FileTrackingStatusEntity object
 	 */
@@ -108,7 +112,8 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	 * @return will return an empty collection if no results found
 	 */
 	@SuppressWarnings("unchecked")
-	private <T> Collection<T> getEntityList(Class<T> entity, String queryName, int from, int max) {
+	private <T> Collection<T> getEntityList(Class<T> entity, String queryName,
+			int from, int max) {
 		Collection<T> ls = null;
 
 		EntityManager entityManager = entityManagerFactory
@@ -296,6 +301,50 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	 */
 	public Collection<FileTrackingStatus> getFiles(int from, int max) {
 		return getFiles("fileTrackingStatus.list", from, max);
+	}
+
+	/**
+	 * Get all file entries
+	 * 
+	 * @param from
+	 * @param max
+	 * @return
+	 */
+	@SuppressWarnings("unchecked")
+	public Set<FileTrackingStatusKey> getKeys(int from, int max) {
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
+		Set<FileTrackingStatusKey> coll = null;
+
+		try {
+			entityManager.getTransaction().begin();
+
+			Query query = entityManager
+					.createNamedQuery("fileTrackingStatus.list");
+			query.setFirstResult(from);
+			query.setMaxResults(max);
+
+			List<FileTrackingStatusEntity> entities = (List<FileTrackingStatusEntity>) query
+					.getResultList();
+			if (entities != null && entities.size() > 0) {
+				coll = new LinkedHashSet<FileTrackingStatusKey>(entities.size());
+
+				for (FileTrackingStatusEntity entity : entities) {
+					coll.add(entity.createStatusKeyObject());
+				}
+
+			} else {
+				coll = new LinkedHashSet<FileTrackingStatusKey>();
+			}
+
+		} finally {
+			entityManager.getTransaction().commit();
+			entityManager.close();
+		}
+
+		return coll;
+
 	}
 
 	/**
@@ -501,22 +550,22 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		try {
 			entityManager.getTransaction().begin();
 			Query query = entityManager
-			.createNamedQuery("fileTrackingStatus.byAgentLogTypeFileUpdate");
-			
-			for(FileTrackingStatus status : statusList){
-				
+					.createNamedQuery("fileTrackingStatus.byAgentLogTypeFileUpdate");
+
+			for (FileTrackingStatus status : statusList) {
+
 				query.setParameter("agentName", status.getAgentName());
 				query.setParameter("fileName", status.getFileName());
 				query.setParameter("logType", status.getLogType());
-	
+
 				try {
 					FileTrackingStatusEntity entity = (FileTrackingStatusEntity) query
 							.getSingleResult();
 					entity.update(status);
 					entity.setLastModifiedTime(System.currentTimeMillis());
-	
+
 					entityManager.persist(entity);
-	
+
 				} catch (NoResultException noResultExcp) {
 					// the entity does not exist yet
 					FileTrackingStatusEntity entity = FileTrackingStatusEntity
@@ -566,24 +615,26 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 				entityManager.persist(entity);
 			}
 
-			//persist log type contact
-			LogTypeContactEntity logTypeEntity = entityManager.find(LogTypeContactEntity.class, status.getLogType());
-			if(logTypeEntity == null){
+			// persist log type contact
+			LogTypeContactEntity logTypeEntity = entityManager.find(
+					LogTypeContactEntity.class, status.getLogType());
+			if (logTypeEntity == null) {
 				entityManager.persist(new LogTypeContactEntity(status));
-			}else{
+			} else {
 				logTypeEntity.update(status);
 				entityManager.persist(logTypeEntity);
 			}
-			
-			//persist agent contact
-			AgentContactEntity agentContactEntity = entityManager.find(AgentContactEntity.class, status.getAgentName());
-			if(agentContactEntity == null){
+
+			// persist agent contact
+			AgentContactEntity agentContactEntity = entityManager.find(
+					AgentContactEntity.class, status.getAgentName());
+			if (agentContactEntity == null) {
 				entityManager.persist(new AgentContactEntity(status));
-			}else{
+			} else {
 				agentContactEntity.update(status);
 				entityManager.persist(agentContactEntity);
 			}
-			
+
 		} finally {
 			entityManager.getTransaction().commit();
 			entityManager.close();
@@ -630,13 +681,15 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	 */
 	@Override
 	public Collection<LogTypeContact> getLogTypes(int from, int max) {
-		
-		Collection<LogTypeContactEntity> entities = getEntityList(LogTypeContactEntity.class, "logTypeContact.list", from, max);
-		Collection<LogTypeContact> logTypeContacts = new ArrayList<LogTypeContact>(entities.size());
-		for(LogTypeContactEntity entity : entities){
+
+		Collection<LogTypeContactEntity> entities = getEntityList(
+				LogTypeContactEntity.class, "logTypeContact.list", from, max);
+		Collection<LogTypeContact> logTypeContacts = new ArrayList<LogTypeContact>(
+				entities.size());
+		for (LogTypeContactEntity entity : entities) {
 			logTypeContacts.add(entity.createLogTypeContact());
 		}
-		
+
 		return logTypeContacts;
 	}
 

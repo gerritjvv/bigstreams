@@ -1,6 +1,8 @@
 package org.streams.coordination.mon.impl;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 
 import org.restlet.Request;
@@ -50,6 +52,16 @@ public class CoordinationFileTrackingResource extends ServerResource {
 				.getFiles(from, max) : fileTrackerMemory.getFilesByQuery(query,
 				from, max);
 
+		//sort by file date
+		List<FileTrackingStatus> list = null;
+		if(coll instanceof List){
+			list = (List<FileTrackingStatus>)coll;
+		}else{
+			list = new ArrayList<FileTrackingStatus>(coll);
+		}
+		
+		Collections.sort(list, FileDateComparator.INSTANCE);
+		
 		return coll;
 	}
 

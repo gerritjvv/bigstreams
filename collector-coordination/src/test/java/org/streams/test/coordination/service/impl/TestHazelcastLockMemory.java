@@ -42,7 +42,7 @@ public class TestHazelcastLockMemory extends TestCase {
 		 * String fileName, String logType)
 		 */
 		final FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 1,
-				"agent1", "file1", "type1", new Date());
+				"agent1", "file1", "type1", new Date(), 1L);
 
 		final AtomicInteger lockCount = new AtomicInteger(0);
 
@@ -91,7 +91,7 @@ public class TestHazelcastLockMemory extends TestCase {
 		 * String fileName, String logType)
 		 */
 		final FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 1,
-				"agent1", "file1", "type1", new Date());
+				"agent1", "file1", "type1", new Date(), 1L);
 
 		SyncPointer pointer = memory.setLock(status, "localhost1");
 		assertNotNull(pointer);
@@ -118,7 +118,7 @@ public class TestHazelcastLockMemory extends TestCase {
 		 * String fileName, String logType)
 		 */
 		final FileTrackingStatus status = new FileTrackingStatus(new Date(), 0L, 0L, 1,
-				"agent1", "file1", "type1", new Date());
+				"agent1", "file1", "type1", new Date(), 1L);
 
 		SyncPointer pointer = memory.setLock(status, "localhost1");
 

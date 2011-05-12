@@ -33,6 +33,7 @@ import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
 import org.streams.commons.io.Header;
+import org.streams.commons.io.NetworkCodes;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.metrics.CounterMetric;
 
@@ -131,10 +132,11 @@ public class LogWriterHandler extends SimpleChannelHandler {
 		final String agentName = header.getHost();
 		final String fileName = header.getFileName();
 		final String logType = header.getLogType();
-		
+
 		final FileTrackingStatus fileStatus = new FileTrackingStatus(
 				new Date(), header.getFilePointer(), header.getFileSize(),
-				header.getLinePointer(), agentName, fileName, logType, header.getFileDate());
+				header.getLinePointer(), agentName, fileName, logType,
+				header.getFileDate(), System.currentTimeMillis());
 
 		ChannelFuture future = null;
 		int bytesWritten = -1;
@@ -168,7 +170,8 @@ public class LogWriterHandler extends SimpleChannelHandler {
 					.getAndLock(fileStatus);
 
 			if (syncPointer == null) {
-				collectorStatus.setStatus(CollectorStatus.STATUS.UNKOWN_ERROR,
+				collectorStatus.setStatus(
+						CollectorStatus.STATUS.COORDINATION_ERROR,
 						"File already Locked ERROR " + fileName);
 				throw new CoordinationException("File already locked "
 						+ fileName);
@@ -217,6 +220,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 									.incrementCounter(bytesWritten / 1024);
 						}
 					} catch (Throwable t) {
+
 						collectorStatus.setStatus(
 								CollectorStatus.STATUS.UNKOWN_ERROR,
 								t.toString());
@@ -242,7 +246,7 @@ public class LogWriterHandler extends SimpleChannelHandler {
 					// the
 					// agent that is sends data starting from this pointer
 					// write the http codec 409 == Conflict
-					buffer.writeInt(409);
+					buffer.writeInt(NetworkCodes.CODE.SYNC_CONFLICT.num());
 					buffer.writeLong(syncFilePointer);
 				}
 
@@ -348,12 +352,34 @@ public class LogWriterHandler extends SimpleChannelHandler {
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
 
+		Throwable exception = e.getCause();
+		NetworkCodes.CODE code = null;
+		CollectorStatus.STATUS stat = null;
+
+		if (exception instanceof java.net.ConnectException) {
+			code = NetworkCodes.CODE.COORDINATION_CONNECTION_ERROR;
+			stat = CollectorStatus.STATUS.COORDINATION_ERROR;
+		} else if (exception instanceof CoordinationException) {
+			CoordinationException coordExcp = (CoordinationException) exception;
+			if (coordExcp.isConnectException()) {
+				code = NetworkCodes.CODE.COORDINATION_CONNECTION_ERROR;
+				stat = CollectorStatus.STATUS.COORDINATION_ERROR;
+			} else {
+				code = NetworkCodes.CODE.COORDINATION_LOCK_ERROR;
+				stat = CollectorStatus.STATUS.COORDINATION_LOCK_ERROR;
+			}
+		} else {
+			code = NetworkCodes.CODE.UNKOWN;
+			stat = CollectorStatus.STATUS.UNKOWN_ERROR;
+		}
+
 		/**
 		 * Very important to respond here. The agent will always be listening
 		 * for some kind of feedback.
 		 */
 		ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
-		buffer.writeInt(500);
+		buffer.writeInt(code.num());
+		buffer.writeBytes(code.msg().getBytes("UTF-8"));
 
 		ChannelFuture future = e.getChannel().write(buffer);
 
@@ -361,8 +387,8 @@ public class LogWriterHandler extends SimpleChannelHandler {
 
 		// WRITE STATUS
 		try {
-			collectorStatus.setStatus(CollectorStatus.STATUS.UNKOWN_ERROR, e
-					.getCause().toString());
+
+			collectorStatus.setStatus(stat, e.getCause().toString());
 
 			collectorStatus.incCounter("Errors_Caught", 1);
 

@@ -40,7 +40,7 @@ public class FileTrackingStatus implements Serializable{
 	}
 
 	public FileTrackingStatus(Date date, long filePointer, long fileSize,int linePointer,
-			String agentName, String fileName, String logType, Date fileDate) {
+			String agentName, String fileName, String logType, Date fileDate, long lastModifiedTime) {
 		super();
 		this.date = date;
 		this.filePointer = filePointer;
@@ -50,6 +50,7 @@ public class FileTrackingStatus implements Serializable{
 		this.logType = logType;
 		this.linePointer = linePointer;
 		this.fileDate = fileDate;
+		this.lastModifiedTime = lastModifiedTime;
 	}
 
 	public long getFilePointer() {

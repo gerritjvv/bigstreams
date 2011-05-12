@@ -1,7 +1,5 @@
 package org.streams.coordination.cli.startup.service.impl;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.configuration.Configuration;
@@ -60,33 +58,33 @@ public class HazelcastStartupService implements ApplicationService {
 			Config config = new ClasspathXmlConfig(Thread.currentThread()
 					.getContextClassLoader(), "hazelcast.config");
 
-			MapConfig lockMemoryMapConfig = new MapConfig();
+			MapConfig lockMemoryMapConfig = config.getMapConfig(DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString());
 			lockMemoryMapConfig.setBackupCount(2);
 			lockMemoryMapConfig.setMapStoreConfig(null);
 
-			// here we inject the hazelcast MapStore
-			MapStoreConfig mapStoreConfig = new MapStoreConfig();
-			mapStoreConfig.setEnabled(true);
-			mapStoreConfig.setImplementation(mapStore);
-			mapStoreConfig.setWriteDelaySeconds(0);
 
 			int backupCount = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_MAP_BACKUP.toString(), 1);
 
 			LOG.info("Using backupcount of: " + backupCount);
 
-			MapConfig mapConfig = new MapConfig();
+			MapConfig mapConfig = config.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_MAP.toString());
 			mapConfig.setBackupCount(backupCount);
 			mapConfig.setEvictionDelaySeconds(0);
 			mapConfig.setMaxIdleSeconds(0);
 			mapConfig.setTimeToLiveSeconds(0);
-			mapConfig.setMapStoreConfig(mapStoreConfig);
 			
-			Map<String, MapConfig> maps = new HashMap<String, MapConfig>();
-			maps.put(DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString(),
-					lockMemoryMapConfig);
-			maps.put(DistributedMapNames.MAP.FILE_TRACKER_MAP.toString(),
-					mapConfig);
+			// here we inject the hazelcast MapStore
+			MapStoreConfig mapStoreConfig = mapConfig.getMapStoreConfig();
+			if(mapStoreConfig == null){
+				mapStoreConfig = new MapStoreConfig();
+				mapConfig.setMapStoreConfig(mapStoreConfig);
+			}
+			
+			mapStoreConfig.setEnabled(true);
+			mapStoreConfig.setImplementation(mapStore);
+			mapStoreConfig.setWriteDelaySeconds(0);
 
+			
 			//----------- User Agent names Map
 			int agentNamesMax = conf.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX.toString(), 
 					(Integer)CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX.getDefaultValue());
@@ -94,11 +92,9 @@ public class HazelcastStartupService implements ApplicationService {
 			int agentNamesBackup = conf.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP.toString(), 
 					(Integer)CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP.getDefaultValue());
 			
-			MapConfig agentNamesMapConfig = new MapConfig();
+			MapConfig agentNamesMapConfig = config.getMapConfig(DistributedMapNames.MAP.AGENT_NAMES.toString());
 			agentNamesMapConfig.setMaxSize(agentNamesMax);
 			agentNamesMapConfig.setBackupCount(agentNamesBackup);
-			
-			maps.put(DistributedMapNames.MAP.AGENT_NAMES.toString(), agentNamesMapConfig);
 			
 			//----------- Log Types map
 			
@@ -108,15 +104,12 @@ public class HazelcastStartupService implements ApplicationService {
 			int logTypesBackup = conf.getInt(CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP.toString(), 
 					(Integer)CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP.getDefaultValue());
 			
-			MapConfig logTypesMapConfig = new MapConfig();
+			MapConfig logTypesMapConfig = config.getMapConfig(DistributedMapNames.MAP.LOG_TYPES.toString());
 			logTypesMapConfig.setMaxSize(logTypesMax);
 			logTypesMapConfig.setBackupCount(logTypesBackup);
 			
-			maps.put(DistributedMapNames.MAP.LOG_TYPES.toString(), logTypesMapConfig);
-			
-			
 			//--- File Tracker History Map Config
-			MapConfig historyMapConfig = new MapConfig();
+			MapConfig historyMapConfig = config.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_MAP.toString());
 			
 			int historyMax = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX.toString(), 
 					(Integer)CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX.getDefaultValue());
@@ -127,16 +120,12 @@ public class HazelcastStartupService implements ApplicationService {
 			historyMapConfig.setMaxSize(historyMax);
 			historyMapConfig.setBackupCount(historyBackup);
 			
-			maps.put(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_MAP.toString(),
-					historyMapConfig);
 			
-			//--- Latest history is the same configuration as the history map
-			maps.put(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_LATEST_MAP.toString(),
-					historyMapConfig);
+			MapConfig historyMapConfig2 = config.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_LATEST_MAP.toString());
 			
+			historyMapConfig2.setMaxSize(historyMax);
+			historyMapConfig2.setBackupCount(historyBackup);
 			
-			config.setMapConfigs(maps);
-
 			try{
 				hazelcastInstance = Hazelcast.init(config);
 			}catch(java.lang.IllegalStateException excp){

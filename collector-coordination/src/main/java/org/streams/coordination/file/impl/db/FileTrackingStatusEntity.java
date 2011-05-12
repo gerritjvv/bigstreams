@@ -15,6 +15,7 @@ import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
 import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileTrackingStatusKey;
 
 
 /**
@@ -162,9 +163,20 @@ public class FileTrackingStatusEntity implements Serializable {
 	 */
 	public FileTrackingStatus createStatusObject() {
 		return new FileTrackingStatus(date, filePointer, fileSize, linePointer, agentName,
-				fileName, logType, fileDate);
+				fileName, logType, fileDate, lastModifiedTime);
 	}
 
+	/**
+	 * Creates a FileTrackingStatusKey instance from the attributes in this
+	 * instance.
+	 * 
+	 * @return
+	 */
+	public FileTrackingStatusKey createStatusKeyObject() {
+		return new FileTrackingStatusKey(agentName, logType, fileName);
+	}
+
+	
 	/**
 	 * Creates a FileTrackingStatusEntity instance from the values of the
 	 * FileTrackingStatus passed as parameter.
@@ -180,6 +192,7 @@ public class FileTrackingStatusEntity implements Serializable {
 				status.getLogType(), status.getFileDate());
 	}
 
+	
 	/**
 	 * Copies the values from the FileTrackingStatus into the attributes of this
 	 * instance.<br/>

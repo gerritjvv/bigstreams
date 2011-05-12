@@ -9,7 +9,7 @@ import org.streams.commons.status.Status;
 public interface CollectorStatus extends Status{
 
 	enum STATUS {
-		SHUTDOWN, OK, UNKOWN_ERROR
+		SHUTDOWN, OK, UNKOWN_ERROR, COORDINATION_ERROR, COORDINATION_LOCK_ERROR
 	};
 	
 	enum COUNTERS {

@@ -2,6 +2,7 @@ package org.streams.coordination.file;
 
 import java.util.Collection;
 import java.util.Map;
+import java.util.Set;
 
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusKey;
@@ -92,6 +93,14 @@ public interface CollectorFileTrackerMemory extends FileTrackerStorage{
 	 */
 	Collection<FileTrackingStatus> getFiles(int from, int max);
 
+	/**
+	 * 
+	 * @param from
+	 * @param max
+	 * @return
+	 */
+	Set<FileTrackingStatusKey> getKeys(int from, int max);
+	
 	/**
 	 * Count the number of agents.
 	 * 
