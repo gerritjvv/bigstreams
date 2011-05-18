@@ -52,6 +52,8 @@ import org.streams.coordination.mon.history.impl.CoordinationHistoryAgentsLatest
 import org.streams.coordination.mon.history.impl.CoordinationHistoryCollectorsLatestResource;
 import org.streams.coordination.mon.impl.CoordinationAgentCountResource;
 import org.streams.coordination.mon.impl.CoordinationAgentNamesResource;
+import org.streams.coordination.mon.impl.CoordinationClusterResource;
+import org.streams.coordination.mon.impl.CoordinationConfigResource;
 import org.streams.coordination.mon.impl.CoordinationFileTrackingCountResource;
 import org.streams.coordination.mon.impl.CoordinationFileTrackingResource;
 import org.streams.coordination.mon.impl.CoordinationLogTypeCountResource;
@@ -155,6 +157,13 @@ public class CoordinationDI {
 
 		// CoordinationStatusResource
 		final Router router = new Router();
+
+		attachFinder(router, "/config", CoordinationConfigResource.class,
+				Template.MODE_EQUALS);
+
+		attachFinder(router, "/cluster/status",
+				CoordinationClusterResource.class, Template.MODE_EQUALS);
+
 		attachFinder(router, "/coordination/status",
 				CoordinationStatusResource.class, Template.MODE_EQUALS);
 
@@ -182,15 +191,15 @@ public class CoordinationDI {
 		attachFinder(router, "/agent/{agent}/history",
 				CoordinationFileTrackingHistoryResource.class,
 				Template.MODE_STARTS_WITH);
-		
+
 		attachFinder(router, "/agents/latest",
 				CoordinationHistoryAgentsLatestResource.class,
 				Template.MODE_STARTS_WITH);
-		
+
 		attachFinder(router, "/collectors/latest",
 				CoordinationHistoryCollectorsLatestResource.class,
 				Template.MODE_STARTS_WITH);
-		
+
 		Application app = new Application() {
 
 			@Override
@@ -357,23 +366,27 @@ public class CoordinationDI {
 
 	}
 
-	//------------- FileTrackerStatus History
+	// ------------- FileTrackerStatus History
 	@Bean
-	public CoordinationFileTrackingHistoryResource coordinationFileTrackingHistoryResource(){
-		return new CoordinationFileTrackingHistoryResource(beanFactory.getBean(FileTrackerHistoryMemory.class)); 
+	public CoordinationFileTrackingHistoryResource coordinationFileTrackingHistoryResource() {
+		return new CoordinationFileTrackingHistoryResource(
+				beanFactory.getBean(FileTrackerHistoryMemory.class));
 	}
+
 	@Bean
-	public CoordinationHistoryAgentsLatestResource coordinationHistoryAgentsLatestResource(){
-		return new CoordinationHistoryAgentsLatestResource(beanFactory.getBean(FileTrackerHistoryMemory.class)); 
+	public CoordinationHistoryAgentsLatestResource coordinationHistoryAgentsLatestResource() {
+		return new CoordinationHistoryAgentsLatestResource(
+				beanFactory.getBean(FileTrackerHistoryMemory.class));
 	}
-	
+
 	@Bean
-	public CoordinationHistoryCollectorsLatestResource coordinationHistoryCollectorsLatestResource(){
-		return new CoordinationHistoryCollectorsLatestResource(beanFactory.getBean(FileTrackerHistoryMemory.class)); 
+	public CoordinationHistoryCollectorsLatestResource coordinationHistoryCollectorsLatestResource() {
+		return new CoordinationHistoryCollectorsLatestResource(
+				beanFactory.getBean(FileTrackerHistoryMemory.class));
 	}
-	
-	//---------------------------------------
-	
+
+	// ---------------------------------------
+
 	@Bean
 	public CoordinationFileTrackingCountResource coordinationFileTrackingCountResource() {
 		return new CoordinationFileTrackingCountResource(
@@ -396,6 +409,19 @@ public class CoordinationDI {
 	public CoordinationAgentCountResource coordinationAgentCountResource() {
 		return new CoordinationAgentCountResource(
 				beanFactory.getBean(HazelcastFileTrackerStorage.class));
+	}
+
+	@Bean
+	public CoordinationConfigResource coordinationConfigResource() {
+		return new CoordinationConfigResource(
+				beanFactory
+						.getBean(org.apache.commons.configuration.Configuration.class));
+	}
+
+	@Bean
+	public CoordinationClusterResource coordinationClusterResource() {
+		return new CoordinationClusterResource(
+				beanFactory.getBean(HazelcastStartupService.class));
 	}
 
 	@Bean

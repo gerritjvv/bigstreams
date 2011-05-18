@@ -58,83 +58,110 @@ public class HazelcastStartupService implements ApplicationService {
 			Config config = new ClasspathXmlConfig(Thread.currentThread()
 					.getContextClassLoader(), "hazelcast.config");
 
-			MapConfig lockMemoryMapConfig = config.getMapConfig(DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP.toString());
+			MapConfig lockMemoryMapConfig = config
+					.getMapConfig(DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP
+							.toString());
 			lockMemoryMapConfig.setBackupCount(2);
 			lockMemoryMapConfig.setMapStoreConfig(null);
 
-
-			int backupCount = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_MAP_BACKUP.toString(), 1);
+			int backupCount = conf.getInt(
+					CoordinationProperties.PROP.FILE_TRACKER_STATUS_MAP_BACKUP
+							.toString(), 1);
 
 			LOG.info("Using backupcount of: " + backupCount);
 
-			MapConfig mapConfig = config.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_MAP.toString());
+			MapConfig mapConfig = config
+					.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_MAP
+							.toString());
 			mapConfig.setBackupCount(backupCount);
 			mapConfig.setEvictionDelaySeconds(0);
 			mapConfig.setMaxIdleSeconds(0);
 			mapConfig.setTimeToLiveSeconds(0);
-			
+
 			// here we inject the hazelcast MapStore
 			MapStoreConfig mapStoreConfig = mapConfig.getMapStoreConfig();
-			if(mapStoreConfig == null){
+			if (mapStoreConfig == null) {
 				mapStoreConfig = new MapStoreConfig();
 				mapConfig.setMapStoreConfig(mapStoreConfig);
 			}
-			
+
 			mapStoreConfig.setEnabled(true);
 			mapStoreConfig.setImplementation(mapStore);
 			mapStoreConfig.setWriteDelaySeconds(0);
 
-			
-			//----------- User Agent names Map
-			int agentNamesMax = conf.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX.toString(), 
-					(Integer)CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX.getDefaultValue());
-			
-			int agentNamesBackup = conf.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP.toString(), 
-					(Integer)CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP.getDefaultValue());
-			
-			MapConfig agentNamesMapConfig = config.getMapConfig(DistributedMapNames.MAP.AGENT_NAMES.toString());
+			// ----------- User Agent names Map
+			int agentNamesMax = conf
+					.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX
+							.toString(),
+							(Integer) CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX
+									.getDefaultValue());
+
+			int agentNamesBackup = conf
+					.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP
+							.toString(),
+							(Integer) CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP
+									.getDefaultValue());
+
+			MapConfig agentNamesMapConfig = config
+					.getMapConfig(DistributedMapNames.MAP.AGENT_NAMES
+							.toString());
 			agentNamesMapConfig.setMaxSize(agentNamesMax);
 			agentNamesMapConfig.setBackupCount(agentNamesBackup);
-			
-			//----------- Log Types map
-			
-			int logTypesMax = conf.getInt(CoordinationProperties.PROP.LOG_TYPE_STORAGE_MAX.toString(), 
-					(Integer)CoordinationProperties.PROP.LOG_TYPE_STORAGE_MAX.getDefaultValue());
-			
-			int logTypesBackup = conf.getInt(CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP.toString(), 
-					(Integer)CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP.getDefaultValue());
-			
-			MapConfig logTypesMapConfig = config.getMapConfig(DistributedMapNames.MAP.LOG_TYPES.toString());
+
+			// ----------- Log Types map
+
+			int logTypesMax = conf
+					.getInt(CoordinationProperties.PROP.LOG_TYPE_STORAGE_MAX
+							.toString(),
+							(Integer) CoordinationProperties.PROP.LOG_TYPE_STORAGE_MAX
+									.getDefaultValue());
+
+			int logTypesBackup = conf
+					.getInt(CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP
+							.toString(),
+							(Integer) CoordinationProperties.PROP.LOG_TYPE_STORAGE_BACKUP
+									.getDefaultValue());
+
+			MapConfig logTypesMapConfig = config
+					.getMapConfig(DistributedMapNames.MAP.LOG_TYPES.toString());
 			logTypesMapConfig.setMaxSize(logTypesMax);
 			logTypesMapConfig.setBackupCount(logTypesBackup);
-			
-			//--- File Tracker History Map Config
-			MapConfig historyMapConfig = config.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_MAP.toString());
-			
-			int historyMax = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX.toString(), 
-					(Integer)CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX.getDefaultValue());
-			
-			int historyBackup = conf.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP.toString(), 
-					(Integer)CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP.getDefaultValue());
-			
+
+			// --- File Tracker History Map Config
+			MapConfig historyMapConfig = config
+					.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_MAP
+							.toString());
+
+			int historyMax = conf
+					.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX
+							.toString(),
+							(Integer) CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX
+									.getDefaultValue());
+
+			int historyBackup = conf
+					.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP
+							.toString(),
+							(Integer) CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP
+									.getDefaultValue());
+
 			historyMapConfig.setMaxSize(historyMax);
 			historyMapConfig.setBackupCount(historyBackup);
-			
-			
-			MapConfig historyMapConfig2 = config.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_LATEST_MAP.toString());
-			
+
+			MapConfig historyMapConfig2 = config
+					.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_LATEST_MAP
+							.toString());
+
 			historyMapConfig2.setMaxSize(historyMax);
 			historyMapConfig2.setBackupCount(historyBackup);
-			
-			try{
+
+			try {
 				hazelcastInstance = Hazelcast.init(config);
-			}catch(java.lang.IllegalStateException excp){
+			} catch (java.lang.IllegalStateException excp) {
 				LOG.error(excp.toString(), excp);
 				Hazelcast.getLifecycleService().shutdown();
 				hazelcastInstance = Hazelcast.newHazelcastInstance(config);
 			}
-			
-			
+
 		}
 	}
 

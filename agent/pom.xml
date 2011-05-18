@@ -122,7 +122,7 @@
 					<provides>
 						<provide>streams-agent</provide>
 					</provides>
-					<needarch>amd64-64</needarch>
+					<needarch>x86_64</needarch>
 					<requires>
 					</requires>
 					<changelogFile>src/changelog</changelogFile>
@@ -147,7 +147,7 @@
 							<groupname>root</groupname>
 							<sources>
 								<source>
-									<location>src/main/resources/etc/init.d/streams-agent.sh</location>
+									<location>src/main/resources/etc/init.d/streams-agent</location>
 								</source>
 							</sources>
 						</mapping>

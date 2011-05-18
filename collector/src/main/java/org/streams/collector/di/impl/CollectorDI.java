@@ -26,6 +26,7 @@ import org.streams.collector.cli.startup.check.impl.PingCheck;
 import org.streams.collector.conf.CollectorProperties;
 import org.streams.collector.coordination.impl.CoordinationAddresses;
 import org.streams.collector.mon.CollectorStatus;
+import org.streams.collector.mon.impl.CollectorConfigResource;
 import org.streams.collector.mon.impl.CollectorStatusResource;
 import org.streams.collector.mon.impl.PingOKResource;
 import org.streams.collector.server.CollectorServer;
@@ -129,14 +130,18 @@ public class CollectorDI {
 	@Bean
 	public CoordinationServiceClient coordinationServiceClient() {
 
-		CoordinationAddresses coordinationAddresses = beanFactory.getBean(CoordinationAddresses.class);
-		
-		return new CoordinationServiceClientImpl(coordinationAddresses.getLockAddressSelector(),
+		CoordinationAddresses coordinationAddresses = beanFactory
+				.getBean(CoordinationAddresses.class);
+
+		return new CoordinationServiceClientImpl(
+				coordinationAddresses.getLockAddressSelector(),
 				coordinationAddresses.getUnlockAddressSelector());
 	}
 
 	/**
-	 * Configure and start the CoordinationAddresses with the lock and unlock addresses
+	 * Configure and start the CoordinationAddresses with the lock and unlock
+	 * addresses
+	 * 
 	 * @return
 	 */
 	@Bean
@@ -145,11 +150,7 @@ public class CollectorDI {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
-		String hosts = configuration.getString(
-				CollectorProperties.WRITER.COORDINATION_HOST.toString(),
-				(String) CollectorProperties.WRITER.COORDINATION_HOST
-						.getDefaultValue());
-
+	
 		int lockport = configuration.getInt(
 				CollectorProperties.WRITER.COORDINATION_LOCK_PORT.toString(),
 				(Integer) CollectorProperties.WRITER.COORDINATION_LOCK_PORT
@@ -160,7 +161,13 @@ public class CollectorDI {
 				(Integer) CollectorProperties.WRITER.COORDINATION_UNLOCK_PORT
 						.getDefaultValue());
 
-		String[] hostArr = hosts.split("[,;]");
+		String[] hostArr = configuration
+				.getStringArray(CollectorProperties.WRITER.COORDINATION_HOST
+						.toString());
+		
+		if(hostArr == null || hostArr.length  < 1){
+			hostArr = new String[] { CollectorProperties.WRITER.COORDINATION_HOST.getDefaultValue().toString() };
+		}
 
 		InetSocketAddress[] lockAddresses = new InetSocketAddress[hostArr.length];
 		for (int i = 0; i < hostArr.length; i++) {
@@ -171,6 +178,8 @@ public class CollectorDI {
 		for (int i = 0; i < hostArr.length; i++) {
 			unLockAddresses[i] = new InetSocketAddress(hostArr[i], unlockport);
 		}
+
+		LOG.info("Using coordination addresses: " + Arrays.asList(hostArr));
 
 		return new CoordinationAddresses(new RandomDistAddressSelector(
 				lockAddresses), new RandomDistAddressSelector(unLockAddresses));
@@ -267,6 +276,9 @@ public class CollectorDI {
 		attachFinder(router, "/collector/status",
 				CollectorStatusResource.class, Template.MODE_STARTS_WITH);
 
+		attachFinder(router, "/config", CollectorConfigResource.class,
+				Template.MODE_STARTS_WITH);
+
 		attachFinder(router, "/collector/shutdown", AppShutdownResource.class,
 				Template.MODE_STARTS_WITH);
 
@@ -310,6 +322,13 @@ public class CollectorDI {
 	public AppShutdownResource appShutdownResource() {
 		return new AppShutdownResource(
 				beanFactory.getBean(AppLifeCycleManager.class));
+	}
+
+	@Bean
+	public CollectorConfigResource collectorConfigResource() {
+		return new CollectorConfigResource(
+				beanFactory
+						.getBean(org.apache.commons.configuration.Configuration.class));
 	}
 
 	@Bean

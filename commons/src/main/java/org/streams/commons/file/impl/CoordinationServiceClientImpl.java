@@ -84,7 +84,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 			try {
 
-				LOG.info("Using address " + lockInetAddress);
+				LOG.info("Using address " + lockInetAddress + " of " + addresses);
 				conn.init(lockInetAddress);
 				pointer = conn.sendLock(file);
 

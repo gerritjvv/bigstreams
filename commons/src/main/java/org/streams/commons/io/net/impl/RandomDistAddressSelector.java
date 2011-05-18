@@ -67,4 +67,20 @@ public class RandomDistAddressSelector implements AddressSelector {
 		return new RandomDistAddressSelector(addresses);
 	}
 
+	public String toString(){
+		StringBuilder buff = new StringBuilder();
+		buff.append("addresses[ ");
+		if(addresses != null){
+			int i = 0;
+			for(InetSocketAddress address: addresses){
+				if(i++ != 0) buff.append(",");
+				
+				buff.append(address);
+			}
+		}
+		
+		buff.append(" ]");
+		
+		return buff.toString();
+	}
 }

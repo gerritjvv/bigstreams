@@ -164,7 +164,7 @@
 							<groupname>root</groupname>
 							<sources>
 								<source>
-									<location>src/main/resources/etc/init.d/streams-coordination.sh</location>
+									<location>src/main/resources/etc/init.d/streams-coordination</location>
 								</source>
 							</sources>
 						</mapping>
