@@ -8,6 +8,7 @@ import java.io.StringReader;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Scanner;
 
 import org.apache.commons.io.IOUtils;
@@ -144,5 +145,16 @@ public class LogDirConf {
 	public String getLogType(File file) {
 		return logDirs.get(file);
 	}
-
+	
+	public Map<String, Object> toMap(){
+	
+		Map<String, Object> map = new HashMap<String, Object>();
+		
+		for(Entry<File, String> entry : logDirs.entrySet()){
+			map.put(entry.getValue(), entry.getKey().getAbsolutePath());
+		}
+		
+		return map;
+	}
+	
 }

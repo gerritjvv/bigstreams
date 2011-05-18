@@ -58,13 +58,19 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 		EntityManager entityManager = entityManagerFactory
 				.createEntityManager();
 
+		String queryExpr = "from FileTrackingStatusEntity ";
+		if(conditionExpression.startsWith("ORDER") || conditionExpression.startsWith("WHERE")){
+			queryExpr += conditionExpression;
+		}else{
+			queryExpr += "WHERE " + conditionExpression;
+		}
+	   
 		try {
 			entityManager.getTransaction().begin();
 
 			List<FileTrackingStatusEntity> statusEntityList = entityManager
 					.createQuery(
-							"from FileTrackingStatusEntity where "
-									+ conditionExpression).setFirstResult(from)
+							queryExpr).setFirstResult(from)
 					.setMaxResults(maxResults).getResultList();
 
 			if (statusEntityList == null || statusEntityList.size() < 1) {

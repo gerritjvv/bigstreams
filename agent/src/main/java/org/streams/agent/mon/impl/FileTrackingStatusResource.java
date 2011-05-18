@@ -106,18 +106,10 @@ public class FileTrackingStatusResource extends ServerResource {
 	private Collection<FileTrackingStatus> getByStatus() {
 		String statusName = (String) getRequestAttributes().get("status");
 
-		List<Range> ranges = getRanges();
-
-		int from = 0, max = 1000;
-
-		if (ranges != null && ranges.size() > 0) {
-			Range range = ranges.get(0);
-			from = (int) range.getIndex();
-			max = (int) range.getSize();
-		}
-
 		FileTrackingStatus.STATUS status = null;
-
+		
+		//---------- Parse status
+		
 		if (statusName == null || statusName.trim().length() < 1) {
 			//set status to READY
 			status = FileTrackingStatus.STATUS.READY;
@@ -136,6 +128,25 @@ public class FileTrackingStatusResource extends ServerResource {
 			}
 		}
 
+
+		//------------ Parse Range
+		List<Range> ranges = getRanges();
+
+		int from = 0, max = 1000;
+
+		if (ranges != null && ranges.size() > 0) {
+			Range range = ranges.get(0);
+			from = (int) range.getIndex();
+			max = (int) range.getSize();
+		}else{
+			//if not range get at least the last 1000 items
+			int count = (int)memory.getFileCount(status);
+			if(count > max){
+				from = count - max;
+			}
+		}
+
+		
 		// create json array object
 
 		return memory.getFiles(status, from, max);

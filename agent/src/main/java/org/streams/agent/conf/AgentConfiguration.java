@@ -4,11 +4,15 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.hadoop.io.compress.GzipCodec;
+import org.apache.log4j.Logger;
 import org.mortbay.log.Log;
 
 /**
@@ -17,6 +21,8 @@ import org.mortbay.log.Log;
  * 
  */
 public class AgentConfiguration {
+
+	private static final Logger LOG = Logger.getLogger(AgentConfiguration.class);
 
 	/**
 	 * Time in milliseconds that the agent will look for old files in its
@@ -57,13 +63,13 @@ public class AgentConfiguration {
 	 * Timeout while waiting for the connection to be established
 	 */
 	long connectionEstablishTimeout;
-	
+
 	/**
 	 * This tells to agent to which collector to send the file data to. Only one
 	 * address is accepted because clustering should be done using load
 	 * balancing. If a load balancer is used its address should go here.
 	 */
-	String collectorAddress;
+	String[] collectorAddress;
 	/**
 	 * Where the java native binding libraries for the compression used is
 	 * stored.
@@ -93,13 +99,13 @@ public class AgentConfiguration {
 	 * Date format to parse the date extracted using the fileDateExtractPattern.
 	 */
 	DateFormat fileDateExtractFormat;
-	
+
 	/**
 	 * The amount of threads that the log action manage framework has to execute
 	 * actions when file log status
 	 */
 	int logManageActionThreads;
-	
+
 	public AgentConfiguration() {
 
 	}
@@ -109,15 +115,12 @@ public class AgentConfiguration {
 
 		this.configuration = configuration;
 
-		fileDateExtractPattern = Pattern.compile(
-				configuration.getString(
+		fileDateExtractPattern = Pattern.compile(configuration.getString(
 				AgentProperties.FILENAME_DATE_EXTRACT_PATTERN,
-				"\\d{4,4}-\\d\\d-\\d\\d-\\d\\d")
-				);
-		fileDateExtractFormat = new SimpleDateFormat(
-				configuration.getString(AgentProperties.FILENAME_DATE_FORMAT, "yyyy-MM-dd-HH")
-				);
-		
+				"\\d{4,4}-\\d\\d-\\d\\d-\\d\\d"));
+		fileDateExtractFormat = new SimpleDateFormat(configuration.getString(
+				AgentProperties.FILENAME_DATE_FORMAT, "yyyy-MM-dd-HH"));
+
 		metricRefreshPeriod = configuration.getLong(
 				AgentProperties.METRIC_REFRESH_PERIOD, 10000L);
 
@@ -133,8 +136,8 @@ public class AgentConfiguration {
 		statusCleanoutInterval = configuration.getInt(
 				AgentProperties.STATUS_CLEANOUT_INTERVAL, 20000);
 
-		clientThreadCount = configuration
-				.getInt(AgentProperties.CLIENT_THREAD_COUNT, 0);
+		clientThreadCount = configuration.getInt(
+				AgentProperties.CLIENT_THREAD_COUNT, 0);
 
 		if (clientThreadCount < 1) {
 
@@ -171,11 +174,16 @@ public class AgentConfiguration {
 		connectionEstablishTimeout = configuration.getLong(
 				AgentProperties.CLIENTCONNECTION_ESTABLISH_TIMEOUT, 20000L);
 
-		collectorAddress = configuration.getString(AgentProperties.COLLECTOR);
+		collectorAddress = configuration
+				.getStringArray(AgentProperties.COLLECTOR);
 
-		
-		logManageActionThreads = configuration.getInt(AgentProperties.LOG_MANAGE_ACTION_THREADS, 2);
-		
+		LOG.info("Using collector addresses: "
+				+ ((collectorAddress == null) ? "null" : Arrays
+						.toString(collectorAddress)));
+
+		logManageActionThreads = configuration.getInt(
+				AgentProperties.LOG_MANAGE_ACTION_THREADS, 2);
+
 	}
 
 	public Configuration getConfiguration() {
@@ -312,11 +320,11 @@ public class AgentConfiguration {
 		this.connectionEstablishTimeout = connectionEstablishTimeout;
 	}
 
-	public String getCollectorAddress() {
+	public String[] getCollectorAddress() {
 		return collectorAddress;
 	}
 
-	public void setCollectorAddress(String collectorAddress) {
+	public void setCollectorAddress(String[] collectorAddress) {
 		this.collectorAddress = collectorAddress;
 	}
 
@@ -342,6 +350,43 @@ public class AgentConfiguration {
 
 	public void setLogManageActionThreads(int logManageActionThreads) {
 		this.logManageActionThreads = logManageActionThreads;
+	}
+
+	public Map<String, Object> toMap() {
+
+		Map<String, Object> map = new HashMap<String, Object>();
+
+		map.put("statusCleanoutInterval", statusCleanoutInterval);
+		map.put("clientThreadCount", clientThreadCount);
+		map.put("monitoringPort", monitoringPort);
+		map.put("statusHistoryLimit", statusHistoryLimit);
+		map.put("pollingInterval", pollingInterval);
+		map.put("fileStreamerClass", fileStreamerClass);
+		map.put("connectionBufferSize", connectionBufferSize);
+		map.put("connectionSendTimeout", connectionSendTimeout);
+		map.put("connectionEstablishTimeout", connectionEstablishTimeout);
+		map.put("collectorAddress", collectorAddress);
+		map.put("compressionCodec", compressionCodec);
+		map.put("compressorPoolSize", compressorPoolSize);
+		map.put("metricRefreshPeriod", metricRefreshPeriod);
+		map.put("fileDateExtractPattern", (fileDateExtractPattern == null) ? ""
+				: fileDateExtractPattern.pattern());
+
+		// (fileDateExtractFormat == null) ? "" : fileDateExtractFormat.toP
+		String dateFormatStr = "";
+		if (fileDateExtractFormat != null) {
+			if (fileDateExtractFormat instanceof SimpleDateFormat) {
+				dateFormatStr = ((SimpleDateFormat) fileDateExtractFormat)
+						.toPattern();
+			} else {
+				dateFormatStr = fileDateExtractFormat.toString();
+			}
+		}
+
+		map.put("fileDateExtractFormat", dateFormatStr);
+		map.put("logManageActionThreads", logManageActionThreads);
+
+		return map;
 	}
 
 }

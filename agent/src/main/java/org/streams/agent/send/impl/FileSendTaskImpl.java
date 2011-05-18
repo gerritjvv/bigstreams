@@ -36,14 +36,14 @@ public class FileSendTaskImpl implements FileSendTask {
 	 * Collector socket address
 	 */
 	AddressSelector collectorAddressSelector;
-	
+
 	/**
 	 * Used to manage the persistence of the file status and pointers.
 	 */
 	FileTrackerMemory memory;
 
 	CounterMetric fileKilobytesReadMetric;
-	
+
 	/**
 	 * 
 	 * @param clientResourceFactory
@@ -51,7 +51,8 @@ public class FileSendTaskImpl implements FileSendTask {
 	 * @param memory
 	 */
 	public FileSendTaskImpl(ClientResourceFactory clientResourceFactory,
-			AddressSelector collectorAddressSelector, FileTrackerMemory memory, CounterMetric fileKilobytesReadMetric) {
+			AddressSelector collectorAddressSelector, FileTrackerMemory memory,
+			CounterMetric fileKilobytesReadMetric) {
 		super();
 		this.clientResourceFactory = clientResourceFactory;
 		this.collectorAddressSelector = collectorAddressSelector;
@@ -79,28 +80,30 @@ public class FileSendTaskImpl implements FileSendTask {
 
 		ClientResource clientResource = clientResourceFactory.get();
 
-		InetSocketAddress collectorAddress = collectorAddressSelector.nextAddress();
-		LOG.info("Sending to collector: " + collectorAddress.getHostName() + ": " + collectorAddress.getPort());
+		InetSocketAddress collectorAddress = collectorAddressSelector
+				.nextAddress();
+		LOG.info("Sending to collector: " + collectorAddress.getHostName()
+				+ ": " + collectorAddress.getPort());
 
 		boolean interrupted = false;
 		LOG.info("FILE SEND START " + fileStatus.getPath());
-		
-		try{
-			
+
+		try {
+
 			clientResource.open(collectorAddress, fileLinePointer, file);
 
 			while (!(interrupted = Thread.interrupted())) {
-	
+
 				long uniqueId = System.nanoTime();
-	
+
 				boolean sentData = false;
-	
+
 				// this is to add line recovery in case of a conflict
 				int prevLinePointer = fileLinePointer.getLineReadPointer();
 				int prevFilePointer = fileLinePointer.getLineReadPointer();
-				
+
 				sentData = clientResource.send(uniqueId, logType);
-	
+
 				// -------- In case a conflict was detected we need
 				// -------- to close and open the client again with the correct
 				// conflict resolution pointer
@@ -111,44 +114,53 @@ public class FileSendTaskImpl implements FileSendTask {
 							+ fileLinePointer.getFilePointer()
 							+ " to "
 							+ fileLinePointer.getConflictFilePointer());
-	
+
 					FileLinePointer conflictResolvePointer = new FileLinePointer(
 							fileLinePointer.getConflictFilePointer(),
 							prevLinePointer);
-	
+
 					// open file again to current line pointer which is the
 					// conflict file pointer i.e.
 					// the file pointer that the collectors have
 					clientResource.close();
-					clientResource.open(collectorAddress, conflictResolvePointer,
-							file);
-	
+					clientResource.open(collectorAddress,
+							conflictResolvePointer, file);
+
 					fileLinePointer = conflictResolvePointer;
-	
-				}else{
-					//set metrics only if no conflict
-					fileKilobytesReadMetric.incrementCounter(
-							(fileLinePointer.getFilePointer() - prevFilePointer)/1024
-							);
+
+				} else {
+					// set metrics only if no conflict
+					fileKilobytesReadMetric.incrementCounter((fileLinePointer
+							.getFilePointer() - prevFilePointer) / 1024);
 				}
-	
+
 				fileStatus.setFilePointer(fileLinePointer.getFilePointer());
 				fileStatus.setLinePointer(fileLinePointer.getLineReadPointer());
-	
-				LOG.info(">>>>>> linepointer: " + fileLinePointer.getLineReadPointer());
+
 				if (!sentData) {
 					// no more data was sent this means the file has been read
-					// completely
-					fileStatus.setStatus(FileTrackingStatus.STATUS.DONE);
-					fileStatus.setSentDate(new Date());
-					
+					// completely -- we need to double check here that this is
+					// correct.
+
+					if ((file.length()-1) > fileStatus.getFilePointer()) {
+						LOG.warn("The file was seen as done but file length( "
+								+ file.length() + ") > that filepointer( "
+								+ fileStatus.getFilePointer() + ") Setting file status READY: " );
+						fileStatus.setStatus(FileTrackingStatus.STATUS.READY);
+					} else {
+
+						fileStatus.setStatus(FileTrackingStatus.STATUS.DONE);
+						fileStatus.setSentDate(new Date());
+						
+					}
+
 					memory.updateFile(fileStatus);
 					break;
 				} else {
 					// just update status and continue sending
 					memory.updateFile(fileStatus);
 				}
-	
+
 				// every 100 batches refresh the status of the file
 				// make sure no other process has flagged this file as error.
 				if (statusRefreshCount++ > 100) {
@@ -156,26 +168,28 @@ public class FileSendTaskImpl implements FileSendTask {
 					fileStatus = memory.getFileStatus(file);
 					if (fileStatus.getStatus().equals(
 							FileTrackingStatus.STATUS.READ_ERROR)) {
-						throw new IOException("File " + file
-								+ " another process marked this file as READ_ERROR");
+						throw new IOException(
+								"File "
+										+ file
+										+ " another process marked this file as READ_ERROR");
 					}
 				}
-	
+
 				try {
 					Thread.sleep(500L);
 				} catch (InterruptedException e) {
 					interrupted = true;
 					break;
 				}
-	
+
 			}// eof while
 
 			LOG.info("FILE SEND DONE " + fileStatus.getPath());
-			
-		}finally{
+
+		} finally {
 			clientResource.close();
 		}
-		
+
 		if (interrupted) {
 			Thread.currentThread().interrupt();
 		}

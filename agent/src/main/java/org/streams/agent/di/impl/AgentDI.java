@@ -51,6 +51,7 @@ import org.streams.agent.file.actions.FileLogManagerMemory;
 import org.streams.agent.file.actions.LogActionsConf;
 import org.streams.agent.file.actions.impl.FileLogActionManager;
 import org.streams.agent.file.impl.ThreadedDirectoryWatcher;
+import org.streams.agent.mon.impl.AgentConfigResource;
 import org.streams.agent.mon.impl.AgentShutdownResource;
 import org.streams.agent.mon.impl.AgentStatusResource;
 import org.streams.agent.mon.impl.FileLogActionManagerResource;
@@ -307,11 +308,21 @@ public class AgentDI {
 			}
 
 		};
+
+		Finder configStatus = new Finder() {
+
+			@Override
+			public ServerResource find(Request request, Response response) {
+				return agentConfigResource();
+			}
+
+		};
 		
 		final Router router = new Router();
 		router.attach("/files/actions", logActionManagerResource,
 				Template.MODE_STARTS_WITH);
-		
+		router.attach("/config", configStatus,
+				Template.MODE_STARTS_WITH);
 		router.attach("/files/list/{status}", finderStatus);
 		router.attach("/files/list", finderStatus);
 		router.attach("/files/list/", finderStatus);
@@ -338,6 +349,15 @@ public class AgentDI {
 		return app;
 	}
 
+	@Bean
+	public AgentConfigResource agentConfigResource(){
+		return new AgentConfigResource(
+				beanFactory.getBean(AgentConfiguration.class),
+				beanFactory.getBean(LogDirConf.class),
+				beanFactory.getBean(LogActionsConf.class)
+				);
+	}
+	
 	@Bean
 	public FileLogActionManagerResource fileLogActionManagerResource(){
 		FileLogActionManagerResource resource = new FileLogActionManagerResource();
@@ -544,9 +564,9 @@ public class AgentDI {
 	public FileSendTask fileSendTask() throws MalformedURLException {
 
 		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
-		String collector = conf.getCollectorAddress();
+		String[] collector = conf.getCollectorAddress();
 
-		if (collector == null) {
+		if (collector == null || collector.length < 1) {
 			throw new RuntimeException(
 					"Please define a collector address using the property "
 							+ AgentProperties.COLLECTOR);
@@ -565,7 +585,8 @@ public class AgentDI {
 	public AddressSelector collectorAddressSelector() throws MalformedURLException{
 		AgentConfiguration agentConf = beanFactory.getBean(AgentConfiguration.class);
 		
-		String[] collectorAddresses = agentConf.getCollectorAddress().split("[,;]");
+		String[] collectorAddresses = agentConf.getCollectorAddress();
+		
 		Collection<InetSocketAddress> addressColl = new ArrayList<InetSocketAddress>(collectorAddresses.length);
 		
 		for(String addressStr : collectorAddresses){
