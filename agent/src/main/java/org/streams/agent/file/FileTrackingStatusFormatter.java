@@ -189,14 +189,13 @@ public class FileTrackingStatusFormatter {
 		if(sentDate == null){
 			sentDate = new Date();
 		}
-		
 		return file.getFileSize() + "\t" + file.getLogType() + "\t"
-				+ file.getStatus() + "\t" + file.getPath() + "\t"
-				+ file.getLastModificationTime() + "\t" + file.getFilePointer()
-				+ "\t" + file.getLinePointer() 
-				+ "\t" + simpleDateFormat.format(fileDate)
-				+ "\t" + simpleDateFormat.format(sentDate);
-		
+		+ file.getStatus() + "\t" + file.getPath() + "\t"
+		+ file.getLastModificationTime() + "\t" + file.getFilePointer()
+		+ "\t" + file.getLinePointer() 
+		+ "\t" + simpleDateFormat.format(fileDate)
+		+ "\t" + simpleDateFormat.format(sentDate);
+ 
 	}
 
 }

@@ -56,6 +56,8 @@ public class FileTrackingStatusEntity implements Serializable {
 	Date fileDate;
 	Date sentDate;
 	
+	long parkTime = 0L;
+	
 	public FileTrackingStatusEntity(){}
 	
 	
@@ -175,7 +177,7 @@ public class FileTrackingStatusEntity implements Serializable {
 	 */
 	public static FileTrackingStatusEntity createEntity(FileTrackingStatus fileTrackingStatus){
 		
-		return new FileTrackingStatusEntity(fileTrackingStatus.getLastModificationTime(),
+		FileTrackingStatusEntity entity = new FileTrackingStatusEntity(fileTrackingStatus.getLastModificationTime(),
 				fileTrackingStatus.getFileSize(),
 				fileTrackingStatus.getPath(),
 				fileTrackingStatus.getStatus().toString().toUpperCase(),
@@ -184,6 +186,8 @@ public class FileTrackingStatusEntity implements Serializable {
 				fileTrackingStatus.getLogType().toLowerCase(),
 				fileTrackingStatus.getFileDate(),
 				fileTrackingStatus.getSentDate());
+		entity.setParkTime(fileTrackingStatus.getParkTime());
+		return entity;
 		
 	}
 	
@@ -202,6 +206,7 @@ public class FileTrackingStatusEntity implements Serializable {
 		setStatus(status.getStatus().toString().toUpperCase());
 		setFileDate(status.getFileDate());
 		setSentDate(status.getSentDate());
+		setParkTime(status.getParkTime());
 	}
 	
 	/**
@@ -211,11 +216,22 @@ public class FileTrackingStatusEntity implements Serializable {
 	 */
 	public FileTrackingStatus createStatusObject() {
 
-		return new FileTrackingStatus(getLastModificationTime(), getFileSize(),
+		FileTrackingStatus status = new FileTrackingStatus(getLastModificationTime(), getFileSize(),
 				getPath(), FileTrackingStatus.STATUS.valueOf(getStatus()),
 				getLinePointer(), getFilePointer(), getLogType().toLowerCase(),
 				getFileDate(), getSentDate());
+		status.setParkTime(getParkTime());
+		return status;
+	}
 
+
+	public long getParkTime() {
+		return parkTime;
+	}
+
+
+	public void setParkTime(long parkTime) {
+		this.parkTime = parkTime;
 	}
 
 }

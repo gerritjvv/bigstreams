@@ -241,8 +241,10 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 	private FilesToSendQueue createFilesToSendQueue(MapTrackerMemory memory) {
 
 		memory.updateFile(createTestFileTrackingStatus());
-		FilesToSendQueue queue = new FilesToSendQueueImpl(memory);
-
+		FilesToSendQueueImpl queue = new FilesToSendQueueImpl(memory);
+		//set park time to 100 milliseconds
+		queue.setFileParkTimeOut(100L);
+		
 		return queue;
 
 	}
@@ -250,7 +252,7 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 	private FilesSendWorkerImpl createWorker(MapTrackerMemory memory,
 			AgentStatus agentStatus, int port) {
 		FilesToSendQueue queue = createFilesToSendQueue(memory);
-
+		
 		ExecutorService service = Executors.newCachedThreadPool();
 		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(
 				new HashedWheelTimer(), new NioClientSocketChannelFactory(

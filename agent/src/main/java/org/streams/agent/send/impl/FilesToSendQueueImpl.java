@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
+import org.apache.log4j.Logger;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
 import org.streams.agent.send.FilesToSendQueue;
@@ -17,6 +18,8 @@ import org.streams.commons.util.concurrent.KeyLock;
  */
 public class FilesToSendQueueImpl implements FilesToSendQueue {
 
+	private static final Logger LOG = Logger.getLogger(FilesToSendQueueImpl.class);
+	
 	/**
 	 * When the List queue is empty this class will ask the FileTrackerMemory for files.<br/>
 	 * The maximum number of changed files to be retrieved is set by this default value. default == 10.<br/>
@@ -29,6 +32,12 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 
 	private KeyLock keyLock = new KeyLock();
 	
+	/**
+	 * The file park time out is checked agains the parkTime on a file if (System.currentTimeInMillis() - parkTime) > fileParkTimeOut<br/>
+	 * then the file status is chaned to READY and the file is included for processing.<br/>
+	 * Default is 10 seconds.
+	 */
+	private long fileParkTimeOut = 10000L;
 	
 	public FilesToSendQueueImpl() {
 		
@@ -77,6 +86,22 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 
 			if (readyList != null)
 				queue.addAll(readyList);
+			
+			//ask for any parked files
+			Collection<FileTrackingStatus> parkedFiles = trackerMemory.getFiles(FileTrackingStatus.STATUS.PARKED);
+			if(parkedFiles != null){
+				//check timeout
+				long currentTime = System.currentTimeMillis();
+				
+				for(FileTrackingStatus parkedFile : parkedFiles){
+					if( (currentTime - parkedFile.getParkTime()) >= fileParkTimeOut){
+						parkedFile.setStatus(FileTrackingStatus.STATUS.READY);
+						trackerMemory.updateFile(parkedFile);
+						queue.add(parkedFile);
+						LOG.info("Moving parked file: " + parkedFile.getPath() + " to READY ");
+					}
+				}
+			}
 
 			// pool the queue again
 			status = poll();
@@ -117,6 +142,14 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 	@Override
 	public void releaseLock(FileTrackingStatus status) {
 		keyLock.releaseLock(makeKey(status));
+	}
+
+	public long getFileParkTimeOut() {
+		return fileParkTimeOut;
+	}
+
+	public void setFileParkTimeOut(long fileParkTimeOut) {
+		this.fileParkTimeOut = fileParkTimeOut;
 	}
 
 }

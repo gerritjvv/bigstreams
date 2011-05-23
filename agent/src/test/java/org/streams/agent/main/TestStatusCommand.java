@@ -148,8 +148,9 @@ public class TestStatusCommand extends TestCase {
 					new ByteArrayInputStream(out.toByteArray())));
 
 			String line = reader.readLine();
-
 			assertNotNull(line);
+			System.out.println("testFileReadyPath:" + testFileReadyPath);
+			System.out.println("Line: " + line);
 			assertTrue(line.contains(testFileReadyPath));
 
 			FileTrackingStatus file = new FileTrackingStatusFormatter().read(

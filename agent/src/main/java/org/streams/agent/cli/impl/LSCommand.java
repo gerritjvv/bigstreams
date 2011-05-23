@@ -65,11 +65,15 @@ public class LSCommand implements CommandLineProcessor {
 	public void process(CommandLine cmdLine, OutputStream out) throws Exception {
 
 		FileTrackingStatus.STATUS status = null;
-
-		if (cmdLine.hasOption("status")) {
-			status = FileTrackingStatus.STATUS.valueOf(cmdLine
-					.getOptionValue("status"));
-
+		String statusStr = cmdLine.getOptionValue("ls");
+		
+		if (statusStr != null) {
+			try{
+				status = FileTrackingStatus.STATUS.valueOf(statusStr.toUpperCase());
+			}catch(Throwable t){
+				throw new Exception("The status " + statusStr + " is not valid (" + 
+						Arrays.toString(FileTrackingStatus.STATUS.values()) + " )");
+			}
 		}
 
 		int from = -1;

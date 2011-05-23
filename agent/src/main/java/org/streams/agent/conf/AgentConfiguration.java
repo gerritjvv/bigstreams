@@ -22,7 +22,8 @@ import org.mortbay.log.Log;
  */
 public class AgentConfiguration {
 
-	private static final Logger LOG = Logger.getLogger(AgentConfiguration.class);
+	private static final Logger LOG = Logger
+			.getLogger(AgentConfiguration.class);
 
 	/**
 	 * Time in milliseconds that the agent will look for old files in its
@@ -63,6 +64,15 @@ public class AgentConfiguration {
 	 * Timeout while waiting for the connection to be established
 	 */
 	long connectionEstablishTimeout;
+
+	/**
+	 * The file park time out is checked agains the parkTime on a file if
+	 * (System.currentTimeInMillis() - parkTime) > fileParkTimeOut<br/>
+	 * then the file status is chaned to READY and the file is included for
+	 * processing.<br/>
+	 * Default is 10 seconds.
+	 */
+	long fileParkTimeout;
 
 	/**
 	 * This tells to agent to which collector to send the file data to. Only one
@@ -171,6 +181,8 @@ public class AgentConfiguration {
 		connectionSendTimeout = configuration.getLong(
 				AgentProperties.CLIENTCONNECTION_SEND_TIMEOUT, 60000L);
 
+		fileParkTimeout = configuration.getLong(AgentProperties.FILE_PARK_TIMEOUT, 10000L); 
+		
 		connectionEstablishTimeout = configuration.getLong(
 				AgentProperties.CLIENTCONNECTION_ESTABLISH_TIMEOUT, 20000L);
 
@@ -351,6 +363,10 @@ public class AgentConfiguration {
 	public void setLogManageActionThreads(int logManageActionThreads) {
 		this.logManageActionThreads = logManageActionThreads;
 	}
+	
+	public long getFileParkTimeout() {
+		return fileParkTimeout;
+	}
 
 	public Map<String, Object> toMap() {
 
@@ -372,6 +388,8 @@ public class AgentConfiguration {
 		map.put("fileDateExtractPattern", (fileDateExtractPattern == null) ? ""
 				: fileDateExtractPattern.pattern());
 
+		map.put("fileParkTimeout", fileParkTimeout);
+		
 		// (fileDateExtractFormat == null) ? "" : fileDateExtractFormat.toP
 		String dateFormatStr = "";
 		if (fileDateExtractFormat != null) {

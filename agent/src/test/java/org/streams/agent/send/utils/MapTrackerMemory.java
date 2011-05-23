@@ -71,7 +71,7 @@ public class MapTrackerMemory extends AbstractFileTrackerMemory implements
 	private Set<FileTrackingStatus> getFileSet(STATUS status) {
 
 		HashSet<FileTrackingStatus> set = new HashSet<FileTrackingStatus>();
-
+		
 		for (Entry<String, FileTrackingStatus> entry : map.entrySet()) {
 			if (status == null) {
 				set.add(entry.getValue());

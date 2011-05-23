@@ -32,7 +32,9 @@ public interface AgentProperties {
 
 	static final String CLIENTCONNECTION_ESTABLISH_TIMEOUT = "agent.send.clientconnection.timeout";
 	static final String CLIENTCONNECTION_SEND_TIMEOUT = "agent.send.clientconnection.sendtimeout";
+	static final String FILE_PARK_TIMEOUT = "agent.file.parktimeout";
 
+	
 	static final String CLIENT_THREAD_COUNT = "agent.send.thread.count";
 
 	static final String COLLECTOR = "agent.send.collector";

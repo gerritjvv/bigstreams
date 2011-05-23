@@ -4,7 +4,6 @@ import javax.inject.Inject;
 import javax.inject.Named;
 
 import org.apache.log4j.Logger;
-import org.mortbay.log.Log;
 import org.restlet.resource.Get;
 import org.restlet.resource.ResourceException;
 import org.restlet.resource.ServerResource;
@@ -50,11 +49,11 @@ public class FileTrackingStatusCountResource extends ServerResource {
 		} else {
 			try {
 				status = FileTrackingStatus.STATUS.valueOf(statusName);
-				if (Log.isDebugEnabled()) {
+				if (LOG.isDebugEnabled()) {
 					LOG.debug("Using status: " + status);
 				}
 			} catch (Throwable t) {
-				if (Log.isDebugEnabled()) {
+				if (LOG.isDebugEnabled()) {
 					LOG.debug("Parameter status: " + statusName
 							+ " not recougnised using default READY");
 				}

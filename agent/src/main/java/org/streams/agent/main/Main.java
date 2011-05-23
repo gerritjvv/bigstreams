@@ -2,6 +2,7 @@ package org.streams.agent.main;
 
 import java.lang.Thread.UncaughtExceptionHandler;
 
+import org.slf4j.bridge.SLF4JBridgeHandler;
 import org.streams.commons.cli.CommandLineParser;
 
 
@@ -14,6 +15,9 @@ public class Main {
 
 	public static void main(String arg[]) throws Exception {
 
+		//set logging to log4j.
+		SLF4JBridgeHandler.install();
+		
 		Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler() {
 
 			@Override

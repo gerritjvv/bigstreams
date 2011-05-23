@@ -25,7 +25,7 @@ import java.util.Map;
 public class FileTrackingStatus implements Cloneable {
 
 	public static enum STATUS {
-		READY, READING, DELETED, CHANGED, DONE, READ_ERROR
+		READY, READING, DELETED, CHANGED, DONE, READ_ERROR, PARKED
 	}
 
 	/**
@@ -38,14 +38,35 @@ public class FileTrackingStatus implements Cloneable {
 	 */
 	Date sentDate;
 
+	/**
+	 * Last date modification time as given by the local file system
+	 */
 	long lastModificationTime = 0L;
 	long fileSize = 0L;
+	/**
+	 * The file path and name
+	 */
 	String path;
 	STATUS status;
 	int linePointer = 0;
+	
+	/**
+	 * File pointer kept by the agent to keep track of where its reading in a file.
+	 */
 	long filePointer = 0L;
+	
+	/**
+	 * The file log type as specified in the stream_directories properties file.
+	 */
 	String logType;
-
+	
+	/**
+	 * The parkTime by default is 0, when set the file tracking memory will only return files
+	 * which parkTime has expired.<br/>
+	 * This value is milliseconds.
+	 */
+	long parkTime = 0L;
+	
 	public FileTrackingStatus() {
 	}
 
@@ -64,6 +85,14 @@ public class FileTrackingStatus implements Cloneable {
 		this.sentDate = sentDate;
 	}
 
+	/**
+	 * Helper method that sets the status to parked and the park time to System.currentTimeMillis()
+	 */
+	public void setPark(){
+		setStatus(FileTrackingStatus.STATUS.PARKED);
+		setParkTime(System.currentTimeMillis());
+	}
+	
 	/**
 	 * Log type being sent
 	 * 
@@ -163,7 +192,8 @@ public class FileTrackingStatus implements Cloneable {
 		file.setStatus(status);
 		file.setFileDate(fileDate);
 		file.setSentDate(sentDate);
-
+		file.setParkTime(parkTime);
+		
 		return file;
 	}
 
@@ -259,6 +289,23 @@ public class FileTrackingStatus implements Cloneable {
 
 	public void setSentDate(Date sentDate) {
 		this.sentDate = sentDate;
+	}
+
+	/**
+	 * The parkTime by default is 0, when set the file tracking memory will only return files
+	 * which parkTime has expired.
+	 * @return long time in miliseconds
+	 */
+	public long getParkTime() {
+		return parkTime;
+	}
+	/**
+	 * The parkTime by default is 0, when set the file tracking memory will only return files
+	 * which parkTime has expired.
+	 * @param parkTime time in milliseconds
+	 */
+	public void setParkTime(long parkTime) {
+		this.parkTime = parkTime;
 	}
 
 }

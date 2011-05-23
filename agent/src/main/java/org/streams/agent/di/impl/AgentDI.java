@@ -164,27 +164,26 @@ public class AgentDI {
 	}
 
 	@Bean
-	public FileLogActionManager fileLogActionManager() throws Exception{
-		
-		int threads = beanFactory.getBean(AgentConfiguration.class).getLogManageActionThreads();
-		
-		if(threads < 1){
+	public FileLogActionManager fileLogActionManager() throws Exception {
+
+		int threads = beanFactory.getBean(AgentConfiguration.class)
+				.getLogManageActionThreads();
+
+		if (threads < 1) {
 			threads = 2;
 		}
 
-		//this object will register itself as an event listener with the file memory
+		// this object will register itself as an event listener with the file
+		// memory
 		FileLogActionManager manager = new FileLogActionManager(
 				beanFactory.getBean(AgentStatus.class),
 				Executors.newFixedThreadPool(threads),
 				beanFactory.getBean(FileTrackerMemory.class),
-				beanFactory.getBean(FileLogManagerMemory.class),
-				beanFactory.getBean(LogActionsConf.class).getActions()
-				);
-		
-		
+				beanFactory.getBean(FileLogManagerMemory.class), beanFactory
+						.getBean(LogActionsConf.class).getActions());
+
 		return manager;
 	}
-	
 
 	@Bean
 	@Lazy
@@ -230,7 +229,7 @@ public class AgentDI {
 	@Inject
 	public Component restletComponent() {
 		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
-		
+
 		Component component = new Component();
 		component.getServers().add(org.restlet.data.Protocol.HTTP,
 				conf.getMonitoringPort());
@@ -299,7 +298,7 @@ public class AgentDI {
 			}
 
 		};
-		
+
 		Finder logActionManagerResource = new Finder() {
 
 			@Override
@@ -317,12 +316,11 @@ public class AgentDI {
 			}
 
 		};
-		
+
 		final Router router = new Router();
 		router.attach("/files/actions", logActionManagerResource,
 				Template.MODE_STARTS_WITH);
-		router.attach("/config", configStatus,
-				Template.MODE_STARTS_WITH);
+		router.attach("/config", configStatus, Template.MODE_STARTS_WITH);
 		router.attach("/files/list/{status}", finderStatus);
 		router.attach("/files/list", finderStatus);
 		router.attach("/files/list/", finderStatus);
@@ -350,21 +348,20 @@ public class AgentDI {
 	}
 
 	@Bean
-	public AgentConfigResource agentConfigResource(){
+	public AgentConfigResource agentConfigResource() {
 		return new AgentConfigResource(
 				beanFactory.getBean(AgentConfiguration.class),
 				beanFactory.getBean(LogDirConf.class),
-				beanFactory.getBean(LogActionsConf.class)
-				);
+				beanFactory.getBean(LogActionsConf.class));
 	}
-	
+
 	@Bean
-	public FileLogActionManagerResource fileLogActionManagerResource(){
+	public FileLogActionManagerResource fileLogActionManagerResource() {
 		FileLogActionManagerResource resource = new FileLogActionManagerResource();
 		resource.setMemory(beanFactory.getBean(FileLogManagerMemory.class));
 		return resource;
 	}
-	
+
 	@Bean
 	@Lazy
 	public AgentStatusResource agentStatusResource() {
@@ -378,9 +375,9 @@ public class AgentDI {
 	@Lazy
 	public FileStatusCleanoutManager fileStatusCleanoutManager()
 			throws Exception {
-		
+
 		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
-		
+
 		FileTrackerMemory fileTrackerMemory = beanFactory
 				.getBean(FileTrackerMemory.class);
 
@@ -392,15 +389,16 @@ public class AgentDI {
 	}
 
 	@Bean
-	public FileDateExtractor fileDateExtractor(){
-		
-		final AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
-		
-		return new SimpleFileDateExtractor(conf.getFileDateExtractPattern(), 
+	public FileDateExtractor fileDateExtractor() {
+
+		final AgentConfiguration conf = beanFactory
+				.getBean(AgentConfiguration.class);
+
+		return new SimpleFileDateExtractor(conf.getFileDateExtractPattern(),
 				conf.getFileDateExtractFormat());
-		
+
 	}
-	
+
 	/**
 	 * Creates an anonymous instance of DirectoryWatcherFactory that would
 	 * return an instance of ThreadedDirectoryWatcher An internal Map is used to
@@ -416,9 +414,11 @@ public class AgentDI {
 	@Lazy
 	public DirectoryWatcherFactory directoryWatcherFactory() throws Exception {
 
-		final AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
-		final FileDateExtractor fileDateExtractor = beanFactory.getBean(FileDateExtractor.class);
-		
+		final AgentConfiguration conf = beanFactory
+				.getBean(AgentConfiguration.class);
+		final FileDateExtractor fileDateExtractor = beanFactory
+				.getBean(FileDateExtractor.class);
+
 		final FileTrackerMemory fileTrackerMemory = beanFactory
 				.getBean(FileTrackerMemory.class);
 		DirectoryWatcherFactory fact = new DirectoryWatcherFactory() {
@@ -432,10 +432,9 @@ public class AgentDI {
 				ThreadedDirectoryWatcher watcher = map.get(directory);
 				if (watcher == null) {
 					int pollingInterval = conf.getPollingInterval();
-					
+
 					watcher = new ThreadedDirectoryWatcher(logType,
-							pollingInterval,
-							fileDateExtractor,
+							pollingInterval, fileDateExtractor,
 							fileTrackerMemory);
 					watcher.setDirectory(directory.getAbsolutePath());
 
@@ -465,7 +464,7 @@ public class AgentDI {
 	@Lazy
 	public FileStreamer fileStreamer() throws Exception {
 		AgentConfiguration conf = beanFactory.getBean(AgentConfiguration.class);
-		
+
 		CompressionCodec codec = beanFactory.getBean(CompressionCodec.class);
 
 		String fileStreamerClass = conf.getFileStreamerClass();
@@ -574,27 +573,32 @@ public class AgentDI {
 
 		return new FileSendTaskImpl(
 				beanFactory.getBean(ClientResourceFactory.class),
-				beanFactory.getBean("collectorAddressSelector", AddressSelector.class), 
+				beanFactory.getBean("collectorAddressSelector",
+						AddressSelector.class),
 				beanFactory.getBean(FileTrackerMemory.class),
 				beanFactory.getBean("fileKilobytesReadMetric",
 						CounterMetric.class));
 
 	}
-	
+
 	@Bean
-	public AddressSelector collectorAddressSelector() throws MalformedURLException{
-		AgentConfiguration agentConf = beanFactory.getBean(AgentConfiguration.class);
-		
+	public AddressSelector collectorAddressSelector()
+			throws MalformedURLException {
+		AgentConfiguration agentConf = beanFactory
+				.getBean(AgentConfiguration.class);
+
 		String[] collectorAddresses = agentConf.getCollectorAddress();
-		
-		Collection<InetSocketAddress> addressColl = new ArrayList<InetSocketAddress>(collectorAddresses.length);
-		
-		for(String addressStr : collectorAddresses){
-			
+
+		Collection<InetSocketAddress> addressColl = new ArrayList<InetSocketAddress>(
+				collectorAddresses.length);
+
+		for (String addressStr : collectorAddresses) {
+
 			URL url = new URL(addressStr);
-			
-			addressColl.add(new InetSocketAddress(url.getHost(), url.getPort()));
-			
+
+			addressColl
+					.add(new InetSocketAddress(url.getHost(), url.getPort()));
+
 		}
 
 		return new RandomDistAddressSelector(addressColl);
@@ -604,7 +608,11 @@ public class AgentDI {
 	public FilesToSendQueue filesToSendQueue() {
 		FileTrackerMemory fileTrackerMemory = beanFactory
 				.getBean(FileTrackerMemory.class);
-		return new FilesToSendQueueImpl(fileTrackerMemory);
+		FilesToSendQueueImpl queue = new FilesToSendQueueImpl(fileTrackerMemory);
+		queue.setFileParkTimeOut(beanFactory.getBean(AgentConfiguration.class)
+				.getFileParkTimeout());
+
+		return queue;
 	}
 
 	@Bean

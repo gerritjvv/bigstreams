@@ -17,7 +17,7 @@
 		<hibernate-annotations.version>3.4.0.GA</hibernate-annotations.version>
 		<hibernate-c3p0.version>3.3.2.GA</hibernate-c3p0.version>
 		<hibernate-entitymanager.version>3.4.0.GA</hibernate-entitymanager.version>
-		<slf4j-simple.version>1.4.2</slf4j-simple.version>
+		<slf4j-simple.version>1.6.1</slf4j-simple.version>
 		<hsqldb.version>1.8.0.10</hsqldb.version>
 		<restlet.version>2.0-M7</restlet.version>
 		<netty.version>3.2.2.Final</netty.version>
@@ -30,7 +30,6 @@
 			<artifactId>commons</artifactId>
 			<version>${project.version}</version>
 		</dependency>
-
 		<dependency>
 			<groupId>org.jboss.netty</groupId>
 			<artifactId>netty</artifactId>
@@ -41,21 +40,48 @@
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-annotations</artifactId>
 			<version>${hibernate-annotations.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.hibernate</groupId>
 			<artifactId>hibernate-c3p0</artifactId>
 			<version>${hibernate-c3p0.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>hibernate</groupId>
 			<artifactId>hibernate-entitymanager</artifactId>
 			<version>${hibernate-entitymanager.version}</version>
-
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
 		</dependency>
 		<dependency>
 			<groupId>org.slf4j</groupId>
 			<artifactId>slf4j-simple</artifactId>
+			<version>${slf4j-simple.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>jul-to-slf4j</artifactId>
+			<version>${slf4j-simple.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-log4j12</artifactId>
 			<version>${slf4j-simple.version}</version>
 		</dependency>
 

@@ -191,7 +191,6 @@ public class TestLSCommand extends TestCase {
 		if (query == null) {
 
 			argsList.add("-ls");
-			argsList.add("-status");
 			argsList.add("READY");
 			argsList.add("-from");
 			argsList.add("" + from);
@@ -201,8 +200,6 @@ public class TestLSCommand extends TestCase {
 
 		} else {
 			argsList.add("-ls");
-			argsList.add("-status");
-			argsList.add("READY");
 			argsList.add("-from");
 			argsList.add("" + from);
 			argsList.add("-max");
@@ -271,7 +268,7 @@ public class TestLSCommand extends TestCase {
 
 		ByteArrayOutputStream byteOut = new ByteArrayOutputStream();
 
-		parser.parse(byteOut, new String[] { "-ls", "-status", "READY",
+		parser.parse(byteOut, new String[] { "-ls", "READY",
 				"-json", "-o" });
 
 		StringReader reader = new StringReader(
