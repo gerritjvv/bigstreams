@@ -135,7 +135,7 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 			
 			fileStatus.setFilePointer(syncPointer.getFilePointer());
 			fileStatus.setFileSize(syncPointer.getFileSize());
-			LOG.info(">>>>>: " + syncPointer.getLinePointer());
+
 			fileStatus.setLinePointer(syncPointer.getLinePointer());
 			fileStatus.setDate(new Date());
 			

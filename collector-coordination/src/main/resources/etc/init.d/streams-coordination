@@ -23,12 +23,27 @@ export PATH
 [ -f /etc/sysconfig/streams-coordination ] && . /etc/sysconfig/streams-coordination
 lockfile=${LOCKFILE-/var/lock/subsys/streams-coordination}
 streamsd=${STREAMSD-/opt/streams-coordination/bin/streams.sh}
-REGEX="coordination"
+REGEX="/opt/streams-coordination/bin/"
 
 RETVAL=0
 
 # Source function library.
 . /etc/rc.d/init.d/functions
+
+if [ -f /etc/profile.d/java.sh ]; then
+ . /etc/profile.d/java.sh
+fi
+
+if [ -f /opt/streams-collector/conf/streams-env.sh ]; then
+ . /opt/streams-collector/conf/streams-env.sh
+fi
+
+if [ -n $JAVA_HOME ]; then
+
+  echo "JAVA_HOME not set using /usr/java/latest"
+  export JAVA_HOME="/usr/java/latest"
+
+fi
 
 
 start() {
