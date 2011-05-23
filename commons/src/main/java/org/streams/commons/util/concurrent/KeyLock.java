@@ -1,6 +1,5 @@
 package org.streams.commons.util.concurrent;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -27,7 +26,7 @@ public class KeyLock {
 	/**
 	 * Used to know the number of threads that are waiting on a lock
 	 */
-	Map<String, AtomicInteger> keyWaiters = new HashMap<String, AtomicInteger>();
+	Map<String, AtomicInteger> keyWaiters = new ConcurrentHashMap<String, AtomicInteger>();
 	/**
 	 * Contains the long operation locks. This map grows dynamically and a lock
 	 * per key is added.<br/>
@@ -57,6 +56,14 @@ public class KeyLock {
 
 	}
 
+	public KeyLock(int buckets) {
+
+		latchArray = new ReentrantLock[buckets];
+		for (int i = 0; i < buckets; i++) {
+			latchArray[i] = new ReentrantLock();
+		}
+	}
+
 	/**
 	 * Release the lock for the key
 	 * 
@@ -66,7 +73,7 @@ public class KeyLock {
 	public void releaseLock(String key) {
 
 		ReentrantLock latch = latchMap.get(key);
-		if(latch != null){
+		if (latch != null) {
 			latch.unlock();
 
 			try {

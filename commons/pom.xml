@@ -36,6 +36,22 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 
+        <repositories>
+                <repository>
+                        <id>maven-restlet</id>
+                        <name>Public online Restlet repository</name>
+                        <url>http://maven.restlet.org</url>
+                </repository>
+                <repository>
+                        <id>streams-releases</id>
+                        <url>https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>
+                </repository>
+                <repository>
+                        <id>streams-snapshots</id>
+                        <url>https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
+                </repository>
+        </repositories>
+
 <distributionManagement>
     <repository>
         <id>streams-releases</id>
