@@ -30,6 +30,21 @@ RETVAL=0
 # Source function library.
 . /etc/rc.d/init.d/functions
 
+if [ -f /etc/profile.d/java.sh ]; then
+ . /etc/profile.d/java.sh
+fi
+
+if [ -f /opt/streams-collector/conf/streams-env.sh ]; then
+ . /opt/streams-collector/conf/streams-env.sh
+fi
+
+if [ -n $JAVA_HOME ]; then
+
+  echo "JAVA_HOME not set using /usr/java/latest"
+  export JAVA_HOME="/usr/java/latest"
+
+fi
+
 
 start() {
 

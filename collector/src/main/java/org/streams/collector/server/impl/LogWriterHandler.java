@@ -36,6 +36,7 @@ import org.streams.commons.io.Header;
 import org.streams.commons.io.NetworkCodes;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.metrics.CounterMetric;
+import org.streams.commons.util.concurrent.KeyLock;
 
 /**
  * 
@@ -59,6 +60,13 @@ public class LogWriterHandler extends SimpleChannelHandler {
 
 	CompressionPoolFactory compressionPoolFactory;
 
+	/**
+	 * This lock will check for the collector that an agent is sending only one
+	 * send request for a certain file. This still means agents can send
+	 * multiple send requests for multiple files.
+	 */
+	static final KeyLock agentFileLocalLock = new KeyLock(200);
+	
 	/**
 	 * Time that this class will wait for a compression resource to become
 	 * available. Default 10000L
@@ -152,6 +160,10 @@ public class LogWriterHandler extends SimpleChannelHandler {
 					+ codec);
 		}
 
+		final String localKey = fileStatus.getAgentName()
+				+ fileStatus.getLogType() + fileStatus.getFileName();
+		boolean localLockAcquired = false;
+
 		try {
 
 			// --------------------- Check Coordination parameters
@@ -166,6 +178,28 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			// message per agent + fileName
 			// but the collector has to guard against this possible event.
 
+			// SYNC LOCALLY
+			// this local sync will cause possible faulty sends to be caught but
+			// will also
+			// Synchronise concurrent calls from agents for the same file.
+			// This concurrentness is not allowed but offers a gracefull exit as
+			// any call out of sync will get a resync exception.
+			localLockAcquired = LogWriterHandler.agentFileLocalLock
+					.acquireLock(localKey, 2000L);
+
+			if (!localLockAcquired) {
+				// if no local lock could be acquired within 2 seconds we throw
+				// and coordination exception
+				throw new CoordinationException(
+						"Local lock in collector could not be obtained (tried for 2 seconds) for agent: "
+								+ fileStatus.getAgentName()
+								+ " log type: "
+								+ fileStatus.getLogType()
+								+ " file name: "
+								+ fileStatus.getFileName());
+			}
+
+			// SYNC GLOBALLY
 			final SyncPointer syncPointer = coordinationService
 					.getAndLock(fileStatus);
 
@@ -184,7 +218,6 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			final long syncFilePointer = syncPointer.getFilePointer();
 			final long filePointer = fileStatus.getFilePointer();
 
-			
 			ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
 
 			try { // try finally for pointer lock release
@@ -262,6 +295,9 @@ public class LogWriterHandler extends SimpleChannelHandler {
 			// on any error event with coordination these resources must be
 			// released
 			// assert fileStatusMap.remove(fileStatus) != null;
+			if (localLockAcquired) {
+				agentFileLocalLock.releaseLock(localKey);
+			}
 
 			if (!compressInputWasReleased) {
 				pool.closeAndRelease(compressInput);
