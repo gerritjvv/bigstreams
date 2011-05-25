@@ -7,6 +7,7 @@ import java.util.List;
 import javax.inject.Inject;
 
 import org.apache.log4j.Logger;
+import org.jboss.netty.channel.ChannelHandler;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Request;
@@ -101,8 +102,8 @@ public class CollectorDI {
 				(Integer) CollectorProperties.WRITER.COLLECTOR_PORT
 						.getDefaultValue());
 
-		return new CollectorServerImpl(port,
-				beanFactory.getBean(LogWriterHandler.class),
+		return new CollectorServerImpl(port, beanFactory.getBean(
+				LogWriterHandler.class),
 				beanFactory.getBean(CoordinationServiceClient.class),
 				configuration, beanFactory.getBean(MetricChannel.class));
 	}
@@ -119,6 +120,7 @@ public class CollectorDI {
 						.getBean(CollectorStatus.class), beanFactory.getBean(
 						"fileKilobytesWrittenMetric", CounterMetric.class),
 				beanFactory.getBean(CompressionPoolFactory.class));
+
 	}
 
 	@Bean
@@ -150,7 +152,6 @@ public class CollectorDI {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
-	
 		int lockport = configuration.getInt(
 				CollectorProperties.WRITER.COORDINATION_LOCK_PORT.toString(),
 				(Integer) CollectorProperties.WRITER.COORDINATION_LOCK_PORT
@@ -164,9 +165,10 @@ public class CollectorDI {
 		String[] hostArr = configuration
 				.getStringArray(CollectorProperties.WRITER.COORDINATION_HOST
 						.toString());
-		
-		if(hostArr == null || hostArr.length  < 1){
-			hostArr = new String[] { CollectorProperties.WRITER.COORDINATION_HOST.getDefaultValue().toString() };
+
+		if (hostArr == null || hostArr.length < 1) {
+			hostArr = new String[] { CollectorProperties.WRITER.COORDINATION_HOST
+					.getDefaultValue().toString() };
 		}
 
 		InetSocketAddress[] lockAddresses = new InetSocketAddress[hostArr.length];

@@ -1,5 +1,6 @@
 package org.streams.collector.di.impl;
 
+import org.jboss.netty.channel.ChannelHandler;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.ListableBeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,9 +61,9 @@ public class MetricsDI {
 
 		return new SimpleMetricManager(metrics);
 	}
-	
+
 	@Bean
-	public MetricChannel metricChannel() {
+	public ChannelHandler metricChannelFactory() {
 
 		return new MetricChannel(
 				(CounterMetric) beanFactory
@@ -75,13 +76,13 @@ public class MetricsDI {
 
 	}
 
-
 	@Bean
 	public Metric fileKilobytesWrittenMetric() {
-		return new IntegerCounterPerSecondMetric("FileKiloBytesWrittenPerSecond",
+		return new IntegerCounterPerSecondMetric(
+				"FileKiloBytesWrittenPerSecond",
 				beanFactory.getBean(CollectorStatus.class));
 	}
-	
+
 	@Bean
 	public Metric connectionsReceivedMetric() {
 		return new IntegerCounterPerSecondMetric("ConnectionsPerSecond",
