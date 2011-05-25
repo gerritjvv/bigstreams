@@ -169,13 +169,35 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		// before doing anything else.
 		// If a SyncPointer Lock cannot be attained we return an error to the
 		// client.
-
+		long startTime = System.currentTimeMillis();
+		
 		// ---------- This line uses a semi lock free algorithm
-		final SyncPointer pointer = lockMemory.setLock(requestFileStatus,
+		SyncPointer pointer = lockMemory.setLock(requestFileStatus,
 				lockTimeOut, remoteAddress.getAddress().getHostAddress());
 		// ---------- lock released. At this stage we either have a SyncPointer
 		// lock or a null reference if the resource was locked already.
 
+		if(pointer == null){
+			//apply lock wait, the way lock memory is applied we cannot wait on the particular value becoming free.
+			//so we retry 5 times within a second.
+			for(int i = 0; i < 5; i++){
+				LOG.info("Retrying Lock: " + i + " of 5");
+				//we try getting the lock
+				pointer = lockMemory.setLock(requestFileStatus,
+						lockTimeOut, remoteAddress.getAddress().getHostAddress());
+				
+				if(pointer != null){
+					break;
+				}
+				//sleep for 200 milliseconds
+				Thread.sleep(200L);
+			}
+		}
+		
+		long endTime = System.currentTimeMillis() - startTime;
+		if(endTime >= 1000L){
+			LOG.warn("The coordination service lock appears to be running slow please check the network settings");
+		}
 		if (pointer == null) {
 			coordinationStatus.incCounter("LOCK_CONFLICT_BLOCKED", 1);
 			return null;

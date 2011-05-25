@@ -3,7 +3,6 @@ package org.streams.coordination.di.impl;
 import java.util.Arrays;
 import java.util.List;
 
-import org.jboss.netty.channel.ChannelHandler;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Request;
@@ -269,11 +268,9 @@ public class CoordinationDI {
 								.getDefaultValue());
 
 		return new CoordinationServerImpl(lockPort, releaseLockPort,
-				(ChannelHandler) beanFactory
-						.getBean(CoordinationLockHandler.class),
-				(ChannelHandler) beanFactory
-						.getBean(CoordinationUnLockHandler.class),
-				beanFactory.getBean(MetricChannel.class));
+				beanFactory.getBean(CoordinationLockHandler.class), beanFactory.getBean(
+						CoordinationUnLockHandler.class), beanFactory.getBean(
+								MetricChannel.class));
 	}
 
 	@Bean

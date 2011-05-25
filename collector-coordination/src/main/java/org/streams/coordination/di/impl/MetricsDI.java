@@ -62,7 +62,7 @@ public class MetricsDI {
 	}
 
 	@Bean
-	public MetricChannel metricChannel() {
+	public MetricChannel metricChannelFactory() {
 
 		return new MetricChannel(
 				(CounterMetric) beanFactory

@@ -118,6 +118,7 @@ public class HazelcastLockMemory implements LockMemory {
 
 		final String lockId = syncPointer.getLockId();
 		
+		
 		if ( ( lockValue = locksMap.putIfAbsent(lockId, lockValue) ) != null) {
 			
 			//do a thread safe put
