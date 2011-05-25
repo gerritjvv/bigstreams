@@ -1,46 +1,49 @@
 <persistence xmlns="http://java.sun.com/xml/ns/persistence"
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
-    version="2.0">
-    <persistence-unit name="fileTracking"
-        transaction-type="RESOURCE_LOCAL">
-        <provider>org.hibernate.ejb.HibernatePersistence</provider>
-        <class>org.streams.agent.file.impl.db.FileTrackingStatusEntity</class>
-        <class>org.streams.agent.file.actions.impl.db.FileLogActionEventEntity</class>
-        <properties>
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/persistence http://java.sun.com/xml/ns/persistence/persistence_2_0.xsd"
+	version="2.0">
+	<persistence-unit name="fileTracking"
+		transaction-type="RESOURCE_LOCAL">
+		<provider>org.hibernate.ejb.HibernatePersistence</provider>
+		<class>org.streams.agent.file.impl.db.FileTrackingStatusEntity</class>
+		<class>org.streams.agent.file.actions.impl.db.FileLogActionEventEntity</class>
+		<properties>
 
-            <!-- Hibernate database connection settings -->
-            <property name="hibernate.dialect" value="org.hibernate.dialect.HSQLDialect" />
-            <property name="hibernate.connection.driver_class" value="org.hsqldb.jdbcDriver" />
-            <property name="hibernate.connection.url"
-                value="jdbc:hsqldb:file:/var/opt/streams-agent/db/streams-agent-db" />
-            <property name="hibernate.connection.username" value="sa" />
-            <property name="hibernate.connection.password" value="" />
-            <property name="hibernate.hbm2ddl.auto" value="update" />
-	   <!--
-               Transaction mangement is done on the application level by opening and closing transactions.
- 	       In autocommit mode, all transactional statements are followed by an implicit commit. In autocommit mode, all ResultSet objects are read-only and holdable
-               The above means that if you retrieve a resultset and try updating it it will not be updated.
-           -->
-            <property name="hibernate.connection.autocommit" value="false" />
-            <property name="hivernate.show_sql" value="true" />
+			<!-- Hibernate database connection settings -->
+			<property name="hibernate.dialect" value="org.hibernate.dialect.HSQLDialect" />
+			<property name="hibernate.connection.driver_class" value="org.hsqldb.jdbcDriver" />
+			<property name="hibernate.connection.url"
+				value="jdbc:hsqldb:file:/var/opt/streams-agent/db/streams-agent-db" />
+			<property name="hibernate.connection.username" value="sa" />
+			<property name="hibernate.connection.password" value="" />
+			<property name="hibernate.hbm2ddl.auto" value="update" />
+			<!-- Transaction mangement is done on the application level by opening 
+				and closing transactions. In autocommit mode, all transactional statements 
+				are followed by an implicit commit. In autocommit mode, all ResultSet objects 
+				are read-only and holdable The above means that if you retrieve a resultset 
+				and try updating it it will not be updated. -->
+			<property name="hibernate.connection.autocommit" value="false" />
+			<property name="hivernate.show_sql" value="true" />
 
-            <!-- Cache settings (Must be disabled) for the strategy used -->
-            <!-- Disable query cache, all updates should always be seen this is meant 
-                to be a write most read less strategy -->
-            <property name="hibernate.cache.use_second_level_cache"
-                value="false" />
-            <property name="hibernate.cache.provider_class" value="org.hibernate.cache.NoCacheProvider" />
-            <property name="hibernate.cache.use_query_cache" value="false" />
+			<!-- Cache settings (Must be disabled) for the strategy used -->
+			<!-- Disable query cache, all updates should always be seen this is meant 
+				to be a write most read less strategy -->
+			<property name="hibernate.cache.use_second_level_cache"
+				value="false" />
+			<property name="hibernate.cache.provider_class" value="org.hibernate.cache.NoCacheProvider" />
+			<property name="hibernate.cache.use_query_cache" value="false" />
 
-            <!-- Connection Pooling settings -->
-            <property name="hibernate.connection.provider_class"
-                value="org.hibernate.connection.C3P0ConnectionProvider" />
-            <property name="hibernate.c3p0.min_size" value="5" />
-            <property name="hibernate.c3p0.max_size" value="30" />
-            <property name="hibernate.c3p0.timeout" value="1800" />
-            <property name="hibernate.c3p0.max_statements" value="50" />
+			<!-- Connection Pooling settings -->
+			<property name="hibernate.connection.provider_class"
+				value="com.jolbox.bonecp.provider.BoneCPConnectionProvider" />
+			<property name="bonecp.idleConnectionTestPeriod" value="60" />
+			<property name="bonecp.partitionCount" value="3" />
+			<property name="bonecp.maxConnectionsPerPartition" value="60" />
+			<property name="bonecp.minConnectionsPerPartition" value="20" />
+			<property name="bonecp.statementsCacheSize" value="100" />
+			<property name="bonecp.releaseHelperThreads" value="3" />
 
-        </properties>
-    </persistence-unit>
+
+		</properties>
+	</persistence-unit>
 </persistence>

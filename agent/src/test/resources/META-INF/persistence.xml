@@ -1,11 +1,11 @@
 <persistence xmlns="http://java.sun.com/xml/ns/persistence"
-	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-	version="2.0">
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" version="2.0">
 	<persistence-unit name="fileTracking"
 		transaction-type="RESOURCE_LOCAL">
 		<provider>org.hibernate.ejb.HibernatePersistence</provider>
 		<class>org.streams.agent.file.impl.db.FileTrackingStatusEntity</class>
-		<class>org.streams.agent.file.actions.impl.db.FileLogActionEventEntity</class>
+		<class>org.streams.agent.file.actions.impl.db.FileLogActionEventEntity
+		</class>
 		<properties>
 
 			<!-- Hibernate database connection settings -->
@@ -28,11 +28,14 @@
 
 			<!-- Connection Pooling settings -->
 			<property name="hibernate.connection.provider_class"
-				value="org.hibernate.connection.C3P0ConnectionProvider" />
-			<property name="hibernate.c3p0.min_size" value="5" />
-			<property name="hibernate.c3p0.max_size" value="30" />
-			<property name="hibernate.c3p0.timeout" value="1800" />
-			<property name="hibernate.c3p0.max_statements" value="50" />
+				value="com.jolbox.bonecp.provider.BoneCPConnectionProvider" />
+			<property name="bonecp.idleConnectionTestPeriod" value="60" />
+			<property name="bonecp.partitionCount" value="3" />
+			<property name="bonecp.maxConnectionsPerPartition" value="60" />
+			<property name="bonecp.minConnectionsPerPartition" value="20" />
+			<property name="bonecp.statementsCacheSize" value="100" />
+			<property name="bonecp.releaseHelperThreads" value="3" />
+
 
 		</properties>
 	</persistence-unit>
