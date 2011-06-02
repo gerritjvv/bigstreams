@@ -43,13 +43,11 @@ CLASSPATH=${CLASSPATH}:$JAVA_HOME/lib/tools.jar
 # so that filenames w/ spaces are handled correctly in loops below
 IFS=
 # add libs to CLASSPATH.
-for f in $STREAMS_HOME/lib/*.jar; do
-  CLASSPATH=${CLASSPATH}:$f;
-done
+CLASSPATH="${CLASSPATH}:$STREAMS_HOME/lib/*"
 
-CLASS="org.streams.agent.main.Main"
+CLASS="org.streams.agent.main.Agent"
 
-CLASSPATH=$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH
+CLASSPATH="$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH"
 
 exec "$JAVA" -XX:+DisableExplicitGC $JAVA_HEAP $JAVA_OPTS -classpath "$CLASSPATH" $CLASS "$@"
 

@@ -11,7 +11,7 @@ import org.streams.commons.cli.CommandLineParser;
  * The Agent entry point. Starts the DI and retrieves the AppLifeCycleManager.<br/>
  * <p/>
  */
-public class Main {
+public class Agent {
 
 	public static void main(String arg[]) throws Exception {
 
@@ -33,9 +33,17 @@ public class Main {
 			}
 		});
 
-		Bootstrap bootstrap = new Bootstrap();
+		final Bootstrap bootstrap = new Bootstrap();
 		CommandLineParser parser = bootstrap.agentCommandLineParser();
 		parser.parse(System.out, arg);
+		
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+		    public void run() { 
+		    	bootstrap.close();
+		    	System.out.println("Agent shutdown");
+		    }
+		});
+		
 	}
 
 }

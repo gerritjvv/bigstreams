@@ -338,7 +338,7 @@ public class ClientConnectionImpl implements ClientConnection {
 			// LOG.debug("Server response received");
 			// }
 
-			LOG.info("----------------- Server response received");
+			//LOG.info("----------------- Server response received");
 
 			ChannelBuffer buff = (ChannelBuffer) e.getMessage();
 

@@ -87,7 +87,8 @@ public class FileSendTaskImpl implements FileSendTask {
 
 		boolean interrupted = false;
 		LOG.info("FILE SEND START " + fileStatus.getPath());
-
+		long fileSendStart = System.currentTimeMillis();
+		
 		try {
 
 			clientResource.open(collectorAddress, fileLinePointer, file);
@@ -102,8 +103,10 @@ public class FileSendTaskImpl implements FileSendTask {
 				int prevLinePointer = fileLinePointer.getLineReadPointer();
 				int prevFilePointer = fileLinePointer.getLineReadPointer();
 
+				long start = System.currentTimeMillis();
 				sentData = clientResource.send(uniqueId, logType);
-
+				LOG.info("Sent chunk in " + (System.currentTimeMillis() - start) + " ms");
+				
 				// -------- In case a conflict was detected we need
 				// -------- to close and open the client again with the correct
 				// conflict resolution pointer
@@ -184,7 +187,7 @@ public class FileSendTaskImpl implements FileSendTask {
 
 			}// eof while
 
-			LOG.info("FILE SEND DONE " + fileStatus.getPath());
+			LOG.info("FILE SEND DONE " + fileStatus.getPath() + " in " + (System.currentTimeMillis() - fileSendStart) + " ms");
 
 		} finally {
 			clientResource.close();

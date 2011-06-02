@@ -1,15 +1,17 @@
 package org.streams.agent.file;
 
+import static org.junit.Assert.assertEquals;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.Iterator;
-
-import junit.framework.TestCase;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.filefilter.IOFileFilter;
 import org.apache.commons.io.filefilter.TrueFileFilter;
 import org.apache.commons.io.filefilter.WildcardFileFilter;
+import org.junit.AfterClass;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.streams.agent.file.impl.ThreadedDirectoryWatcher;
 import org.streams.agent.main.Bootstrap;
@@ -17,27 +19,26 @@ import org.streams.agent.send.utils.MapTrackerMemory;
 import org.streams.commons.cli.CommandLineProcessorFactory;
 import org.streams.commons.file.impl.SimpleFileDateExtractor;
 
-
 /**
  * 
  * Polls a directory and all sub directories for new files. The files are
  * tracked using a concurrent hash map.
  * 
  */
-public class TestDirectoryWatcher extends TestCase {
+public class TestDirectoryWatcher {
 
-	File testDirectoryFile = null;
-	Bootstrap bootstrap;
+	static File testDirectoryFile = null;
+	static Bootstrap bootstrap;
 
-	@Override
-	protected void setUp() throws Exception {
+	@BeforeClass
+	public static void setup() throws Exception {
 		testDirectoryFile = new File(".", "target/test"
 				+ System.currentTimeMillis());
-		if(!testDirectoryFile.mkdirs()){
-			throw new RuntimeException("Error creating directory " + testDirectoryFile);
+		if (!testDirectoryFile.mkdirs()) {
+			throw new RuntimeException("Error creating directory "
+					+ testDirectoryFile);
 		}
 
-		
 		bootstrap = new Bootstrap();
 		bootstrap.loadProfiles(CommandLineProcessorFactory.PROFILE.DB,
 				CommandLineProcessorFactory.PROFILE.CLI,
@@ -46,9 +47,9 @@ public class TestDirectoryWatcher extends TestCase {
 
 	}
 
-	@Override
-	protected void tearDown() throws Exception {
-		//do not delete any directories here.
+	@AfterClass
+	public static void tearDown() throws Exception {
+		bootstrap.close();
 	}
 
 	@Test
@@ -63,8 +64,7 @@ public class TestDirectoryWatcher extends TestCase {
 		WildcardFileFilter fileFilter = new WildcardFileFilter("*test*");
 
 		DirectoryWatcher watch = new ThreadedDirectoryWatcher("Test",
-				new SimpleFileDateExtractor(),
-				fileTrackerMemory);
+				new SimpleFileDateExtractor(), fileTrackerMemory);
 		watch.setDirectory(testMethodDir.getAbsolutePath());
 		watch.setFileTrackerMemory(fileTrackerMemory);
 		watch.setFileFilter(fileFilter);
@@ -142,30 +142,32 @@ public class TestDirectoryWatcher extends TestCase {
 		watch.close();
 
 	}
-	
+
 	@SuppressWarnings("rawtypes")
 	@Test
-	public void testDirectoryWatcherFileCreateUnseenFileGlob() throws InterruptedException,
-			IOException {
+	public void testDirectoryWatcherFileCreateUnseenFileGlob()
+			throws InterruptedException, IOException {
 
-		File testMethodDir = new File(testDirectoryFile, "fileCreateUnseenFileGlob");
+		File testMethodDir = new File(testDirectoryFile,
+				"fileCreateUnseenFileGlob");
 		testMethodDir.mkdirs();
 
-		//create test files
-		for(int i = 0; i < 10; i++){
-			new File(testMethodDir, "transactions.log.2010-10-01." + i).createNewFile();
+		// create test files
+		for (int i = 0; i < 10; i++) {
+			new File(testMethodDir, "transactions.log.2010-10-01." + i)
+					.createNewFile();
 		}
-		
-		//create unseen file
+
+		// create unseen file
 		new File(testMethodDir, "transactions.log").createNewFile();
-		
-		
-		File directory = new File(testMethodDir.getAbsolutePath() + "/transactions.log.*");
-		
+
+		File directory = new File(testMethodDir.getAbsolutePath()
+				+ "/transactions.log.*");
+
 		// we need to check if wild cards are included in the file name
-			// if so create the filter
+		// if so create the filter
 		IOFileFilter filter = null;
-		
+
 		String name = directory.getName();
 		if (name.contains("*") || name.contains("?")) {
 			directory = directory.getParentFile();
@@ -174,13 +176,13 @@ public class TestDirectoryWatcher extends TestCase {
 			filter = new WildcardFileFilter("*");
 		}
 
-		Iterator filesIt = FileUtils.iterateFiles(directory, filter, TrueFileFilter.INSTANCE);
-		while(filesIt.hasNext()){
+		Iterator filesIt = FileUtils.iterateFiles(directory, filter,
+				TrueFileFilter.INSTANCE);
+		while (filesIt.hasNext()) {
 			File file = (File) filesIt.next();
 			System.out.println(file.getName());
 		}
 	}
-
 
 	@Test
 	public void testDirectoryWatcherFileCreate() throws InterruptedException,
@@ -194,8 +196,7 @@ public class TestDirectoryWatcher extends TestCase {
 		WildcardFileFilter fileFilter = new WildcardFileFilter("*test*");
 
 		DirectoryWatcher watch = new ThreadedDirectoryWatcher("Test",
-				new SimpleFileDateExtractor(),
-				fileTrackerMemory);
+				new SimpleFileDateExtractor(), fileTrackerMemory);
 		watch.setDirectory(testMethodDir.getAbsolutePath());
 		watch.setFileFilter(fileFilter);
 		watch.setPollingInterval(1);

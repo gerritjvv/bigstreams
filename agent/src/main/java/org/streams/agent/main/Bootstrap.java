@@ -56,6 +56,11 @@ public class Bootstrap {
 		}
 	}
 
+	public void close(){
+		appContext.close();
+		appContext.destroy();
+	}
+	
 	/**
 	 * Loads a bean from the current DI context
 	 * 

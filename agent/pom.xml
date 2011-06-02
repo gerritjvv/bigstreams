@@ -6,11 +6,11 @@
 	<parent>
 		<artifactId>streams-parent</artifactId>
 		<groupId>org.streams</groupId>
-		<version>0.1.1-SNAPSHOT</version>
+		<version>0.2.0</version>
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>agent</artifactId>
-	<version>0.1.1-SNAPSHOT</version>
+	<version>0.2.0</version>
 	<name>agent</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -165,7 +165,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>2</release>
+					<release>1</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
@@ -184,8 +184,7 @@
 						<mapping>
 							<directory>/var/opt/streams-agent/db/</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							
 						</mapping>
 
 						<mapping>
@@ -204,8 +203,8 @@
 						<mapping>
 							<directory>/opt/streams-agent/bin</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/bin</location>
@@ -214,10 +213,10 @@
 						</mapping>
 						<mapping>
 							<directory>/opt/streams-agent/conf</directory>
+							<username>root</username>
+                            <groupname>root</groupname>
 							<configuration>true</configuration>
 							<filemode>444</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/conf</location>
@@ -226,9 +225,9 @@
 						</mapping>
 						<mapping>
 							<directory>/opt/streams-agent/lib</directory>
+							<username>root</username>
+                            <groupname>root</groupname>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
 							<sources>
 								<source>
 									<location>target/agent-${project.version}.jar</location>
@@ -238,17 +237,17 @@
 						</mapping>
 						<mapping>
 							<directory>/opt/streams-agent/lib</directory>
+							<username>root</username>
+                            <groupname>root</groupname>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
 							<dependency />
 
 						</mapping>
 						<mapping>
 							<directory>/opt/streams-agent/lib/native/</directory>
+							<username>root</username>
+                            <groupname>root</groupname>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/native/</location>
@@ -259,10 +258,10 @@
 
 						<mapping>
 							<directory>/opt/streams-agent/logs</directory>
+							<username>root</username>
+                            <groupname>root</groupname>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
-
+							
 						</mapping>
 
 					</mappings>

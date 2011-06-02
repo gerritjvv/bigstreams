@@ -87,10 +87,19 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 			}
 
 		} finally {
-			entityManager.getTransaction().commit();
-			entityManager.close();
+			close(entityManager);
 		}
 		return statusColl;
+	}
+	
+	private static final void close(EntityManager entityManager){
+		
+		if(entityManager.getTransaction().isActive()){
+			entityManager.getTransaction().commit();
+		}
+		
+		entityManager.close();
+		
 	}
 
 	@Override
@@ -149,8 +158,7 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 			}
 
 		} finally {
-			entityManager.getTransaction().commit();
-			entityManager.close();
+			close(entityManager);
 		}
 		return statusColl;
 	}
@@ -177,8 +185,7 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 				status = null;
 			}
 		} finally {
-			entityManager.getTransaction().commit();
-			entityManager.close();
+			close(entityManager);
 		}
 
 		return status;
@@ -198,8 +205,7 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 					.setParameter("status", status.toString().toUpperCase())
 					.getSingleResult();
 		} finally {
-			entityManager.getTransaction().commit();
-			entityManager.close();
+			close(entityManager);
 		}
 
 		return (count == null) ? 0L : count.longValue();
@@ -217,8 +223,7 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 			count = (Long) entityManager.createNamedQuery(
 					"fileTrackingStatus.count").getSingleResult();
 		} finally {
-			entityManager.getTransaction().commit();
-			entityManager.close();
+			close(entityManager);
 		}
 
 		return (count == null) ? 0L : count.longValue();
@@ -268,8 +273,7 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 			}
 
 		} finally {
-			entityManager.getTransaction().commit();
-			entityManager.close();
+			close(entityManager);
 			
 			//send event notification
 			if(statusChanged){
@@ -314,8 +318,7 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 				status = null;
 			}
 		} finally {
-			entityManager.getTransaction().commit();
-			entityManager.close();
+			close(entityManager);
 		}
 
 		return status;
