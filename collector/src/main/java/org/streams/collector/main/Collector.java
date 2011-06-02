@@ -4,14 +4,13 @@ import java.lang.Thread.UncaughtExceptionHandler;
 
 import org.streams.commons.cli.CommandLineParser;
 
-
-
 /**
  * 
- * The Collector entry point. Starts the DI and retrieves the AppLifeCycleManager.<br/>
+ * The Collector entry point. Starts the DI and retrieves the
+ * AppLifeCycleManager.<br/>
  * <p/>
  */
-public class Main {
+public class Collector {
 
 	public static void main(String arg[]) throws Exception {
 
@@ -30,9 +29,21 @@ public class Main {
 			}
 		});
 
-		Bootstrap bootstrap = new Bootstrap();
+		final Bootstrap bootstrap = new Bootstrap();
 		CommandLineParser parser = bootstrap.commandLineParser();
 		parser.parse(System.out, arg);
-		
+
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+
+			public void run() {
+					try{
+						bootstrap.close();
+					}catch(Throwable t){
+						t.printStackTrace();
+					}
+					System.out.println("Collector Shutdown");
+			}
+		});
+
 	}
 }

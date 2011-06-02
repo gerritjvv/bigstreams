@@ -3,6 +3,7 @@ package org.streams.collector.server.impl;
 import java.net.InetSocketAddress;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration.Configuration;
 import org.jboss.netty.bootstrap.ServerBootstrap;
@@ -12,6 +13,8 @@ import org.jboss.netty.channel.ChannelPipelineFactory;
 import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.execution.MemoryAwareThreadPoolExecutor;
+import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
+import org.jboss.netty.util.HashedWheelTimer;
 import org.streams.collector.conf.CollectorProperties;
 import org.streams.collector.server.CollectorServer;
 import org.streams.commons.file.CoordinationServiceClient;
@@ -39,8 +42,11 @@ public class CollectorServerImpl implements CollectorServer {
 	CoordinationServiceClient coordinationServiceClient;
 
 	long writeTimeout = 10000L;
+	long readTimeout = 2000L;
 
 	Configuration conf;
+
+	HashedWheelTimer timer = new HashedWheelTimer();
 
 	public CollectorServerImpl(int port, ChannelHandler channelHandler,
 			CoordinationServiceClient coordinationServiceClient,
@@ -63,13 +69,14 @@ public class CollectorServerImpl implements CollectorServer {
 		bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(
 				workerbossService, workerService));
 
-		// we use a WriteTimeoutHandler to timeout if the agent fails to
-		// respond.
+
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new MessageFrameDecoder(),
-						metricsHandler, channelHandler);
+				return Channels
+						.pipeline(new MessageFrameDecoder(),
+								new ReadTimeoutHandler(timer,readTimeout, TimeUnit.MILLISECONDS),
+								metricsHandler, channelHandler);
 			}
 		});
 
@@ -174,6 +181,8 @@ public class CollectorServerImpl implements CollectorServer {
 			bootstrap.releaseExternalResources();
 		}
 
+		timer.stop();
+
 		if (coordinationServiceClient != null) {
 			coordinationServiceClient.destroy();
 		}
@@ -186,6 +195,14 @@ public class CollectorServerImpl implements CollectorServer {
 
 	public void setWriteTimeout(long writeTimeout) {
 		this.writeTimeout = writeTimeout;
+	}
+
+	public long getReadTimeout() {
+		return readTimeout;
+	}
+
+	public void setReadTimeout(long readTimeout) {
+		this.readTimeout = readTimeout;
 	}
 
 }

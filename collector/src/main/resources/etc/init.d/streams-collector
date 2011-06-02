@@ -23,7 +23,7 @@ export PATH
 [ -f /etc/sysconfig/streams-collector ] && . /etc/sysconfig/streams-collector
 lockfile=${LOCKFILE-/var/lock/subsys/streams-collector}
 streamsd=${STREAMSD-/opt/streams-collector/bin/streams.sh}
-REGEX="org.streams.collector.main.Main -start collector"
+REGEX="org.streams.collector.main.Collector -start collector"
 
 RETVAL=0
 
@@ -38,7 +38,7 @@ if [ -f /opt/streams-collector/conf/streams-env.sh ]; then
  . /opt/streams-collector/conf/streams-env.sh
 fi
 
-if [ -n $JAVA_HOME ]; then
+if [ -z "$JAVA_HOME" ]; then
 
   echo "JAVA_HOME not set using /usr/java/latest"
   export JAVA_HOME="/usr/java/latest"

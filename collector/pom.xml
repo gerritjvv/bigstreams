@@ -6,11 +6,11 @@
 	<parent>
 		<artifactId>streams-parent</artifactId>
 		<groupId>org.streams</groupId>
-		<version>0.1.1-SNAPSHOT</version>
+		<version>0.2.0</version>
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector</artifactId>
-	<version>0.1.1-SNAPSHOT</version>
+	<version>0.2.0</version>
 	<name>collector</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -113,7 +113,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>2</release>
+					<release>1</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
@@ -145,8 +145,8 @@
 						<mapping>
 							<directory>/opt/streams-collector/bin</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/bin</location>
@@ -157,8 +157,8 @@
 							<directory>/opt/streams-collector/conf</directory>
 							<configuration>true</configuration>
 							<filemode>444</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/conf</location>
@@ -168,8 +168,8 @@
 						<mapping>
 							<directory>/opt/streams-collector/lib</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>target/collector-${project.version}.jar</location>
@@ -180,16 +180,16 @@
 						<mapping>
 							<directory>/opt/streams-collector/lib</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<dependency />
 
 						</mapping>
 						<mapping>
 							<directory>/opt/streams-collector/lib/native/</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/native/</location>
@@ -200,8 +200,8 @@
 						<mapping>
 							<directory>/opt/streams-collector/logs</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 
 						</mapping>
 
