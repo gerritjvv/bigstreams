@@ -19,7 +19,6 @@ import org.streams.coordination.di.impl.RestClientDI;
 
 import com.hazelcast.core.Hazelcast;
 
-
 /**
  * 
  * The application has several different DI profiles and needs.<br/>
@@ -148,16 +147,17 @@ public class Bootstrap {
 					DIPackages.add("org.streams.coordination.cli.impl");
 					break;
 				case COORDINATION:
-					DIPackages.add("org.streams.coordination.cli.startup.check.impl");
+					DIPackages
+							.add("org.streams.coordination.cli.startup.check.impl");
 					DIClasses.add(CoordinationDI.class);
 					break;
 				}
 			}
-			
+
 			appContext.register(DIClasses.toArray(new Class<?>[] {}));
-			appContext.scan(DIPackages.toArray(new String[]{}));
+			appContext.scan(DIPackages.toArray(new String[] {}));
 			appContext.refresh();
-			
+
 		} else {
 			LOG.warn("The DI profiles have been loaded already");
 		}
@@ -173,14 +173,17 @@ public class Bootstrap {
 		return (CommandLineProcessor) appContext.getBean(name);
 	}
 
-	public void close(){
-		
-		AppLifeCycleManager lifeCycleManager = appContext.getBean(AppLifeCycleManager.class);
-		if(lifeCycleManager != null){
-			lifeCycleManager.shutdown();
+	public void close() {
+		try {
+			AppLifeCycleManager lifeCycleManager = appContext
+					.getBean(AppLifeCycleManager.class);
+			if (lifeCycleManager != null) {
+				lifeCycleManager.shutdown();
+			}
+		} catch (Throwable t) {
+			;// ignore
 		}
 		
-		Hazelcast.shutdownAll();
 		appContext.close();
 	}
 }

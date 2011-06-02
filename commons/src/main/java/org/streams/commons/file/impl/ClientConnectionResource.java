@@ -8,6 +8,7 @@ import java.io.Writer;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
@@ -150,9 +151,19 @@ public class ClientConnectionResource {
 		// Start the connection attempt.
 		bootstrap.connect(inetAddress);
 
-		ClientResourceMessage message = exchanger.exchange(null,
-				sendTimeOut * 2, TimeUnit.MILLISECONDS);
-
+		ClientResourceMessage message = null;
+		
+		long start = System.currentTimeMillis();
+		try{
+			
+			message = exchanger.exchange(null,
+					sendTimeOut * 2, TimeUnit.MILLISECONDS);
+			LOG.info("Lock connection took " + (System.currentTimeMillis() - start) + " milliseconds");
+		}catch(TimeoutException timeout){
+			long end = System.currentTimeMillis() - start;
+			LOG.error("Message send timed out after : " + end + " milliseconds");
+			return null;
+		}
 		// complete io operations
 		// check error codes
 
@@ -253,7 +264,7 @@ public class ClientConnectionResource {
 			Throwable error = e.getCause();
 
 			try {
-				ctx.getChannel().close();
+				e.getChannel().close();
 			} finally {
 				exchange.exchange(new ClientResourceMessage(500, msg, true,
 						error));
@@ -287,13 +298,16 @@ public class ClientConnectionResource {
 			}
 
 			final String msg = builder.toString();
+			
 			try {
 				super.messageReceived(ctx, e);
+				ctx.getChannel().close();
 			} finally {
 				exchange.exchange(new ClientResourceMessage(code, msg, false,
 						null));
 			}
 
+			
 		}
 
 		@Override

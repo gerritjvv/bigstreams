@@ -45,7 +45,8 @@ public class SimpleFileDateExtractor implements FileDateExtractor{
 			try {
 				return dateFormat.parse(m.group(0));
 			} catch (ParseException e) {
-				LOG.error(e);
+				
+				LOG.error("Error parsing: " + m.group(0), e);
 			}
 		}
 		

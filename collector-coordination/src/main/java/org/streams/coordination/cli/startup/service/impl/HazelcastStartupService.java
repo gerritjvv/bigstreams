@@ -1,19 +1,24 @@
 package org.streams.coordination.cli.startup.service.impl;
 
+import java.util.Arrays;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.configuration.Configuration;
 import org.apache.log4j.Logger;
+import org.mortbay.log.Log;
 import org.streams.commons.app.ApplicationService;
 import org.streams.coordination.CoordinationProperties;
 import org.streams.coordination.file.DistributedMapNames;
 
 import com.hazelcast.config.ClasspathXmlConfig;
 import com.hazelcast.config.Config;
+import com.hazelcast.config.Join;
 import com.hazelcast.config.MapConfig;
 import com.hazelcast.config.MapStoreConfig;
 import com.hazelcast.core.Hazelcast;
 import com.hazelcast.core.HazelcastInstance;
+import com.hazelcast.core.InstanceEvent;
+import com.hazelcast.core.InstanceListener;
 import com.hazelcast.core.MapStore;
 
 /**
@@ -58,26 +63,34 @@ public class HazelcastStartupService implements ApplicationService {
 			Config config = new ClasspathXmlConfig(Thread.currentThread()
 					.getContextClassLoader(), "hazelcast.config");
 
+
+			Join net = config.getNetworkConfig().getJoin();
+			if(net.getMulticastConfig().isEnabled()){
+				LOG.info("Using MultiCast: group: " + net.getMulticastConfig().getMulticastGroup() );
+			}else{
+				LOG.info("Using TCP: " + Arrays.toString(net.getTcpIpConfig().getAddresses().toArray()));
+			}
+			
 			MapConfig lockMemoryMapConfig = config
 					.getMapConfig(DistributedMapNames.MAP.LOCK_MEMORY_LOCKS_MAP
 							.toString());
-			lockMemoryMapConfig.setBackupCount(2);
+
 			lockMemoryMapConfig.setMapStoreConfig(null);
+			
+//			int backupCount = conf.getInt(
+//					CoordinationProperties.PROP.FILE_TRACKER_STATUS_MAP_BACKUP
+//							.toString(), 1);
 
-			int backupCount = conf.getInt(
-					CoordinationProperties.PROP.FILE_TRACKER_STATUS_MAP_BACKUP
-							.toString(), 1);
-
-			LOG.info("Using backupcount of: " + backupCount);
+			LOG.info("Using backupcount of: " + lockMemoryMapConfig.getBackupCount());
 
 			MapConfig mapConfig = config
 					.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_MAP
 							.toString());
-			mapConfig.setBackupCount(backupCount);
-			mapConfig.setEvictionDelaySeconds(0);
-			mapConfig.setMaxIdleSeconds(0);
-			mapConfig.setTimeToLiveSeconds(0);
-
+			
+//			mapConfig.setBackupCount(backupCount);
+			
+			
+			
 			// here we inject the hazelcast MapStore
 			MapStoreConfig mapStoreConfig = mapConfig.getMapStoreConfig();
 			if (mapStoreConfig == null) {
@@ -90,23 +103,23 @@ public class HazelcastStartupService implements ApplicationService {
 			mapStoreConfig.setWriteDelaySeconds(0);
 
 			// ----------- User Agent names Map
-			int agentNamesMax = conf
-					.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX
-							.toString(),
-							(Integer) CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX
-									.getDefaultValue());
-
-			int agentNamesBackup = conf
-					.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP
-							.toString(),
-							(Integer) CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP
-									.getDefaultValue());
+//			int agentNamesMax = conf
+//					.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX
+//							.toString(),
+//							(Integer) CoordinationProperties.PROP.AGENT_NAMES_STORAGE_MAX
+//									.getDefaultValue());
+//
+//			int agentNamesBackup = conf
+//					.getInt(CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP
+//							.toString(),
+//							(Integer) CoordinationProperties.PROP.AGENT_NAMES_STORAGE_BACKUP
+//									.getDefaultValue());
 
 			MapConfig agentNamesMapConfig = config
 					.getMapConfig(DistributedMapNames.MAP.AGENT_NAMES
 							.toString());
-			agentNamesMapConfig.setMaxSize(agentNamesMax);
-			agentNamesMapConfig.setBackupCount(agentNamesBackup);
+//			agentNamesMapConfig.setMaxSize(agentNamesMax);
+//			agentNamesMapConfig.setBackupCount(agentNamesBackup);
 
 			// ----------- Log Types map
 
@@ -132,27 +145,28 @@ public class HazelcastStartupService implements ApplicationService {
 					.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_MAP
 							.toString());
 
-			int historyMax = conf
-					.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX
-							.toString(),
-							(Integer) CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX
-									.getDefaultValue());
-
-			int historyBackup = conf
-					.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP
-							.toString(),
-							(Integer) CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP
-									.getDefaultValue());
-
-			historyMapConfig.setMaxSize(historyMax);
-			historyMapConfig.setBackupCount(historyBackup);
+//			int historyMax = conf
+//					.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX
+//							.toString(),
+//							(Integer) CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_MAX
+//									.getDefaultValue());
+//
+//			int historyBackup = conf
+//					.getInt(CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP
+//							.toString(),
+//							(Integer) CoordinationProperties.PROP.FILE_TRACKER_STATUS_HISTORY_STORAGE_BACKUP
+//									.getDefaultValue());
+//
+//			historyMapConfig.setMaxSize(historyMax);
+//			historyMapConfig.setBackupCount(historyBackup);
 
 			MapConfig historyMapConfig2 = config
 					.getMapConfig(DistributedMapNames.MAP.FILE_TRACKER_HISTORY_LATEST_MAP
 							.toString());
-
-			historyMapConfig2.setMaxSize(historyMax);
-			historyMapConfig2.setBackupCount(historyBackup);
+			
+			
+//			historyMapConfig2.setMaxSize(historyMax);
+//			historyMapConfig2.setBackupCount(historyBackup);
 
 			try {
 				hazelcastInstance = Hazelcast.init(config);
@@ -161,7 +175,21 @@ public class HazelcastStartupService implements ApplicationService {
 				Hazelcast.getLifecycleService().shutdown();
 				hazelcastInstance = Hazelcast.newHazelcastInstance(config);
 			}
+			
+			
 
+			hazelcastInstance.addInstanceListener(new InstanceListener() {
+				
+				@Override
+				public void instanceDestroyed(InstanceEvent event) {
+					LOG.info("Instance destroyed: " + event.getInstance().getId());
+				}
+				
+				@Override
+				public void instanceCreated(InstanceEvent event) {
+					LOG.info("Instance created: " + event.getInstance().getId());
+				}
+			});
 		}
 	}
 

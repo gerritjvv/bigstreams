@@ -3,6 +3,11 @@ package org.streams.coordination.file.impl.hazelcast;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 import org.streams.commons.file.FileTrackingStatus;
@@ -25,6 +30,8 @@ public class FileTrackingStatusHazelcastMapStore implements
 
 	CollectorFileTrackerMemory memory;
 
+	long dbTimeout = 60000L;
+
 	public FileTrackingStatusHazelcastMapStore(CollectorFileTrackerMemory memory) {
 		super();
 		this.memory = memory;
@@ -38,19 +45,47 @@ public class FileTrackingStatusHazelcastMapStore implements
 
 	@Override
 	public Map<FileTrackingStatusKey, FileTrackingStatus> loadAll(
-			Collection<FileTrackingStatusKey> keys) {
+			final Collection<FileTrackingStatusKey> keys) {
 		LOG.info("Loading data for keys: " + keys.size());
 		Map<FileTrackingStatusKey, FileTrackingStatus> files = null;
 		long start = System.currentTimeMillis();
+		ExecutorService service = Executors.newSingleThreadExecutor();
+
 		try {
-			files = memory.getStatus(keys);
-			return files;
+			// the files here may take longer than is expected.
+			// we apply a timeout indicator that will timeout after 60 seconds
+			// throwing an error
+			Future<Map<FileTrackingStatusKey, FileTrackingStatus>> future = service
+					.submit(new Callable<Map<FileTrackingStatusKey, FileTrackingStatus>>() {
+
+						@Override
+						public Map<FileTrackingStatusKey, FileTrackingStatus> call()
+								throws Exception {
+							return memory.getStatus(keys);
+						}
+
+					});
+
+			files = future.get(dbTimeout, TimeUnit.MILLISECONDS);
+
+		} catch (Exception e) {
+			if (e instanceof RuntimeException) {
+				throw (RuntimeException) e;
+			} else if (e instanceof InterruptedException) {
+				Thread.currentThread().interrupt();
+			} else {
+				throw new RuntimeException(e.toString(), e);
+			}
+
 		} finally {
+
+			service.shutdownNow();
+
 			LOG.info("Load All took: " + (System.currentTimeMillis() - start)
 					+ " to load loaded values: "
 					+ ((files == null) ? -1 : files.size()));
 		}
-		// load an empty hash map
+		return files;
 	}
 
 	@Override
@@ -84,16 +119,25 @@ public class FileTrackingStatusHazelcastMapStore implements
 	@Override
 	public Set<FileTrackingStatusKey> loadAllKeys() {
 		LOG.info("Loading All Keys");
-		 long start = System.currentTimeMillis();
-		 Set<FileTrackingStatusKey> keys = null;
-		 try {
-		 keys = memory.getKeys(0, Integer.MAX_VALUE);
-		 return keys;
-		 } finally {
-		 LOG.info("Load All Keys took: "
-		 + (System.currentTimeMillis() - start) + " to load keys loaded: " +
-		 ((keys == null) ? -1 : keys.size()));
-		 }
+		long start = System.currentTimeMillis();
+		Set<FileTrackingStatusKey> keys = null;
+		try {
+			keys = memory.getKeys(0, Integer.MAX_VALUE);
+			return keys;
+		} finally {
+			LOG.info("Load All Keys took: "
+					+ (System.currentTimeMillis() - start)
+					+ " to load keys loaded: "
+					+ ((keys == null) ? -1 : keys.size()));
+		}
+	}
+
+	public long getDbTimeout() {
+		return dbTimeout;
+	}
+
+	public void setDbTimeout(long dbTimeout) {
+		this.dbTimeout = dbTimeout;
 	}
 
 }

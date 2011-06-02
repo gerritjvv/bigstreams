@@ -4,7 +4,7 @@
 
 	<groupId>org.streams</groupId>
 	<artifactId>streams-parent</artifactId>
-	<version>0.1.1-SNAPSHOT</version>
+	<version>0.2.0</version>
 	<packaging>pom</packaging>
 
 	<name>streams-parent</name>
@@ -136,5 +136,6 @@
 		<module>collector</module>
 		<module>collector-coordination</module>
     <module>monitoring</module>
+    <module>networktest</module>
   </modules>
 </project>

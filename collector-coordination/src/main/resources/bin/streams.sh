@@ -43,13 +43,11 @@ CLASSPATH=${CLASSPATH}:$JAVA_HOME/lib/tools.jar
 # so that filenames w/ spaces are handled correctly in loops below
 IFS=
 # add libs to CLASSPATH.
-for f in $STREAMS_HOME/lib/*.jar; do
-  CLASSPATH=${CLASSPATH}:$f;
-done
+CLASSPATH="${CLASSPATH}:$STREAMS_HOME/lib/*"
 
-CLASS="org.streams.coordination.main.Main"
+CLASS="org.streams.coordination.main.Coordination"
 
-CLASSPATH=$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH
+CLASSPATH="$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH"
 
 
 

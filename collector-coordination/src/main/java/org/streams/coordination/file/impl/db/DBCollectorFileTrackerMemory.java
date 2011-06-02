@@ -10,6 +10,7 @@ import java.util.Set;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
 import javax.persistence.NoResultException;
 import javax.persistence.Query;
 
@@ -28,10 +29,11 @@ import org.streams.coordination.file.LogTypeContact;
  */
 public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory {
 
-	private static final Logger LOG = Logger.getLogger(DBCollectorFileTrackerMemory.class);
-	
+	private static final Logger LOG = Logger
+			.getLogger(DBCollectorFileTrackerMemory.class);
+
 	EntityManagerFactory entityManagerFactory;
-	
+
 	public DBCollectorFileTrackerMemory() {
 
 	}
@@ -137,11 +139,12 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 			}
 
 		} finally {
-			try{
+			commitReadTx(entityManager);
+			try {
 				entityManager.close();
-				}catch(Throwable t){
-					LOG.error(t);
-				}
+			} catch (Throwable t) {
+				LOG.error(t);
+			}
 		}
 
 		return ls;
@@ -182,11 +185,12 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 			}
 
 		} finally {
-			try{
+			commitReadTx(entityManager);
+			try {
 				entityManager.close();
-				}catch(Throwable t){
-					LOG.error(t);
-				}
+			} catch (Throwable t) {
+				LOG.error(t);
+			}
 		}
 
 		return logTypes;
@@ -228,7 +232,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		long count;
 
 		try {
-//			entityManager.getTransaction().begin();
+			entityManager.getTransaction().begin();
 
 			Query query = entityManager
 					.createQuery("SELECT count(*) from FileTrackingStatusEntity f WHERE "
@@ -237,12 +241,12 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 			count = (Long) query.getSingleResult();
 
 		} finally {
-			try{
-				
+			commitReadTx(entityManager);
+			try {
 				entityManager.close();
-				}catch(Throwable t){
-					LOG.error(t);
-				}
+			} catch (Throwable t) {
+				LOG.error(t);
+			}
 		}
 
 		return count;
@@ -272,7 +276,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 				.createEntityManager();
 
 		try {
-//			entityManager.getTransaction().begin();
+			entityManager.getTransaction().begin();
 
 			Query query = entityManager
 					.createQuery("from FileTrackingStatusEntity f WHERE "
@@ -284,10 +288,10 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 					.getResultList());
 
 		} finally {
-//			entityManager.getTransaction().commit();
-			try{
+			commitReadTx(entityManager);
+			try {
 				entityManager.close();
-			}catch(Throwable t){
+			} catch (Throwable t) {
 				LOG.error(t);
 			}
 		}
@@ -356,9 +360,11 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 			}
 
 		} finally {
-			try{
+			commitReadTx(entityManager);
+
+			try {
 				entityManager.close();
-			}catch(Throwable t){
+			} catch (Throwable t) {
 				LOG.error(t);
 			}
 		}
@@ -404,10 +410,12 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 					.getResultList());
 
 		} finally {
-//			entityManager.getTransaction().commit();
-			try{
+
+			commitReadTx(entityManager);
+
+			try {
 				entityManager.close();
-			}catch(Throwable t){
+			} catch (Throwable t) {
 				LOG.error(t);
 			}
 		}
@@ -476,10 +484,12 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 
 			count = (Long) query.getSingleResult();
 		} finally {
-//			entityManager.getTransaction().commit();
-			try{
+
+			commitReadTx(entityManager);
+
+			try {
 				entityManager.close();
-			}catch(Throwable t){
+			} catch (Throwable t) {
 				LOG.error(t);
 			}
 		}
@@ -499,11 +509,14 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 				.createEntityManager();
 
 		FileTrackingStatus status = null;
-
+		entityManager.getTransaction().begin();
 		try {
-			entityManager.getTransaction().begin();
 
+			int i = 0;
 			for (FileTrackingStatusKey key : keys) {
+				if (LOG.isDebugEnabled())
+					LOG.debug("loading key: " + i++ + " of " + keys.size());
+
 				Query query = entityManager
 						.createNamedQuery("fileTrackingStatus.byAgentFileNameLogTypeReadOnly");
 
@@ -523,16 +536,37 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 
 				valuesMap.put(key, status);
 			}
+
 		} finally {
-			try{
-			entityManager.close();
-			}catch(Throwable t){
+			commitReadTx(entityManager);
+			try {
+				entityManager.close();
+			} catch (Throwable t) {
 				LOG.error(t);
 			}
 		}
 
 		return valuesMap;
 
+	}
+
+	/**
+	 * Commits the transaction quietly. Is used for read operations where the
+	 * success of a transaction commit is not important.
+	 * 
+	 * @param entityManager
+	 */
+	private void commitReadTx(EntityManager entityManager) {
+		EntityTransaction tx = entityManager.getTransaction();
+		try {
+
+			if (tx.isActive()) {
+				entityManager.getTransaction().commit();
+			}
+
+		} catch (Throwable t) {
+			LOG.error(t.toString(), t);
+		}
 	}
 
 	/**
@@ -566,10 +600,11 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 				status = null;
 			}
 		} finally {
-			try{
+			commitReadTx(entityManager);
+			try {
 				entityManager.close();
-			}catch(Throwable t){
-				LOG.error(t);	
+			} catch (Throwable t) {
+				LOG.error(t);
 			}
 		}
 

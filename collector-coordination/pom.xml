@@ -6,11 +6,11 @@
 	<parent>
 		<artifactId>streams-parent</artifactId>
 		<groupId>org.streams</groupId>
-		<version>0.1.1-SNAPSHOT</version>
+		<version>0.2.0</version>
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector-coordination</artifactId>
-	<version>0.1.1-SNAPSHOT</version>
+	<version>0.2.0</version>
 	<name>collector-coordination</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 
@@ -183,8 +183,8 @@
 						<mapping>
 							<directory>/var/opt/streams-coordination/db/</directory>
 							<filemode>775</filemode>
-							<username>specifics</username>
-							<groupname>specifics</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 						</mapping>
 
 						<mapping>
@@ -202,8 +202,8 @@
 						<mapping>
 							<directory>/opt/streams-coordination/bin</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/bin</location>
@@ -214,8 +214,8 @@
 							<directory>/opt/streams-coordination/conf</directory>
 							<configuration>true</configuration>
 							<filemode>444</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>src/main/resources/conf</location>
@@ -225,8 +225,8 @@
 						<mapping>
 							<directory>/opt/streams-coordination/lib</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<sources>
 								<source>
 									<location>target/collector-coordination-${project.version}.jar
@@ -238,16 +238,16 @@
 						<mapping>
 							<directory>/opt/streams-coordination/lib</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 							<dependency />
 
 						</mapping>
 						<mapping>
 							<directory>/opt/streams-coordination/logs</directory>
 							<filemode>775</filemode>
-							<username>streams</username>
-							<groupname>streams</groupname>
+							<username>root</username>
+							<groupname>root</groupname>
 						</mapping>
 					</mappings>
 				</configuration>
