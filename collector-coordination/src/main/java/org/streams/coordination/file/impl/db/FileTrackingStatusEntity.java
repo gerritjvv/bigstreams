@@ -1,6 +1,7 @@
 package org.streams.coordination.file.impl.db;
 
 import java.io.Serializable;
+import java.util.Calendar;
 import java.util.Date;
 
 import javax.persistence.Column;
@@ -16,7 +17,6 @@ import javax.persistence.UniqueConstraint;
 
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusKey;
-
 
 /**
  * Persistence for the FileTrackingStatus object.<br/>
@@ -64,13 +64,14 @@ public class FileTrackingStatusEntity implements Serializable {
 	String logType;
 
 	Date fileDate;
-	
+
 	public FileTrackingStatusEntity() {
 		date = new Date();
 	}
 
 	public FileTrackingStatusEntity(Date date, long filePointer, long fileSize,
-			int linePointer, String agentName, String fileName, String logType, Date fileDate) {
+			int linePointer, String agentName, String fileName, String logType,
+			Date fileDate) {
 		super();
 		this.date = date;
 		this.fileSize = fileSize;
@@ -162,8 +163,8 @@ public class FileTrackingStatusEntity implements Serializable {
 	 * @return
 	 */
 	public FileTrackingStatus createStatusObject() {
-		return new FileTrackingStatus(date, filePointer, fileSize, linePointer, agentName,
-				fileName, logType, fileDate, lastModifiedTime);
+		return new FileTrackingStatus(date, filePointer, fileSize, linePointer,
+				agentName, fileName, logType, fileDate, lastModifiedTime);
 	}
 
 	/**
@@ -176,7 +177,6 @@ public class FileTrackingStatusEntity implements Serializable {
 		return new FileTrackingStatusKey(agentName, logType, fileName);
 	}
 
-	
 	/**
 	 * Creates a FileTrackingStatusEntity instance from the values of the
 	 * FileTrackingStatus passed as parameter.
@@ -186,13 +186,12 @@ public class FileTrackingStatusEntity implements Serializable {
 	 */
 	public static FileTrackingStatusEntity createEntity(
 			FileTrackingStatus status) {
-		return new FileTrackingStatusEntity(status.getDate(), status.getFilePointer(),
-				status.getFileSize(), status.getLinePointer(),
-				status.getAgentName(), status.getFileName(),
-				status.getLogType(), status.getFileDate());
+		return new FileTrackingStatusEntity(status.getDate(),
+				status.getFilePointer(), status.getFileSize(),
+				status.getLinePointer(), status.getAgentName(),
+				status.getFileName(), status.getLogType(), status.getFileDate());
 	}
 
-	
 	/**
 	 * Copies the values from the FileTrackingStatus into the attributes of this
 	 * instance.<br/>
@@ -215,7 +214,7 @@ public class FileTrackingStatusEntity implements Serializable {
 	}
 
 	public void setDate(Date date) {
-		this.date = date;
+		this.date = validateDate(date);
 	}
 
 	public Date getFileDate() {
@@ -224,7 +223,31 @@ public class FileTrackingStatusEntity implements Serializable {
 
 	@Column(name = "file_date", nullable = true)
 	public void setFileDate(Date fileDate) {
-		this.fileDate = fileDate;
+
+		this.fileDate = validateDate(fileDate);
 	}
 
+	private static final Date validateDate(Date date) {
+		// we validate the year field , if it is out of reasonable range
+		// its treated as faulty and the current year is used
+		if(date == null){
+			return date;
+		}
+		
+		long diff = date.getTime() - System.currentTimeMillis();
+
+		if (diff < 0)
+			diff *= -1L;
+
+		if (diff > 31209840024724L) {
+			Calendar c = Calendar.getInstance();
+			int year = c.get(Calendar.YEAR);
+			c.setTime(date);
+			c.set(Calendar.YEAR, year);
+			return c.getTime();
+		} else {
+			return date;
+		}
+
+	}
 }

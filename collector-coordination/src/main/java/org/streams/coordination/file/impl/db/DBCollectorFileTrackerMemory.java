@@ -101,7 +101,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 				ret = false;
 			}
 		} finally {
-			entityManager.getTransaction().commit();
+			commitTx(entityManager);
 			entityManager.close();
 		}
 
@@ -551,6 +551,33 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	}
 
 	/**
+	 * Commits a write/update transaction
+	 * 
+	 * @param entityManager
+	 */
+	private void commitTx(EntityManager entityManager) {
+		EntityTransaction tx = entityManager.getTransaction();
+		try {
+
+			if (tx.isActive()) {
+				//test for rollback condition
+				if(tx.getRollbackOnly()){
+					tx.rollback();
+				}else{
+					tx.commit();
+				}
+			}
+
+		}finally{
+			//if error in the commit state the transaction is marked for rollback
+			//and is still active.
+			if(tx.isActive()){
+				tx.rollback();
+			}
+		}
+	}
+
+	/**
 	 * Commits the transaction quietly. Is used for read operations where the
 	 * success of a transaction commit is not important.
 	 * 
@@ -645,7 +672,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 			}
 
 		} finally {
-			entityManager.getTransaction().commit();
+			commitTx(entityManager);
 			entityManager.close();
 		}
 	}
@@ -705,7 +732,7 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 			}
 
 		} finally {
-			entityManager.getTransaction().commit();
+			commitTx(entityManager);
 			entityManager.close();
 		}
 	}
