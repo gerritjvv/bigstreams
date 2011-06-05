@@ -1,6 +1,7 @@
 package org.streams.commons.file;
 
 import java.io.Serializable;
+import java.util.Calendar;
 import java.util.Date;
 
 /**
@@ -145,7 +146,7 @@ public class FileTrackingStatus implements Serializable{
 	}
 
 	public void setDate(Date date) {
-		this.date = date;
+		this.date = validateDate(fileDate);
 	}
 
 	public Date getFileDate() {
@@ -153,7 +154,7 @@ public class FileTrackingStatus implements Serializable{
 	}
 
 	public void setFileDate(Date fileDate) {
-		this.fileDate = fileDate;
+		this.fileDate = validateDate(fileDate);
 	}
 
 	public long getLastModifiedTime() {
@@ -164,4 +165,27 @@ public class FileTrackingStatus implements Serializable{
 		this.lastModifiedTime = lastModifiedTime;
 	}
 
+	private static final Date validateDate(Date date) {
+		// we validate the year field , if it is out of reasonable range
+		// its treated as faulty and the current year is used
+		if(date == null){
+			return date;
+		}
+		
+		long diff = date.getTime() - System.currentTimeMillis();
+
+		if (diff < 0)
+			diff *= -1L;
+
+		if (diff > 31209840024724L) {
+			Calendar c = Calendar.getInstance();
+			int year = c.get(Calendar.YEAR);
+			c.setTime(date);
+			c.set(Calendar.YEAR, year);
+			return c.getTime();
+		} else {
+			return date;
+		}
+
+	}
 }
