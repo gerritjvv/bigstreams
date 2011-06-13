@@ -30,6 +30,7 @@ import org.jboss.netty.util.Timer;
 import org.streams.commons.file.CoordinationException;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
+import org.streams.commons.util.HashedWheelTimerFactory;
 
 /**
  * This class i a client connection helper.<br/>
@@ -54,9 +55,8 @@ public class ClientConnectionResource {
 	final Timer timeoutTimer;
 
 	public ClientConnectionResource(
-			ClientSocketChannelFactory socketChannelFactory,
-			final Timer timeoutTimer) {
-		this.timeoutTimer = timeoutTimer;
+			ClientSocketChannelFactory socketChannelFactory) {
+		this.timeoutTimer = HashedWheelTimerFactory.getInstance();
 
 		bootstrap = new ClientBootstrap(socketChannelFactory);
 

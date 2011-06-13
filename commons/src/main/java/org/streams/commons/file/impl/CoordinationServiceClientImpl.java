@@ -8,8 +8,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.log4j.Logger;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
 import org.streams.commons.file.CoordinationException;
 import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.FileTrackingStatus;
@@ -53,7 +51,6 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		socketChannelFactory = new NioClientSocketChannelFactory(
 				threadWorkerBossService, threadServiceWorkerService);
 
-
 		LOG.info("Using coordination lock address : " + lockInetAddress);
 		LOG.info("Using coordination un lock address : " + unlockInetAddress);
 
@@ -66,18 +63,15 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			throws CoordinationException {
 
 		SyncPointer pointer = null;
-		
+
 		Throwable error = null;
 
 		InetSocketAddress lockInetAddress = stickyLockInetAddress.get();
 
 		AddressSelector addresses = lockInetAddresses;
 
-		
-		HashedWheelTimer timer = new HashedWheelTimer();
-		
 		ClientConnectionResource conn = new ClientConnectionResource(
-				socketChannelFactory, timer);
+				socketChannelFactory);
 
 		// get next coordination service address
 		// and loop while this address != null and an exception was thrown
@@ -85,13 +79,10 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 			try {
 
-				LOG.info("Using address " + lockInetAddress + " of " + addresses);
+				LOG.info("Using address " + lockInetAddress + " of "
+						+ addresses);
 				conn.init(lockInetAddress);
-				try{
 				pointer = conn.sendLock(file);
-				}finally{
-					timer.stop();
-				}
 
 				// --- IMPORTANT set error to null to not cause an exception
 				// below the loop
@@ -144,10 +135,9 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 		InetSocketAddress unlockInetAddress = stickyUnlockInetAddress.get();
 		AddressSelector addresses = unlockInetAddresses;
-		HashedWheelTimer timer = new HashedWheelTimer();
-		
+
 		ClientConnectionResource conn = new ClientConnectionResource(
-				socketChannelFactory, timer);
+				socketChannelFactory);
 
 		// get next coordination service address
 		// and loop while this address != null and an exception was thrown
@@ -157,11 +147,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			try {
 
 				conn.init(unlockInetAddress);
-				try{
 				ret = conn.sendUnlock(syncPointer);
-				}finally{
-					timer.stop();
-				}
 				// --- IMPORTANT set error to null to not cause an exception
 				// below the loop
 				error = null;
@@ -210,8 +196,6 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 	 */
 	public void destroy() {
 
-		
-
 		if (!threadWorkerBossService.isShutdown()) {
 			threadWorkerBossService.shutdownNow();
 		}
@@ -219,7 +203,6 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		if (!threadServiceWorkerService.isShutdown()) {
 			threadServiceWorkerService.shutdownNow();
 		}
-
 
 	}
 
