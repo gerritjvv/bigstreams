@@ -39,14 +39,17 @@ public class SimpleFileDateExtractor implements FileDateExtractor{
 
 	@Override
 	public Date parse(String fileName) {
+		//pattern methods are thread safe here.
+		//Matcher is not.
 		Matcher m = pattern.matcher(fileName);
 		
 		if(m.find()){
 			try {
+				//We clone the dateFormat to provide concurrent thread safety without synchronization
+				//date format is not thread safe. Fixes: http://code.google.com/p/bigstreams/issues/detail?id=48
 				return dateFormat.parse(m.group(0));
 			} catch (ParseException e) {
-				
-				LOG.error("Error parsing: " + m.group(0), e);
+				LOG.error("Error parsing " + fileName + ": " + m.group(0), e);
 			}
 		}
 		
