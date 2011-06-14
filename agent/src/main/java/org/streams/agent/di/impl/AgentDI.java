@@ -19,7 +19,6 @@ import javax.persistence.EntityManagerFactory;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.jboss.netty.util.Timer;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Request;
@@ -87,6 +86,7 @@ import org.streams.commons.io.net.AddressSelector;
 import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricsAppService;
+import org.streams.commons.util.HashedWheelTimerFactory;
 
 /**
  * Injects the AppLifeCycleManager and all of its dependencies
@@ -521,7 +521,6 @@ public class AgentDI {
 		ThreadResourceService resourceService = beanFactory
 				.getBean(ThreadResourceService.class);
 
-		Timer timer = resourceService.getTimer();
 		ExecutorService workerBossService = resourceService
 				.getWorkerBossService();
 		ExecutorService workerService = resourceService.getWorkerService();
@@ -529,7 +528,8 @@ public class AgentDI {
 		// create factory passing the connection class to the factory.
 		// the factory class will take charge or creating the connection
 		// instances
-		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(timer,
+		ClientConnectionFactory ccFact = new ClientConnectionFactoryImpl(
+				HashedWheelTimerFactory.getInstance(),
 				new NioClientSocketChannelFactory(workerBossService,
 						workerService), connectionEstablishTimeout,
 				sendTimeout, protocol);

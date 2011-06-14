@@ -10,6 +10,7 @@ import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FilesToSendQueue;
 import org.streams.commons.app.ApplicationService;
+import org.streams.commons.util.HashedWheelTimerFactory;
 
 /**
  * Application service that will start the resources needed to send files that
@@ -107,6 +108,7 @@ public class FilesSendService implements ApplicationService {
 			LOG.info("service.shutdown - done " + i + " of " + filesSendWorkers.length);
 		}
 
+		HashedWheelTimerFactory.shutdown();
 	}
 
 	public ClientResourceFactory getResourceFactory() {

@@ -4,8 +4,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import org.apache.log4j.Logger;
-import org.jboss.netty.util.HashedWheelTimer;
-import org.jboss.netty.util.Timer;
 import org.streams.agent.send.ThreadResourceService;
 
 /**
@@ -17,9 +15,9 @@ import org.streams.agent.send.ThreadResourceService;
  */
 public class ThreadResourceServiceImpl implements ThreadResourceService {
 
-	private static final Logger LOG = Logger.getLogger(ThreadResourceServiceImpl.class);
+	private static final Logger LOG = Logger
+			.getLogger(ThreadResourceServiceImpl.class);
 
-	Timer timer = new HashedWheelTimer();
 	ExecutorService workerBossService = Executors.newCachedThreadPool();
 	ExecutorService workerService = Executors.newCachedThreadPool();
 
@@ -36,8 +34,6 @@ public class ThreadResourceServiceImpl implements ThreadResourceService {
 
 			workerBossService.shutdownNow();
 
-			timer.stop();
-			
 		} catch (Throwable t) {
 			LOG.error(t.toString(), t);
 		}
@@ -51,11 +47,6 @@ public class ThreadResourceServiceImpl implements ThreadResourceService {
 	@Override
 	public ExecutorService getWorkerService() {
 		return workerService;
-	}
-
-	@Override
-	public Timer getTimer() {
-		return timer;
 	}
 
 }

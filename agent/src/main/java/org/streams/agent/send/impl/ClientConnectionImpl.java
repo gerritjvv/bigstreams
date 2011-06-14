@@ -108,13 +108,7 @@ public class ClientConnectionImpl implements ClientConnection {
 			throw new ClientException("Please set a protocol", -1);
 		}
 
-		ClientHandlerContext clientHandlerContext = new ClientHandlerContext(
-				header, input, fileLineStreamer);
-
 		final Exchanger<ClientHandlerContext> exchanger = new Exchanger<ClientHandlerContext>();
-
-		final ClientChannelHandler clientHandler = new ClientChannelHandler(
-				exchanger, clientHandlerContext);
 
 		bootstrap = new ClientBootstrap(socketChannelFactory);
 
@@ -124,7 +118,9 @@ public class ClientConnectionImpl implements ClientConnection {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
 				return Channels.pipeline(new ClientMessageFrameDecoder(),
-						clientHandler);
+						new ClientChannelHandler(exchanger,
+								new ClientHandlerContext(header, input,
+										fileLineStreamer), (Protocol)protocol.clone()));
 			}
 		});
 
@@ -132,6 +128,8 @@ public class ClientConnectionImpl implements ClientConnection {
 
 		// Start the connection attempt.
 		bootstrap.connect(inetAddress);
+
+		ClientHandlerContext clientHandlerContext = null;
 
 		try {
 			clientHandlerContext = exchanger.exchange(null, sendTimeOut * 2,
@@ -145,18 +143,22 @@ public class ClientConnectionImpl implements ClientConnection {
 			throw new ServerException(
 					"The server did not respond within the timeout "
 							+ (sendTimeOut * 2), null,
-					clientHandlerContext.getServerStatusCode());
+					ClientHandlerContext.NO_SERVER_RESPONSE);
 		}
 
 		// complete io operations
 		// check error codes
 
-		if (clientHandlerContext.getClientStatusCode() != ClientHandlerContext.STATUS_OK) {
+		if (clientHandlerContext == null) {
+			throw new ClientException("No response from server", null,
+					ClientHandlerContext.NO_SERVER_RESPONSE);
+		} else if (clientHandlerContext.getClientStatusCode() != ClientHandlerContext.STATUS_OK) {
 			// client error
-			
-			//parse code:
-			NetworkCodes.CODE statusCode = NetworkCodes.findCode(clientHandlerContext.getClientStatusCode());
-			
+
+			// parse code:
+			NetworkCodes.CODE statusCode = NetworkCodes
+					.findCode(clientHandlerContext.getClientStatusCode());
+
 			Throwable t = clientHandlerContext.getErrorCause();
 			throw new ClientException("Client Error: " + statusCode.msg(), t,
 					statusCode.num());
@@ -168,23 +170,25 @@ public class ClientConnectionImpl implements ClientConnection {
 			if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.STATUS_CONFLICT) {
 				// do nothing here
 				LOG.warn("Conflict detected by collector");
-				
+
 			} else if (clientHandlerContext.getServerStatusCode() != ClientHandlerContext.STATUS_OK) {
-				
-				NetworkCodes.CODE statusCode = NetworkCodes.findCode(clientHandlerContext.getServerStatusCode());
-				
+
+				NetworkCodes.CODE statusCode = NetworkCodes
+						.findCode(clientHandlerContext.getServerStatusCode());
+
 				if (clientHandlerContext.getServerStatusCode() == ClientHandlerContext.NO_SERVER_RESPONSE) {
-					
+
 					throw new ServerException(
 							"The server did not respond within the timeout "
 									+ (sendTimeOut * 2), null,
 							clientHandlerContext.getServerStatusCode());
-				}else{
-					throw new ServerException("Error with server communication : " + statusCode.msg(),
-						null, statusCode.num());
+				} else {
+					throw new ServerException(
+							"Error with server communication : "
+									+ statusCode.msg(), null, statusCode.num());
 				}
-				
-			} 
+
+			}
 
 			fileLinePointer.copyIncrement(clientHandlerContext
 					.getIntermediatePointer());
@@ -226,17 +230,19 @@ public class ClientConnectionImpl implements ClientConnection {
 	 * Handlers for sending receiving and notifying any communication errors.
 	 * 
 	 */
-	class ClientChannelHandler extends SimpleChannelHandler {
+	static class ClientChannelHandler extends SimpleChannelHandler {
 
 		private final ClientHandlerContext clientHandlerContext;
 		Exchanger<ClientHandlerContext> exchanger;
 
 		AtomicBoolean exhanged = new AtomicBoolean(false);
-
+		Protocol protocol;
+		
 		public ClientChannelHandler(Exchanger<ClientHandlerContext> exchanger,
-				ClientHandlerContext clientHandlerContext) {
+				ClientHandlerContext clientHandlerContext, Protocol protocol) {
 			this.clientHandlerContext = clientHandlerContext;
 			this.exchanger = exchanger;
+			this.protocol = protocol;
 		}
 
 		/**
@@ -257,6 +263,8 @@ public class ClientConnectionImpl implements ClientConnection {
 			ChannelBufferOutputStream output = new ChannelBufferOutputStream(
 					channelBuffer);
 
+			
+			LOG.info("Send protocol information");
 			protocol.send(clientHandlerContext.getHeader(),
 					clientHandlerContext.getFileLineStreamer().getCodec(),
 					output);
@@ -269,11 +277,13 @@ public class ClientConnectionImpl implements ClientConnection {
 			// is a
 			// compressed.
 
+			LOG.info("Send data");
 			sentLines = clientHandlerContext.getFileLineStreamer()
 					.streamContent(
 							clientHandlerContext.getIntermediatePointer(),
 							clientHandlerContext.getReader(), output);
 
+			LOG.info("Send done");
 			if (sentLines) {
 				// get the total message length, and write integer as first
 				// bytes of message
@@ -338,7 +348,7 @@ public class ClientConnectionImpl implements ClientConnection {
 			// LOG.debug("Server response received");
 			// }
 
-			//LOG.info("----------------- Server response received");
+			// LOG.info("----------------- Server response received");
 
 			ChannelBuffer buff = (ChannelBuffer) e.getMessage();
 
@@ -371,8 +381,7 @@ public class ClientConnectionImpl implements ClientConnection {
 					clientHandlerContext.getIntermediatePointer()
 							.setConflictFilePointer(fileLinePointer);
 				} else {
-					clientHandlerContext
-							.setServerStatusCode(status);
+					clientHandlerContext.setServerStatusCode(status);
 				}
 			} finally {
 				in.close();

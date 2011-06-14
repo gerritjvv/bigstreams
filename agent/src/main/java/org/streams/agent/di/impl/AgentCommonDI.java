@@ -85,7 +85,7 @@ public class AgentCommonDI {
 
 		int decompressorPoolSize = 1;
 		int compressorPoolSize = conf.getCompressorPoolSize();
-
+		
 		return new CompressionPoolFactoryImpl(decompressorPoolSize,
 				compressorPoolSize, beanFactory.getBean(AgentStatus.class));
 

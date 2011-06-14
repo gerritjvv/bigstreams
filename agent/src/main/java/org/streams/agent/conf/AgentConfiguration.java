@@ -159,8 +159,9 @@ public class AgentConfiguration {
 			}
 		}
 
-		if (compressorPoolSize < 1) {
+		if (compressorPoolSize < clientThreadCount) {
 			compressorPoolSize = clientThreadCount;
+			Log.info("agent.send.compressor.poolsize cannot be lower than agent.send.thread.count setting to " + clientThreadCount);
 		}
 
 		monitoringPort = configuration.getInt(AgentProperties.MONITORING_PORT,
