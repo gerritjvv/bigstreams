@@ -158,7 +158,9 @@ public class ClientConnectionResource {
 			
 			message = exchanger.exchange(null,
 					sendTimeOut * 2, TimeUnit.MILLISECONDS);
-			LOG.info("Lock connection took " + (System.currentTimeMillis() - start) + " milliseconds");
+			if(LOG.isDebugEnabled()){
+				LOG.debug("Lock connection took " + (System.currentTimeMillis() - start) + " milliseconds");
+			}
 		}catch(TimeoutException timeout){
 			long end = System.currentTimeMillis() - start;
 			LOG.error("Message send timed out after : " + end + " milliseconds");

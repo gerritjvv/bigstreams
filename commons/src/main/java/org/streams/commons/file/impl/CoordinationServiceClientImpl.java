@@ -79,8 +79,10 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 			try {
 
-				LOG.info("Using address " + lockInetAddress + " of "
+				if(LOG.isDebugEnabled()){
+					LOG.debug("Using address " + lockInetAddress + " of "
 						+ addresses);
+				}
 				conn.init(lockInetAddress);
 				pointer = conn.sendLock(file);
 
@@ -143,7 +145,10 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		// and loop while this address != null and an exception was thrown
 		do {
 
-			LOG.info("Using address " + unlockInetAddress);
+			if(LOG.isDebugEnabled()){
+				LOG.info("Using address " + unlockInetAddress);
+			}
+			
 			try {
 
 				conn.init(unlockInetAddress);

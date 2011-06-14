@@ -44,6 +44,21 @@ import org.streams.commons.status.Status;
  * Decompressor(s),<br/>
  * in this case, no resource management is needed and the input and output
  * streams are created directly, ingnoring the pools.
+ * <p/>
+ * Adaptive compressor/decompressor creation:<br/>
+ * The adaptiveIncrement property is set to true by default. <br/>
+ * When a caller timesout on waiting for a decompresor or a compressor, a new
+ * decompressor/compressor is created<br/>
+ * and added to the pool<br/>
+ * This means the CompressionPool can grow automatically to create as many<br/>
+ * decompressors/compressors as required during peak stages.<br/>
+ * At the moment there exists no mechanism for shrinking this pool, doing so<br/>
+ * might create a memory leak where decompressors/compressors<br/>
+ * are removed and new ones created later on, but beceause the resources for<br/>
+ * these are only cleaned on GC no they might stay in memory for<br/>
+ * long periods of time.<br/>
+ * If a collector runs out of compressors/decompressors you should consider
+ * scalling the collector by adding another physical machine.
  */
 public class CompressionPoolImpl implements CompressionPool {
 
@@ -70,6 +85,8 @@ public class CompressionPoolImpl implements CompressionPool {
 	AtomicInteger compressorsUsedCount = new AtomicInteger();
 	AtomicInteger decompressorsUsedCount = new AtomicInteger();
 
+	boolean adaptiveIncrement = true;
+
 	Status status;
 
 	/**
@@ -87,6 +104,7 @@ public class CompressionPoolImpl implements CompressionPool {
 
 		this.codec = codec;
 		this.status = status;
+		
 
 		DECOMPRESSOR_STR = DECOMPRESSOR_USED_PREF + "-"
 				+ codec.getDefaultExtension();
@@ -132,15 +150,22 @@ public class CompressionPoolImpl implements CompressionPool {
 			Decompressor decompressor = decompressorQueue.poll(timeout, unit);
 
 			if (decompressor == null) {
-				return null;
-			} else {
-				CompressionInputStream cin = codec.createInputStream(input,
-						decompressor);
-				usedDecompressors.put(cin, decompressor);
-				status.setCounter(DECOMPRESSOR_STR,
-						decompressorsUsedCount.getAndIncrement());
-				return cin;
+
+				if (adaptiveIncrement) {
+					LOG.info("Adaptive increment, creating new decompressor");
+					decompressor = codec.createDecompressor();
+				} else {
+					return null;
+				}
 			}
+
+			CompressionInputStream cin = codec.createInputStream(input,
+					decompressor);
+			usedDecompressors.put(cin, decompressor);
+			status.setCounter(DECOMPRESSOR_STR,
+					decompressorsUsedCount.getAndIncrement());
+			return cin;
+
 		} else {
 			return codec.createInputStream(input);
 		}
@@ -152,15 +177,21 @@ public class CompressionPoolImpl implements CompressionPool {
 		if (hasCompressors) {
 			Compressor compressor = compressorQueue.poll(timeout, unit);
 			if (compressor == null) {
-				return null;
-			} else {
-				CompressionOutputStream cout = codec.createOutputStream(output,
-						compressor);
-				usedCompressors.put(cout, compressor);
-				status.setCounter(COMPRESSOR_STR,
-						compressorsUsedCount.getAndIncrement());
-				return cout;
+				if (adaptiveIncrement) {
+					LOG.info("Adaptive increment, creating new compressor");
+					compressor = codec.createCompressor();
+				} else {
+					return null;
+				}
 			}
+
+			CompressionOutputStream cout = codec.createOutputStream(output,
+					compressor);
+			usedCompressors.put(cout, compressor);
+			status.setCounter(COMPRESSOR_STR,
+					compressorsUsedCount.getAndIncrement());
+			return cout;
+
 		} else {
 			return codec.createOutputStream(output);
 		}
@@ -201,6 +232,14 @@ public class CompressionPoolImpl implements CompressionPool {
 					compressorsUsedCount.decrementAndGet());
 		}
 
+	}
+
+	public boolean isAdaptiveIncrement() {
+		return adaptiveIncrement;
+	}
+
+	public void setAdaptiveIncrement(boolean adaptiveIncrement) {
+		this.adaptiveIncrement = adaptiveIncrement;
 	}
 
 }

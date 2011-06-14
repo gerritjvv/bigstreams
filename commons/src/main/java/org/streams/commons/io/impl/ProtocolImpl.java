@@ -48,7 +48,7 @@ public class ProtocolImpl implements Protocol {
 		this.compressionPoolFactory = compressionPoolFactory;
 	}
 
-	public Object clone(){
+	public Protocol clone(){
 		return new ProtocolImpl(compressionPoolFactory);
 	}
 	
