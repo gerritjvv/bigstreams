@@ -7,7 +7,6 @@ import java.util.List;
 import javax.inject.Inject;
 
 import org.apache.log4j.Logger;
-import org.jboss.netty.channel.ChannelHandler;
 import org.restlet.Application;
 import org.restlet.Component;
 import org.restlet.Request;
@@ -102,23 +101,37 @@ public class CollectorDI {
 				(Integer) CollectorProperties.WRITER.COLLECTOR_PORT
 						.getDefaultValue());
 
-		return new CollectorServerImpl(port, beanFactory.getBean(
-				LogWriterHandler.class),
+		CollectorServerImpl server = new CollectorServerImpl(port,
+				beanFactory.getBean(LogWriterHandler.class),
 				beanFactory.getBean(CoordinationServiceClient.class),
 				configuration, beanFactory.getBean(MetricChannel.class));
+
+		server.setReadTimeout(configuration.getLong(
+				CollectorProperties.WRITER.COLLECTOR_CONNECTION_READ_TIMEOUT
+						.toString(),
+				(Long) CollectorProperties.WRITER.COLLECTOR_CONNECTION_READ_TIMEOUT
+						.getDefaultValue()));
+		server.setWriteTimeout(configuration.getLong(
+				CollectorProperties.WRITER.COLLECTOR_CONNECTION_WRITE_TIMEOUT
+						.toString(),
+				(Long) CollectorProperties.WRITER.COLLECTOR_CONNECTION_WRITE_TIMEOUT
+						.getDefaultValue()));
+
+		return server;
 	}
 
 	@Bean
 	public LogWriterHandler logWriterHandler() {
-		return new LogWriterHandler(
-				beanFactory.getBean(Protocol.class),
-				beanFactory
-						.getBean(org.apache.commons.configuration.Configuration.class),
-				new org.apache.hadoop.conf.Configuration(), beanFactory
-						.getBean(LogFileWriter.class), beanFactory
-						.getBean(CoordinationServiceClient.class), beanFactory
-						.getBean(CollectorStatus.class), beanFactory.getBean(
-						"fileKilobytesWrittenMetric", CounterMetric.class),
+		org.apache.commons.configuration.Configuration conf = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		return new LogWriterHandler(beanFactory.getBean(Protocol.class), conf,
+				new org.apache.hadoop.conf.Configuration(),
+				beanFactory.getBean(LogFileWriter.class),
+				beanFactory.getBean(CoordinationServiceClient.class),
+				beanFactory.getBean(CollectorStatus.class),
+				beanFactory.getBean("fileKilobytesWrittenMetric",
+						CounterMetric.class),
 				beanFactory.getBean(CompressionPoolFactory.class));
 
 	}

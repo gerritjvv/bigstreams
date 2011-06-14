@@ -264,7 +264,7 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 						// and an error thrown.
 
 						agentSession.setFileWriteStartTime();
-
+						
 						bytesWritten = writer.write(fileStatus, compressInput,
 								new PostWriteAction() {
 
@@ -286,10 +286,12 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 							LOG.error("File writting is slowing down please check the log directory");
 						}
 
+						
 						buffer.writeInt(200);
-
-						// fileWriteDetails.remove(localKey);
-
+						
+						LOG.info("Written file data: " + (agentSession.getFileWriteEndTime() - agentSession
+								.getFileWriteStartTime()));
+						
 						collectorStatus.setStatus(CollectorStatus.STATUS.OK,
 								"Running");
 						if (bytesWritten > -1) {
@@ -447,7 +449,7 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 	@Override
 	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e)
 			throws Exception {
-		LOG.info("Channel Connected");
+		
 		collectorStatus.incCounter(
 				CollectorStatus.COUNTERS.CHANNELS_OPEN.toString(), 1);
 		super.channelConnected(ctx, e);

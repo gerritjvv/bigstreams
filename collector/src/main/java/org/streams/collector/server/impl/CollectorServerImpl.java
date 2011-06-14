@@ -14,11 +14,11 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.execution.MemoryAwareThreadPoolExecutor;
 import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
-import org.jboss.netty.util.HashedWheelTimer;
 import org.streams.collector.conf.CollectorProperties;
 import org.streams.collector.server.CollectorServer;
 import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.impl.MessageFrameDecoder;
+import org.streams.commons.util.HashedWheelTimerFactory;
 
 /**
  * 
@@ -42,11 +42,9 @@ public class CollectorServerImpl implements CollectorServer {
 	CoordinationServiceClient coordinationServiceClient;
 
 	long writeTimeout = 10000L;
-	long readTimeout = 2000L;
+	long readTimeout = 10000L;
 
 	Configuration conf;
-
-	HashedWheelTimer timer = new HashedWheelTimer();
 
 	public CollectorServerImpl(int port, ChannelHandler channelHandler,
 			CoordinationServiceClient coordinationServiceClient,
@@ -69,14 +67,15 @@ public class CollectorServerImpl implements CollectorServer {
 		bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(
 				workerbossService, workerService));
 
-
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels
-						.pipeline(new MessageFrameDecoder(),
-								new ReadTimeoutHandler(timer,readTimeout, TimeUnit.MILLISECONDS),
-								metricsHandler, channelHandler);
+				return Channels.pipeline(
+						new MessageFrameDecoder(),
+						new ReadTimeoutHandler(HashedWheelTimerFactory
+								.getInstance(), readTimeout,
+								TimeUnit.MILLISECONDS), metricsHandler,
+						channelHandler);
 			}
 		});
 
@@ -181,7 +180,7 @@ public class CollectorServerImpl implements CollectorServer {
 			bootstrap.releaseExternalResources();
 		}
 
-		timer.stop();
+		HashedWheelTimerFactory.shutdown();
 
 		if (coordinationServiceClient != null) {
 			coordinationServiceClient.destroy();

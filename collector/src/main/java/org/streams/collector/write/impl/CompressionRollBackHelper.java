@@ -83,9 +83,16 @@ public class CompressionRollBackHelper {
 		CompressionInputStream in = pool.create(fileInput,
 				waitForCompressionResource, TimeUnit.MILLISECONDS);
 
+		if(in == null){
+			throw new NullPointerException("No compression input stream could be created for " + dest);
+		}
+		
 		CompressionOutputStream out = streamCreator.create(dest);
 
 		try {
+			if(out == null){
+				throw new NullPointerException("No compression output stream could be created for " + dest);
+			}
 			copy(in, out, mark);
 			return out;
 		} finally {

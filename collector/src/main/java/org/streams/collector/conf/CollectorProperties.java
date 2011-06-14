@@ -49,8 +49,10 @@ public interface CollectorProperties {
 		
 		
 		COLLECTOR_COMPRESSOR_POOLSIZE("collector.compressor.poolsize", 100),
-		COLLECTOR_DECOMPRESSOR_POOLSIZE("collector.decompressor.poolsize", 100);
+		COLLECTOR_DECOMPRESSOR_POOLSIZE("collector.decompressor.poolsize", 100),
 		
+		COLLECTOR_CONNECTION_READ_TIMEOUT("collector.read.timeout", 10000L),
+		COLLECTOR_CONNECTION_WRITE_TIMEOUT("collector.write.timeout", 10000L);
 		
 		
 		String name;

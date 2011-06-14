@@ -83,7 +83,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	 * Time that this class will wait for a compression resource to become
 	 * available. Default 10000L
 	 */
-	private long waitForCompressionResource = 10000L;
+	private long waitForCompressionResource = 500L;
 
 	public FileOutputStreamPoolImpl(LogRollover logRollover,
 			CollectorStatus collectorStatus,
@@ -297,7 +297,8 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			 shouldRollover = rolloverCheck.shouldRollover(file,
 					creationTime, updateTime);
 			}catch(Throwable t){
-				LOG.error(t.toString(), t);
+				t.printStackTrace();
+				LOG.error("rolloverCheck: " + rolloverCheck + " file : " + file + " error: " + t.toString(), t);
 			}
 			
 			if (shouldRollover) {
