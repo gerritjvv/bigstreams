@@ -14,4 +14,5 @@ public interface Protocol extends Cloneable {
 	public void send(Header header, CompressionCodec codec, DataOutput dataOut)
 			throws IOException, InterruptedException;
 	
+	public Object clone();
 }
