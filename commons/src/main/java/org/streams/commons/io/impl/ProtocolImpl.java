@@ -48,6 +48,10 @@ public class ProtocolImpl implements Protocol {
 		this.compressionPoolFactory = compressionPoolFactory;
 	}
 
+	public Object clone(){
+		return new ProtocolImpl(compressionPoolFactory);
+	}
+	
 	/**
 	 * Reads the header part of a InputStream
 	 * 

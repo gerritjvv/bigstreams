@@ -7,10 +7,11 @@ import java.io.IOException;
 import org.apache.commons.configuration.Configuration;
 import org.apache.hadoop.io.compress.CompressionCodec;
 
-public interface Protocol {
+public interface Protocol extends Cloneable {
 	public Header read(Configuration conf, DataInputStream inputStream)
 			throws IOException;
 
 	public void send(Header header, CompressionCodec codec, DataOutput dataOut)
 			throws IOException, InterruptedException;
+	
 }
