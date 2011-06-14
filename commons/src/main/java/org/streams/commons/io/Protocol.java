@@ -15,4 +15,5 @@ public interface Protocol extends Cloneable {
 			throws IOException, InterruptedException;
 	
 	public Object clone();
+	
 }
