@@ -508,34 +508,40 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		EntityManager entityManager = entityManagerFactory
 				.createEntityManager();
 
-		FileTrackingStatus status = null;
-		entityManager.getTransaction().begin();
+		
 		try {
 
 			int i = 0;
+			
+			if (LOG.isDebugEnabled())
+				LOG.debug("loading key: " + i++ + " of " + keys.size());
+
+			StringBuilder queryStr = new StringBuilder(keys.size()*10);
+			queryStr.append("from FileTrackingStatusEntity where ");
+			
+			
 			for (FileTrackingStatusKey key : keys) {
-				if (LOG.isDebugEnabled())
-					LOG.debug("loading key: " + i++ + " of " + keys.size());
-
-				Query query = entityManager
-						.createNamedQuery("fileTrackingStatus.byAgentFileNameLogTypeReadOnly");
-
-				query.setParameter("agentName", key.getAgentName());
-				query.setParameter("fileName", key.getFileName());
-				query.setParameter("logType", key.getLogType());
-
-				try {
-					FileTrackingStatusEntity entity = (FileTrackingStatusEntity) query
-							.getSingleResult();
-					status = entity.createStatusObject();
-
-				} catch (NoResultException noResultExcp) {
-					// ignore if no result is found
-					status = null;
+				if(i++ != 0){
+					queryStr.append(" OR ");
 				}
-
-				valuesMap.put(key, status);
+				
+				queryStr.append("(agentName = '").append(key.getAgentName())
+				.append("' AND fileName='").append(key.getFileName()) 
+				.append("' AND logType='").append(key.getLogType()).append("') ");
 			}
+				
+				
+			Query query = entityManager.createQuery(queryStr.toString());
+			entityManager.getTransaction().begin();
+			
+			
+			Collection<FileTrackingStatusEntity> entities = (Collection<FileTrackingStatusEntity>) query.getResultList();
+			
+			for(FileTrackingStatusEntity entity: entities){
+				valuesMap.put(entity.createStatusKeyObject(), entity.createStatusObject());
+			}
+				
+	
 
 		} finally {
 			commitReadTx(entityManager);

@@ -165,7 +165,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>2</release>
+					<release>3</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
@@ -310,6 +310,7 @@
 	</reporting>
 
 	<repositories>
+
 		<repository>
 			<id>maven-restlet</id>
 			<name>Public online Restlet repository</name>
@@ -324,7 +325,7 @@
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
 		</repository>
 	</repositories>
-
+<!--
 	<distributionManagement>
 		<repository>
 			<id>streams-releases</id>
@@ -339,5 +340,5 @@
 			<uniqueVersion>false</uniqueVersion>
 		</snapshotRepository>
 	</distributionManagement>
-
+-->
 </project>

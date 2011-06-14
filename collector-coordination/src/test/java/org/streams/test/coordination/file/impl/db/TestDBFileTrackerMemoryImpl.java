@@ -35,7 +35,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 		DBCollectorFileTrackerMemory memory = new DBCollectorFileTrackerMemory();
 		memory.setEntityManagerFactory(emf);
 
-		int count = 10;
+		int count = 1000;
 
 		Collection<FileTrackingStatusKey> keys = new ArrayList<FileTrackingStatusKey>(count);
 		
@@ -52,8 +52,10 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 
 			memory.setStatus(values);
 			
+			long start = System.currentTimeMillis();
 			Map<FileTrackingStatusKey, FileTrackingStatus> valuesMap = memory.getStatus(keys);
 			
+			System.out.println("Time taken: " + ( System.currentTimeMillis() - start));
 			assertEquals(count, valuesMap.size());
 			
 			for(FileTrackingStatusKey key : keys){
