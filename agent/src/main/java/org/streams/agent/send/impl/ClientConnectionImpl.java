@@ -120,7 +120,7 @@ public class ClientConnectionImpl implements ClientConnection {
 				return Channels.pipeline(new ClientMessageFrameDecoder(),
 						new ClientChannelHandler(exchanger,
 								new ClientHandlerContext(header, input,
-										fileLineStreamer), (Protocol)protocol.clone()));
+										fileLineStreamer), protocol.clone()));
 			}
 		});
 
@@ -264,7 +264,6 @@ public class ClientConnectionImpl implements ClientConnection {
 					channelBuffer);
 
 			
-			LOG.info("Send protocol information");
 			protocol.send(clientHandlerContext.getHeader(),
 					clientHandlerContext.getFileLineStreamer().getCodec(),
 					output);
@@ -277,13 +276,13 @@ public class ClientConnectionImpl implements ClientConnection {
 			// is a
 			// compressed.
 
-			LOG.info("Send data");
+			
 			sentLines = clientHandlerContext.getFileLineStreamer()
 					.streamContent(
 							clientHandlerContext.getIntermediatePointer(),
 							clientHandlerContext.getReader(), output);
 
-			LOG.info("Send done");
+			
 			if (sentLines) {
 				// get the total message length, and write integer as first
 				// bytes of message

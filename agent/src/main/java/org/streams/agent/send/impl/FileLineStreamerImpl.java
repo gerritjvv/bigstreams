@@ -30,7 +30,7 @@ public class FileLineStreamerImpl implements FileStreamer {
 
 	CompressionPool pool;
 
-	long waitForCompressionResource = 10000L;
+	long waitForCompressionResource = 1000L;
 
 	/**
 	 * Default is 100Kb.
