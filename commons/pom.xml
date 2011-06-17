@@ -27,7 +27,7 @@
 		<dependency>
 			<groupId>org.jboss.netty</groupId>
 			<artifactId>netty</artifactId>
-			<version>3.2.2.Final</version>
+			<version>3.2.4.Final</version>
 			<!-- commons should be as independent from version as possible -->
 			<scope>provided</scope>
 		</dependency>

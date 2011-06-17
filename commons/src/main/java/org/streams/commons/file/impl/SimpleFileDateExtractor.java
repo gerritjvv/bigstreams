@@ -47,7 +47,7 @@ public class SimpleFileDateExtractor implements FileDateExtractor{
 			try {
 				//We clone the dateFormat to provide concurrent thread safety without synchronization
 				//date format is not thread safe. Fixes: http://code.google.com/p/bigstreams/issues/detail?id=48
-				return dateFormat.parse(m.group(0));
+				return ((DateFormat)dateFormat.clone()).parse(m.group(0));
 			} catch (ParseException e) {
 				LOG.error("Error parsing " + fileName + ": " + m.group(0), e);
 			}
