@@ -1,5 +1,6 @@
 package org.streams.collector.write.impl;
 
+import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.regex.Matcher;
@@ -74,7 +75,8 @@ public class DateHourFileNameExtractor implements LogFileNameExtractor {
 			// if the original log files are not date formated use the
 			// collection date.
 			Date date = new Date(System.currentTimeMillis());
-			dateTime = dateTimeFormat.format(date);
+			//we must clone DateFormat for thread safety.
+			dateTime = ((DateFormat)dateTimeFormat.clone()).format(date);
 		}
 
 		return dateTime;

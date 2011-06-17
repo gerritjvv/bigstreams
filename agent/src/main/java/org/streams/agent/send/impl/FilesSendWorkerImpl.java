@@ -81,6 +81,7 @@ public class FilesSendWorkerImpl implements Runnable {
 			try {
 
 				fileStatus = pollInterruptibly();
+				
 				try {
 					fileObj = new File(fileStatus.getPath());
 					// lets see if the file exists.

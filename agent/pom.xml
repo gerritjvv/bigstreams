@@ -20,7 +20,7 @@
 		<slf4j-simple.version>1.6.1</slf4j-simple.version>
 		<hsqldb.version>1.8.0.10</hsqldb.version>
 		<restlet.version>2.0-M7</restlet.version>
-		<netty.version>3.2.2.Final</netty.version>
+		<netty.version>3.2.4.Final</netty.version>
 		<bonecp.version>0.7.1.RELEASE</bonecp.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>

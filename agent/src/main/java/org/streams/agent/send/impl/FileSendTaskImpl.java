@@ -105,13 +105,16 @@ public class FileSendTaskImpl implements FileSendTask {
 
 				long start = System.currentTimeMillis();
 				sentData = clientResource.send(uniqueId, logType);
-				LOG.info("Sent chunk in " + (System.currentTimeMillis() - start) + " ms");
+				
+				if(LOG.isDebugEnabled()){
+					LOG.debug("Sent chunk in " + (System.currentTimeMillis() - start) + " ms");
+				}
 				
 				// -------- In case a conflict was detected we need
 				// -------- to close and open the client again with the correct
 				// conflict resolution pointer
 				if (fileLinePointer.hasConflictFilePointer()) {
-					LOG.info("Collector responded with conflict 409 response: reseting pointer on "
+					LOG.warn("Collector responded with conflict 409 response: reseting pointer on "
 							+ file.getAbsolutePath()
 							+ " from "
 							+ fileLinePointer.getFilePointer()

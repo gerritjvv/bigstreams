@@ -17,7 +17,7 @@
 		<hadoop.version>0.20.2</hadoop.version>
 		<slf4j-simple.version>1.4.2</slf4j-simple.version>
 		<restlet.version>2.0-M7</restlet.version>
-		<netty.version>3.2.2.Final</netty.version>
+		<netty.version>3.2.4.Final</netty.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 	</properties>
 	<dependencies>

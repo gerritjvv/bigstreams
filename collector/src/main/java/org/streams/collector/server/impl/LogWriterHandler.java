@@ -289,8 +289,10 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 						
 						buffer.writeInt(200);
 						
-						LOG.info("Written file data: " + (agentSession.getFileWriteEndTime() - agentSession
+						if(LOG.isDebugEnabled()){
+							LOG.debug("Written file data: " + (agentSession.getFileWriteEndTime() - agentSession
 								.getFileWriteStartTime()));
+						}
 						
 						collectorStatus.setStatus(CollectorStatus.STATUS.OK,
 								"Running");
