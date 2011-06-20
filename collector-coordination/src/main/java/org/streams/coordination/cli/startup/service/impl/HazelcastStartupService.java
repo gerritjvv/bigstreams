@@ -171,7 +171,7 @@ public class HazelcastStartupService implements ApplicationService {
 			try {
 				hazelcastInstance = Hazelcast.init(config);
 			} catch (java.lang.IllegalStateException excp) {
-				LOG.error(excp.toString(), excp);
+//				LOG.error(excp.toString(), excp);
 				Hazelcast.getLifecycleService().shutdown();
 				hazelcastInstance = Hazelcast.newHazelcastInstance(config);
 			}

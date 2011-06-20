@@ -101,10 +101,11 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 				buffer.writeInt(409); // conflict code
 				buffer.writeBytes(CONFLICT_MESSAGE);
 
-				//----- Add FileTracking History
+				// ----- Add FileTracking History
 				fileTrackerHistoryMemory
-						.addAsyncToHistory(new FileTrackerHistoryItem(new Date(),
-								fileStatus.getAgentName(), collectorAddress,
+						.addAsyncToHistory(new FileTrackerHistoryItem(
+								new Date(), fileStatus.getAgentName(),
+								collectorAddress,
 								FileTrackerHistoryItem.STATUS.ALREADY_LOCKED));
 
 			} else {
@@ -123,15 +124,17 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 				buffer.writeInt(200);
 				buffer.writeBytes(msgBytes, 0, msgBytes.length);
 
-				//------- Add FileTracking History
-				FileTrackerHistoryItem.STATUS status =
-					(syncPointer.getFilePointer() == fileStatus.getFilePointer()) ?
-							FileTrackerHistoryItem.STATUS.OK : FileTrackerHistoryItem.STATUS.OUTOF_SYNC;
-				
-				fileTrackerHistoryMemory.addAsyncToHistory(new  FileTrackerHistoryItem(new Date(), fileStatus.getAgentName(),
-						collectorAddress, status));
-				//------- Finish History add
-				
+				// ------- Add FileTracking History
+				FileTrackerHistoryItem.STATUS status = (syncPointer
+						.getFilePointer() == fileStatus.getFilePointer()) ? FileTrackerHistoryItem.STATUS.OK
+						: FileTrackerHistoryItem.STATUS.OUTOF_SYNC;
+
+				fileTrackerHistoryMemory
+						.addAsyncToHistory(new FileTrackerHistoryItem(
+								new Date(), fileStatus.getAgentName(),
+								collectorAddress, status));
+				// ------- Finish History add
+
 				if (LOG.isDebugEnabled()) {
 					LOG.debug("LOCK( " + syncPointer.getLockId() + ") - "
 							+ fileStatus.getAgentName() + "."
@@ -170,32 +173,33 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 		// If a SyncPointer Lock cannot be attained we return an error to the
 		// client.
 		long startTime = System.currentTimeMillis();
-		
+
 		// ---------- This line uses a semi lock free algorithm
 		SyncPointer pointer = lockMemory.setLock(requestFileStatus,
 				lockTimeOut, remoteAddress.getAddress().getHostAddress());
 		// ---------- lock released. At this stage we either have a SyncPointer
 		// lock or a null reference if the resource was locked already.
 
-		if(pointer == null){
-			//apply lock wait, the way lock memory is applied we cannot wait on the particular value becoming free.
-			//so we retry 5 times within a second.
-			for(int i = 0; i < 5; i++){
+		if (pointer == null) {
+			// apply lock wait, the way lock memory is applied we cannot wait on
+			// the particular value becoming free.
+			// so we retry 5 times within a second.
+			for (int i = 0; i < 5; i++) {
 				LOG.info("Retrying Lock: " + i + " of 5");
-				//we try getting the lock
-				pointer = lockMemory.setLock(requestFileStatus,
-						lockTimeOut, remoteAddress.getAddress().getHostAddress());
-				
-				if(pointer != null){
+				// we try getting the lock
+				pointer = lockMemory.setLock(requestFileStatus, lockTimeOut,
+						remoteAddress.getAddress().getHostAddress());
+
+				if (pointer != null) {
 					break;
 				}
-				//sleep for 200 milliseconds
+				// sleep for 200 milliseconds
 				Thread.sleep(200L);
 			}
 		}
-		
+
 		long endTime = System.currentTimeMillis() - startTime;
-		if(endTime >= 1000L){
+		if (endTime >= 1000L) {
 			LOG.warn("The coordination service lock appears to be running slow please check the network settings");
 		}
 		if (pointer == null) {
@@ -213,7 +217,7 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 				fileStatus = requestFileStatus;
 				memory.setStatus(fileStatus);
 			}
-			
+
 			coordinationStatus.incCounter("LOCKS", 1);
 			coordinationStatus.setStatus(STATUS.OK, "running");
 			return pointer;

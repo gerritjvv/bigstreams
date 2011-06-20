@@ -4,6 +4,7 @@ import java.io.File;
 import java.lang.reflect.Field;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -116,6 +117,11 @@ public class AgentConfiguration {
 	 */
 	int logManageActionThreads;
 
+	/**
+	 * A list of strings of format <ext>:codecName that maps file extensions to codecs
+	 */
+	Collection<String> codecFileMapping;
+	
 	public AgentConfiguration() {
 
 	}
@@ -196,6 +202,10 @@ public class AgentConfiguration {
 
 		logManageActionThreads = configuration.getInt(
 				AgentProperties.LOG_MANAGE_ACTION_THREADS, 2);
+		
+		String[] fileCodecMappingArr = configuration.getStringArray(AgentProperties.FILE_CODEC_MAPPING);
+		
+		this.codecFileMapping = (fileCodecMappingArr == null)? new ArrayList<String>() : Arrays.asList(fileCodecMappingArr);
 
 	}
 

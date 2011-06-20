@@ -57,5 +57,10 @@ public interface AgentProperties {
 	static final String FILENAME_DATE_FORMAT = "file.date.format";
 	
 	static final String LOG_MANAGE_ACTION_THREADS = "log.manage.action.threads";
+	/**
+	 * Configures the file codec mappings
+	 * must have formt extension:codec;extension:codec
+	 */
+	static final String FILE_CODEC_MAPPING = "file.codecs";
 	
 }

@@ -113,7 +113,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>3</release>
+					<release>4</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>

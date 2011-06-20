@@ -147,7 +147,7 @@ public class FileSendTaskImpl implements FileSendTask {
 					// no more data was sent this means the file has been read
 					// completely -- we need to double check here that this is
 					// correct.
-
+					
 					if ((file.length()-1) > fileStatus.getFilePointer()) {
 						LOG.warn("The file was seen as done but file length( "
 								+ file.length() + ") > that filepointer( "

@@ -27,15 +27,16 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 
 	/**
 	 * Tests that get by agent and logtype works
+	 * @throws InterruptedException 
 	 */
 	@Test
-	public void testSetByBatchGetByKeyBatch() {
+	public void testSetByBatchGetByKeyBatch() throws InterruptedException {
 		EntityManagerFactory emf = Persistence
 				.createEntityManagerFactory(TEST_ENTITY);
 		DBCollectorFileTrackerMemory memory = new DBCollectorFileTrackerMemory();
 		memory.setEntityManagerFactory(emf);
 
-		int count = 1000;
+		int count = 1005;
 
 		Collection<FileTrackingStatusKey> keys = new ArrayList<FileTrackingStatusKey>(count);
 		
@@ -52,6 +53,7 @@ public class TestDBFileTrackerMemoryImpl extends TestCase {
 
 			memory.setStatus(values);
 			
+			Thread.sleep(1000);
 			long start = System.currentTimeMillis();
 			Map<FileTrackingStatusKey, FileTrackingStatus> valuesMap = memory.getStatus(keys);
 			

@@ -97,7 +97,8 @@ public class ServerUtil {
 			}
 		});
 
-		bootstrap.bind(new InetSocketAddress(portNo));
+		System.out.println("Binding to: localhost:" + portNo);
+		bootstrap.bind(new InetSocketAddress("localhost", portNo));
 
 		return bootstrap;
 

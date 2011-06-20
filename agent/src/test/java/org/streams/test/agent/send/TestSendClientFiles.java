@@ -108,7 +108,8 @@ public class TestSendClientFiles extends TestCase {
 			FileLinePointer fileLinePointer = new FileLinePointer();
 
 			// open file for reading
-			client.open(new InetSocketAddress(testPort), fileLinePointer,
+			System.out.println("Sending to: localhost:" + testPort);
+			client.open(new InetSocketAddress("localhost", testPort), fileLinePointer,
 					fileToStream);
 
 			try {

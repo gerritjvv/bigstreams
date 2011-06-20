@@ -37,12 +37,11 @@ public class ClientResourceImpl implements ClientResource {
 	BufferedReader reader;
 	String hostName;
 
-
 	/**
 	 * Used to extract the date from the file name if any.
 	 */
 	FileDateExtractor fileDateExtractor;
-	
+
 	/**
 	 * Created and opened in the open method
 	 */
@@ -56,7 +55,7 @@ public class ClientResourceImpl implements ClientResource {
 	 * Set during the open method
 	 */
 	Date fileDate;
-	
+
 	/**
 	 * 
 	 * @param connectionFactory
@@ -82,7 +81,7 @@ public class ClientResourceImpl implements ClientResource {
 			FileLinePointer fileLinePointer, File file) throws IOException {
 		this.file = file;
 		this.collectorAddress = collectorAddress;
-		
+
 		validateFile(file);
 
 		this.fileLinePointer = fileLinePointer;
@@ -99,15 +98,15 @@ public class ClientResourceImpl implements ClientResource {
 		LOG.info("Using host address: " + hostName);
 
 		reader = openFileToLine(file, fileLinePointer);
-		
-		//Here we extract the file date from the file name
-		try{
+
+		// Here we extract the file date from the file name
+		try {
 			fileDate = fileDateExtractor.parse(file);
 			LOG.info("Sending file with date: " + fileDate);
-		}catch(Throwable t){
+		} catch (Throwable t) {
 			LOG.error(t.toString(), t);
 		}
-		
+
 	}
 
 	/**
@@ -141,8 +140,9 @@ public class ClientResourceImpl implements ClientResource {
 			Header header = new Header(hostName, file.getAbsolutePath(),
 					logType, uniqueId, fileStreamer.getCodec().getClass()
 							.getName(), fileLinePointer.getFilePointer(),
-					file.length(), fileLinePointer.getLineReadPointer(), fileDate);
-			
+					file.length(), fileLinePointer.getLineReadPointer(),
+					fileDate);
+
 			ret = clientConnection.sendLines(fileLinePointer, header,
 					fileStreamer, reader);
 		} finally {
@@ -199,7 +199,8 @@ public class ClientResourceImpl implements ClientResource {
 		}
 
 		// return a channel reader
-		return new BufferedReader(new InputStreamReader(Channels.newInputStream(channel)));
+		return new BufferedReader(new InputStreamReader(
+				Channels.newInputStream(channel)));
 
 	}
 

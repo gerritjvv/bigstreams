@@ -9,6 +9,5 @@ import org.apache.hadoop.io.compress.CompressionCodec;
 public interface CompressionPoolFactory {
 
 	CompressionPool get(CompressionCodec codec);
-	
-	
+
 }

@@ -54,16 +54,16 @@
 			<version>${hibernate-annotations.version}</version>
 		</dependency>
 		<dependency>
-            <groupId>org.hibernate</groupId>
-            <artifactId>hibernate-c3p0</artifactId>
-            <version>${hibernate-c3p0.version}</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-api</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+			<groupId>org.hibernate</groupId>
+			<artifactId>hibernate-c3p0</artifactId>
+			<version>${hibernate-c3p0.version}</version>
+			<exclusions>
+				<exclusion>
+					<groupId>org.slf4j</groupId>
+					<artifactId>slf4j-api</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 		<dependency>
 			<groupId>com.jolbox</groupId>
 			<artifactId>bonecp</artifactId>
@@ -137,9 +137,18 @@
 		<plugins>
 
 			<plugin>
+                                <groupId>org.apache.maven.plugins</groupId>
+                                <artifactId>maven-compiler-plugin</artifactId>
+                                <version>2.3.2</version>
+                                <configuration>
+                                        <source>1.6</source>
+                                        <target>1.6</target>
+                                </configuration>
+                        </plugin>
+
+			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-
 					<forkMode>once</forkMode>
 				</configuration>
 			</plugin>
@@ -165,7 +174,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>3</release>
+					<release>4</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
@@ -325,20 +334,9 @@
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
 		</repository>
 	</repositories>
-<!--
-	<distributionManagement>
-		<repository>
-			<id>streams-releases</id>
-			<name>streams releases maven repository</name>
-			<url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>
-			<uniqueVersion>false</uniqueVersion>
-		</repository>
-		<snapshotRepository>
-			<id>streams-snapshots</id>
-			<name>streams snapshot maven repository</name>
-			<url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
-			<uniqueVersion>false</uniqueVersion>
-		</snapshotRepository>
-	</distributionManagement>
--->
+	<!-- <distributionManagement> <repository> <id>streams-releases</id> <name>streams 
+		releases maven repository</name> <url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/releases</url> 
+		<uniqueVersion>false</uniqueVersion> </repository> <snapshotRepository> <id>streams-snapshots</id> 
+		<name>streams snapshot maven repository</name> <url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url> 
+		<uniqueVersion>false</uniqueVersion> </snapshotRepository> </distributionManagement> -->
 </project>

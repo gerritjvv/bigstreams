@@ -1,6 +1,8 @@
 package org.streams.coordination.file.impl.hazelcast;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.Callable;
@@ -45,12 +47,31 @@ public class FileTrackingStatusHazelcastMapStore implements
 
 	@Override
 	public Map<FileTrackingStatusKey, FileTrackingStatus> loadAll(
-			final Collection<FileTrackingStatusKey> keys) {
-		LOG.info("Loading data for keys: " + keys.size());
+			 Collection<FileTrackingStatusKey> keysToLoad) {
+		
+		
 		Map<FileTrackingStatusKey, FileTrackingStatus> files = null;
 		long start = System.currentTimeMillis();
 		ExecutorService service = Executors.newSingleThreadExecutor();
 
+		final Collection<FileTrackingStatusKey> keys;
+		
+		if(keysToLoad.size() > 10000){
+			keys = new ArrayList<FileTrackingStatusKey>(10000);
+			//size down we don't want to take ages to load keys.
+			Iterator<FileTrackingStatusKey> it = keysToLoad.iterator();
+			int i = 0;
+			while( it.hasNext() && i++ < 10000){
+				keys.add(it.next());
+			}
+				
+		}else{
+			keys = keysToLoad;
+		}
+		
+		
+		LOG.info("Loading data for keys: " + keysToLoad.size());
+		
 		try {
 			// the files here may take longer than is expected.
 			// we apply a timeout indicator that will timeout after 60 seconds

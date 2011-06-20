@@ -7,6 +7,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -501,6 +506,27 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 	public Map<FileTrackingStatusKey, FileTrackingStatus> getStatus(
 			Collection<FileTrackingStatusKey> keys) {
 
+		ExecutorService service = Executors.newCachedThreadPool();
+		try {
+			Future<Map<FileTrackingStatusKey, FileTrackingStatus>> future = service
+					.submit(new DBGetByKeyTask(keys, 0, keys.size(), service));
+
+			return future.get();
+
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return null;
+		} catch (ExecutionException e) {
+			throw new RuntimeException(e);
+		} finally {
+			service.shutdownNow();
+		}
+
+	}
+
+	public Map<FileTrackingStatusKey, FileTrackingStatus> _getStatus(
+			Collection<FileTrackingStatusKey> keys, int from, int end) {
+
 		int size = keys.size();
 		Map<FileTrackingStatusKey, FileTrackingStatus> valuesMap = new HashMap<FileTrackingStatusKey, FileTrackingStatus>(
 				size);
@@ -508,40 +534,35 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		EntityManager entityManager = entityManagerFactory
 				.createEntityManager();
 
-		
 		try {
 
-			int i = 0;
-			
-			if (LOG.isDebugEnabled())
-				LOG.debug("loading key: " + i++ + " of " + keys.size());
-
-			StringBuilder queryStr = new StringBuilder(keys.size()*10);
-			queryStr.append("from FileTrackingStatusEntity where ");
-			
-			
-			for (FileTrackingStatusKey key : keys) {
-				if(i++ != 0){
-					queryStr.append(" OR ");
-				}
-				
-				queryStr.append("(agentName = '").append(key.getAgentName())
-				.append("' AND fileName='").append(key.getFileName()) 
-				.append("' AND logType='").append(key.getLogType()).append("') ");
-			}
-				
-				
-			Query query = entityManager.createQuery(queryStr.toString());
 			entityManager.getTransaction().begin();
-			
-			
-			Collection<FileTrackingStatusEntity> entities = (Collection<FileTrackingStatusEntity>) query.getResultList();
-			
-			for(FileTrackingStatusEntity entity: entities){
-				valuesMap.put(entity.createStatusKeyObject(), entity.createStatusObject());
+
+			FileTrackingStatusKey[] keyArr = keys
+					.toArray(new FileTrackingStatusKey[] {});
+			System.out.println(from + " : " + end);
+			for (int i = from; i < end; i++) {
+
+				FileTrackingStatusKey key = keyArr[i];
+
+				Query query = entityManager
+						.createNamedQuery("fileTrackingStatus.byAgentFileNameLogTypeReadOnly");
+
+				query.setParameter("agentName", key.getAgentName());
+				query.setParameter("fileName", key.getFileName());
+				query.setParameter("logType", key.getLogType());
+				FileTrackingStatusEntity entity = null;
+
+				try {
+					entity = (FileTrackingStatusEntity) query.getSingleResult();
+					valuesMap.put(key, entity.createStatusObject());
+
+				} catch (NoResultException noResultExcp) {
+					// ignore if no result is found
+					continue;
+				}
+
 			}
-				
-	
 
 		} finally {
 			commitReadTx(entityManager);
@@ -566,18 +587,19 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		try {
 
 			if (tx.isActive()) {
-				//test for rollback condition
-				if(tx.getRollbackOnly()){
+				// test for rollback condition
+				if (tx.getRollbackOnly()) {
 					tx.rollback();
-				}else{
+				} else {
 					tx.commit();
 				}
 			}
 
-		}finally{
-			//if error in the commit state the transaction is marked for rollback
-			//and is still active.
-			if(tx.isActive()){
+		} finally {
+			// if error in the commit state the transaction is marked for
+			// rollback
+			// and is still active.
+			if (tx.isActive()) {
 				tx.rollback();
 			}
 		}
@@ -800,5 +822,83 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		return getStatus(key.getAgentName(), key.getLogType(),
 				key.getFileName());
 	}
+
+	static int count = 0;
+
+	/**
+	 * 
+	 * Returns keys from the database using the fork join
+	 * 
+	 */
+	class DBGetByKeyTask implements
+			Callable<Map<FileTrackingStatusKey, FileTrackingStatus>> {
+
+		/**
+		 * 
+		 */
+		private static final long serialVersionUID = 1L;
+
+		Collection<FileTrackingStatusKey> keys;
+
+		int start = 0, totalSize = 0;
+		ExecutorService service;
+
+		Map<FileTrackingStatusKey, FileTrackingStatus> map = null;
+
+		public DBGetByKeyTask(Collection<FileTrackingStatusKey> keys,
+				int start, int totalSize, ExecutorService service) {
+			this.keys = keys;
+			this.start = start;
+			this.totalSize = totalSize;
+			this.service = service;
+		}
+
+		protected Map<FileTrackingStatusKey, FileTrackingStatus> compute() {
+
+			int barrier = 500;
+			if ((start + barrier) < keys.size()) {
+
+				DBGetByKeyTask fork = new DBGetByKeyTask(keys, start + barrier,
+						keys.size(), service);
+				// fork here
+				Future<Map<FileTrackingStatusKey, FileTrackingStatus>> future = service
+						.submit(fork);
+
+				map = _getStatus(keys, start, start + barrier);
+				Map<FileTrackingStatusKey, FileTrackingStatus> forkMap = null;
+				try {
+					forkMap = future.get();
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+				} catch (ExecutionException e) {
+					throw new RuntimeException(e);
+				}
+
+				if (forkMap != null) {
+					forkMap.putAll(map);
+					map = forkMap;
+				}
+
+			} else {
+
+				int end = start + barrier;
+				if (end > keys.size()) {
+					end = keys.size();
+				}
+
+				map = _getStatus(keys, start, end);
+			}
+
+			return map;
+
+		}
+
+		@Override
+		public Map<FileTrackingStatusKey, FileTrackingStatus> call()
+				throws Exception {
+			return compute();
+		}
+
+	};
 
 }
