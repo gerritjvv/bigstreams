@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.io.FileUtils;
@@ -50,6 +51,11 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	final Map<String, RollBackOutputStream> fileHandleMap = new ConcurrentHashMap<String, RollBackOutputStream>();
 	final Map<String, File> openFiles = new ConcurrentHashMap<String, File>();
 
+	/**
+	 * Uses to monitor the files that have not been released yet.
+	 */
+	final Set<File> filesExternalLockRequest = new ConcurrentSkipListSet<File>();
+	
 	/**
 	 * each tmie a file output stream is created an entry is added here.
 	 */
@@ -250,6 +256,10 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 		}
 
+		//this way we know the user has an external request on the output streams
+		//i.e. although the timeout might expire if the collector is slowing down in writing
+		//because of load it should not timeout the file.
+		filesExternalLockRequest.add(file);
 		fileUpdateTimes.put(file, System.currentTimeMillis());
 
 		return out;
@@ -290,8 +300,8 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			// the time in milliseconds when the file was created
 			Long creationTime = fileCreationTimes.get(file);
 			// the time in milliseconds when the file was last updated
-			Long updateTime = fileUpdateTimes.get(file);
-
+			Long updateTime = (filesExternalLockRequest.contains(file)) ? System.currentTimeMillis() : fileUpdateTimes.get(file);
+			
 			boolean shouldRollover = false;
 			try{
 			 shouldRollover = rolloverCheck.shouldRollover(file,
@@ -345,8 +355,10 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		keyLock.releaseLock(key);
 
 		File file = openFiles.get(key);
-		if (file != null)
+		if (file != null){
 			fileUpdateTimes.put(file, System.currentTimeMillis());
+			filesExternalLockRequest.remove(file);
+		}
 
 	}
 
