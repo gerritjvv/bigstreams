@@ -59,7 +59,10 @@ public class ClientConnectionResource {
 		this.timeoutTimer = HashedWheelTimerFactory.getInstance();
 
 		bootstrap = new ClientBootstrap(socketChannelFactory);
-
+		bootstrap.setOption("tcpNoDelay", "true");
+		//30 seconds linger timeout.
+		bootstrap.setOption("soLinger", String.valueOf(30000));
+		
 	}
 
 	/**
@@ -147,7 +150,9 @@ public class ClientConnectionResource {
 		});
 
 		bootstrap.setOption("connectTimeoutMillis", connectEstablishTimeout);
-
+		bootstrap.setOption("connectTimeoutMillis", connectEstablishTimeout);
+		bootstrap.setOption("connectTimeoutMillis", connectEstablishTimeout);
+		
 		// Start the connection attempt.
 		bootstrap.connect(inetAddress);
 
