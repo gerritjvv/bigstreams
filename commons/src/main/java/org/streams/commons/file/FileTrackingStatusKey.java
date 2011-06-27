@@ -2,8 +2,6 @@ package org.streams.commons.file;
 
 import java.io.Serializable;
 
-import org.strams.commons.file.FileStatus;
-
 /**
  * Used to represent the composite key that FileTrackingStatus contains made up
  * of : logType + agentName + fileName

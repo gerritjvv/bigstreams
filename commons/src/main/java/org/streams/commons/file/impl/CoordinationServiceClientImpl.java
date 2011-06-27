@@ -1,12 +1,17 @@
 package org.streams.commons.file.impl;
 
+import java.io.IOException;
 import java.util.concurrent.Callable;
 
-import org.strams.commons.file.FileStatus;
+import org.apache.zookeeper.KeeperException;
 import org.streams.commons.file.CoordinationServiceClient;
+import org.streams.commons.file.FileStatus;
+import org.streams.commons.file.FileStatus.FileTrackingStatus;
+import org.streams.commons.file.FileStatus.FileTrackingStatus.Builder;
 import org.streams.commons.file.PostWriteAction;
 import org.streams.commons.file.SyncPointer;
 import org.streams.commons.zookeeper.ZLock;
+import org.streams.commons.zookeeper.ZStore;
 
 /**
  * 
@@ -21,10 +26,12 @@ import org.streams.commons.zookeeper.ZLock;
 public class CoordinationServiceClientImpl implements CoordinationServiceClient {
 
 	ZLock zlock;
-
-	public CoordinationServiceClientImpl(ZLock zlock) {
+    ZStore zstore;
+	
+	public CoordinationServiceClientImpl(ZLock zlock, ZStore zstore) {
 		super();
 		this.zlock = zlock;
+		this.zstore = zstore;
 	}
 
 	@Override
@@ -43,15 +50,15 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			final CoordinationServiceListener coordinationServiceListener)
 			throws Exception {
 
-		String lockId = fileStatus.getLogType() + fileStatus.getAgentName()
-				+ fileStatus.getFileName();
+		final String lockId = fileStatus.getAgentName() + fileStatus.getLogType()
+				+ fileStatus.getFileName().replace('/', '_');
 
 		zlock.withLock(lockId, new Callable<Boolean>() {
 
 			@Override
 			public Boolean call() throws Exception {
 
-				final SyncPointer pointer = getSyncPointer(fileStatus);
+				final SyncPointer pointer = getSyncPointer(lockId, fileStatus);
 
 				if (fileStatus.getFilePointer() == pointer.getFilePointer()) {
 
@@ -72,7 +79,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 									// streams is rolled back.
 									// -- ensures that pointer save and file
 									// output is atomic.
-									saveSyncPointer(pointer);
+									saveSyncPointer(lockId, pointer, fileStatus);
 								}
 
 							});
@@ -89,14 +96,24 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 	}
 
-	private void saveSyncPointer(SyncPointer pointer) {
-
+	private void saveSyncPointer(String key, SyncPointer pointer, FileStatus.FileTrackingStatus fileStatus) throws IOException, InterruptedException, KeeperException {
+		//update a new file status instance with the pointer data
+		Builder builder = FileStatus.FileTrackingStatus.newBuilder(fileStatus);
+		
+		builder.setFilePointer(pointer.getFilePointer());
+		builder.setLinePointer(pointer.getLinePointer());
+		
+		zstore.store(key, builder.build());
 	}
 
-	private final SyncPointer getSyncPointer(
-			FileStatus.FileTrackingStatus fileStatus) {
-
-		return null;
+	private final SyncPointer getSyncPointer(String key, FileStatus.FileTrackingStatus fileStatus) throws IOException, InterruptedException, KeeperException {
+		FileStatus.FileTrackingStatus status = (FileTrackingStatus) zstore.get(key,  FileStatus.FileTrackingStatus.newBuilder());
+		if(status == null){
+			//no status was saved before
+			status = fileStatus;
+		}
+		
+		return new SyncPointer(status);
 	}
 
 	public ZLock getZlock() {

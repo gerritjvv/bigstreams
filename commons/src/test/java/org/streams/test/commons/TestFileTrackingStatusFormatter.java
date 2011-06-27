@@ -9,8 +9,8 @@ import java.util.List;
 import junit.framework.TestCase;
 
 import org.junit.Test;
-import org.strams.commons.file.FileStatus;
-import org.strams.commons.file.FileStatus.FileTrackingStatus.Builder;
+import org.streams.commons.file.FileStatus;
+import org.streams.commons.file.FileStatus.FileTrackingStatus.Builder;
 import org.streams.commons.file.FileTrackingStatusFormatter;
 import org.streams.commons.file.FileTrackingStatusFormatter.FORMAT;
 

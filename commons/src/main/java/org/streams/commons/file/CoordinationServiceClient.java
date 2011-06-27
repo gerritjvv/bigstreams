@@ -1,6 +1,5 @@
 package org.streams.commons.file;
 
-import org.strams.commons.file.FileStatus;
 
 
 /**

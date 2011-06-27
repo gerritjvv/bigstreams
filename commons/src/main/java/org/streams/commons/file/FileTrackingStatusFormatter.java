@@ -11,8 +11,7 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
-import org.strams.commons.file.FileStatus;
-import org.strams.commons.file.FileStatus.FileTrackingStatus.Builder;
+import org.streams.commons.file.FileStatus.FileTrackingStatus.Builder;
 
 import com.googlecode.protobuf.format.JsonFormat;
 

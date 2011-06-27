@@ -2,8 +2,6 @@ package org.streams.commons.file;
 
 import java.io.Serializable;
 
-import org.strams.commons.file.FileStatus;
-
 /**
  * Represents a synchronisation pointer of an agent file in the
  * CoordinationServer.
