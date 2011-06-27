@@ -50,6 +50,12 @@ public class ClientConnectionResource {
 
 	long sendTimeOut = 20000L;
 
+	/**
+	 * The client connection resource usage an asynchronous protocol.
+	 * The exchanger used will timeout on exchange calls using this variable.
+	 */
+	long exchangeTimeout = 5000L;
+	
 	InetSocketAddress inetAddress;
 
 	final Timer timeoutTimer;
@@ -273,8 +279,12 @@ public class ClientConnectionResource {
 			try {
 				e.getChannel().close();
 			} finally {
+				try{
 				exchange.exchange(new ClientResourceMessage(500, msg, true,
-						error));
+						error), exchangeTimeout, TimeUnit.MILLISECONDS);
+				}catch(TimeoutException excp){
+					LOG.error("The calling object did not respond.");
+				}
 			}
 
 		}
@@ -311,7 +321,7 @@ public class ClientConnectionResource {
 				ctx.getChannel().close();
 			} finally {
 				exchange.exchange(new ClientResourceMessage(code, msg, false,
-						null));
+						null), exchangeTimeout, TimeUnit.MILLISECONDS);
 			}
 
 			
@@ -329,6 +339,14 @@ public class ClientConnectionResource {
 			super.writeComplete(ctx, e);
 		}
 
+	}
+
+	public long getExchangeTimeout() {
+		return exchangeTimeout;
+	}
+
+	public void setExchangeTimeout(long exchangeTimeout) {
+		this.exchangeTimeout = exchangeTimeout;
 	}
 
 }
