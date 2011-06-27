@@ -1,18 +1,12 @@
 package org.streams.commons.file.impl;
 
-import java.net.InetSocketAddress;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.Callable;
 
-import org.apache.log4j.Logger;
-import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
-import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
-import org.streams.commons.file.CoordinationException;
+import org.strams.commons.file.FileStatus;
 import org.streams.commons.file.CoordinationServiceClient;
-import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.PostWriteAction;
 import org.streams.commons.file.SyncPointer;
-import org.streams.commons.io.net.AddressSelector;
+import org.streams.commons.zookeeper.ZLock;
 
 /**
  * 
@@ -26,189 +20,91 @@ import org.streams.commons.io.net.AddressSelector;
  */
 public class CoordinationServiceClientImpl implements CoordinationServiceClient {
 
-	private static final Logger LOG = Logger
-			.getLogger(CoordinationServiceClientImpl.class);
+	ZLock zlock;
 
-	AddressSelector lockInetAddresses;
-	AddressSelector unlockInetAddresses;
-
-	final ExecutorService threadWorkerBossService;
-	final ExecutorService threadServiceWorkerService;
-	final ClientSocketChannelFactory socketChannelFactory;
-
-	AtomicReference<InetSocketAddress> stickyLockInetAddress = new AtomicReference<InetSocketAddress>();
-	AtomicReference<InetSocketAddress> stickyUnlockInetAddress = new AtomicReference<InetSocketAddress>();
-
-	public CoordinationServiceClientImpl(AddressSelector lockInetAddress,
-			AddressSelector unlockInetAddress) {
+	public CoordinationServiceClientImpl(ZLock zlock) {
 		super();
-		this.lockInetAddresses = lockInetAddress;
-		this.unlockInetAddresses = unlockInetAddress;
-
-		threadWorkerBossService = Executors.newCachedThreadPool();
-		threadServiceWorkerService = Executors.newCachedThreadPool();
-
-		socketChannelFactory = new NioClientSocketChannelFactory(
-				threadWorkerBossService, threadServiceWorkerService);
-
-		LOG.info("Using coordination lock address : " + lockInetAddress);
-		LOG.info("Using coordination un lock address : " + unlockInetAddress);
-
-		stickyLockInetAddress.set(lockInetAddress.nextAddress());
-		stickyUnlockInetAddress.set(unlockInetAddress.nextAddress());
+		this.zlock = zlock;
 	}
 
 	@Override
-	public SyncPointer getAndLock(FileTrackingStatus file)
-			throws CoordinationException {
-
-		SyncPointer pointer = null;
-
-		Throwable error = null;
-
-		InetSocketAddress lockInetAddress = stickyLockInetAddress.get();
-
-		AddressSelector addresses = lockInetAddresses;
-
-		ClientConnectionResource conn = new ClientConnectionResource(
-				socketChannelFactory);
-
-		// get next coordination service address
-		// and loop while this address != null and an exception was thrown
-		do {
-
-			try {
-
-				if(LOG.isDebugEnabled()){
-					LOG.debug("Using address " + lockInetAddress + " of "
-						+ addresses);
-				}
-				conn.init(lockInetAddress);
-				pointer = conn.sendLock(file);
-
-				// --- IMPORTANT set error to null to not cause an exception
-				// below the loop
-				error = null;
-				// at this point if not exception was thrown we break;
-
-				break;
-			} catch (Throwable t) {
-				// check for special case on InterruptedException
-				if (t instanceof InterruptedException) {
-					LOG.warn("Process interrupted");
-					Thread.interrupted();
-					return null;
-				}
-
-				// we do not want to modify the globally passed addresses so we
-				// clone
-				// we could check to clone only once, but seeing that this is
-				// fail-over the overhead would not be that bit
-				addresses = addresses.clone().removeAddress(lockInetAddress);
-
-				LOG.warn("Failing address " + lockInetAddress
-						+ " is thread interrupted: " + Thread.interrupted());
-
-				error = t;
-			}
-		} while (((lockInetAddress = addresses.nextAddress()) != null));
-
-		if (lockInetAddress == null) {
-			stickyLockInetAddress.set(lockInetAddresses.nextAddress());
-		} else {
-			stickyLockInetAddress.set(lockInetAddress);
-		}
-
-		// check for error
-		if (error != null) {
-			throw new CoordinationException(error);
-		}
-
-		return pointer;
-
-	}
-
-	@Override
-	public void saveAndFreeLock(SyncPointer syncPointer) {
-
-		boolean ret = false;
-
-		Throwable error = null;
-
-		InetSocketAddress unlockInetAddress = stickyUnlockInetAddress.get();
-		AddressSelector addresses = unlockInetAddresses;
-
-		ClientConnectionResource conn = new ClientConnectionResource(
-				socketChannelFactory);
-
-		// get next coordination service address
-		// and loop while this address != null and an exception was thrown
-		do {
-
-			if(LOG.isDebugEnabled()){
-				LOG.info("Using address " + unlockInetAddress);
-			}
-			
-			try {
-
-				conn.init(unlockInetAddress);
-				ret = conn.sendUnlock(syncPointer);
-				// --- IMPORTANT set error to null to not cause an exception
-				// below the loop
-				error = null;
-
-				// at this point if not exception was thrown we break;
-				break;
-			} catch (Throwable t) {
-				// check for special case on InterruptedException
-				if (t instanceof InterruptedException) {
-					LOG.warn("Process interrupted");
-					Thread.interrupted();
-					return;
-				}
-
-				// we do not want to modify the globally passed addresses so we
-				// clone
-				// we could check to clone only once, but seeing that this is
-				// fail-over the overhead would not be that bit
-				addresses = addresses.clone().removeAddress(unlockInetAddress);
-
-				LOG.warn("Failing address " + unlockInetAddress);
-
-				error = t;
-			}
-		} while ((unlockInetAddress = addresses.nextAddress()) != null);
-
-		if (unlockInetAddress == null) {
-			stickyUnlockInetAddress.set(unlockInetAddresses.nextAddress());
-		} else {
-			stickyUnlockInetAddress.set(unlockInetAddress);
-		}
-
-		// check for error
-		if (error != null) {
-			throw new CoordinationException(error);
-		}
-
-		if (!ret) {
-			throw new CoordinationException("Unable to unlock file");
-		}
+	public void destroy() {
 
 	}
 
 	/**
-	 * Shutdown all thread pools held by this client service
+	 * (1)WithLock for logType agentName fileName (2) Get SyncPointer for file
+	 * (3) If fileStatus.pointer == SyncPointer.pointer (3).1 Call inSync, with
+	 * PostWriteAction to save SyncPointer once written (4) Else (4).1 Call
+	 * syncConflict
 	 */
-	public void destroy() {
+	@Override
+	public void withLock(final FileStatus.FileTrackingStatus fileStatus,
+			final CoordinationServiceListener coordinationServiceListener)
+			throws Exception {
 
-		if (!threadWorkerBossService.isShutdown()) {
-			threadWorkerBossService.shutdownNow();
-		}
+		String lockId = fileStatus.getLogType() + fileStatus.getAgentName()
+				+ fileStatus.getFileName();
 
-		if (!threadServiceWorkerService.isShutdown()) {
-			threadServiceWorkerService.shutdownNow();
-		}
+		zlock.withLock(lockId, new Callable<Boolean>() {
 
+			@Override
+			public Boolean call() throws Exception {
+
+				final SyncPointer pointer = getSyncPointer(fileStatus);
+
+				if (fileStatus.getFilePointer() == pointer.getFilePointer()) {
+
+					// we call the inSync method, and PostWriteAction, the
+					// listener should write out
+					// the client data and then call the PostWriteAction
+					coordinationServiceListener.inSync(fileStatus, pointer,
+							new PostWriteAction() {
+
+								@Override
+								public void run(int bytesWritten)
+										throws Exception {
+									pointer.incFilePointer(bytesWritten);
+									pointer.setLinePointer(fileStatus
+											.getLinePointer());
+
+									// save pointer -- on exception the output
+									// streams is rolled back.
+									// -- ensures that pointer save and file
+									// output is atomic.
+									saveSyncPointer(pointer);
+								}
+
+							});
+
+				} else {
+					coordinationServiceListener.syncConflict(fileStatus,
+							pointer);
+				}
+
+				return null;
+			}
+
+		});
+
+	}
+
+	private void saveSyncPointer(SyncPointer pointer) {
+
+	}
+
+	private final SyncPointer getSyncPointer(
+			FileStatus.FileTrackingStatus fileStatus) {
+
+		return null;
+	}
+
+	public ZLock getZlock() {
+		return zlock;
+	}
+
+	public void setZlock(ZLock zlock) {
+		this.zlock = zlock;
 	}
 
 }

@@ -2,6 +2,8 @@ package org.streams.commons.file;
 
 import java.io.Serializable;
 
+import org.strams.commons.file.FileStatus;
+
 /**
  * Used to represent the composite key that FileTrackingStatus contains made up
  * of : logType + agentName + fileName
@@ -30,7 +32,7 @@ public class FileTrackingStatusKey implements Serializable,
 		this.fileName = fileName.trim();
 	}
 
-	public FileTrackingStatusKey(FileTrackingStatus status) {
+	public FileTrackingStatusKey(FileStatus.FileTrackingStatus status) {
 		this.agentName = status.getAgentName().trim();
 		this.logType = status.getLogType().trim();
 		this.fileName = status.getFileName().trim();

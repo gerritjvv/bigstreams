@@ -1,0 +1,21 @@
+package org.strams.commons.file;
+
+message FileTrackingStatus{
+ 
+    optional int64 date = 1;
+    
+    optional int64 filePointer = 2;
+    optional int64 fileSize = 3;
+    
+    optional int64 lastModifiedTime = 4;
+    
+    optional int32 linePointer = 5;
+    
+    optional string agentName = 6;
+    optional string fileName = 7;
+    optional string logType = 8;
+
+    
+    optional int64 fileDate = 9;
+    
+ }

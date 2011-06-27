@@ -2,6 +2,8 @@ package org.streams.commons.file;
 
 import java.io.Serializable;
 
+import org.strams.commons.file.FileStatus;
+
 /**
  * Represents a synchronisation pointer of an agent file in the
  * CoordinationServer.
@@ -27,7 +29,7 @@ public class SyncPointer implements Comparable<SyncPointer>, Serializable {
 	public SyncPointer() {
 	}
 
-	public SyncPointer(FileTrackingStatus status) {
+	public SyncPointer(FileStatus.FileTrackingStatus status) {
 		this.filePointer = status.getFilePointer();
 		this.linePointer = status.getLinePointer();
 		this.fileSize = status.getFileSize();

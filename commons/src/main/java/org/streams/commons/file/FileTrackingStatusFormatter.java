@@ -11,6 +11,10 @@ import org.codehaus.jackson.JsonParseException;
 import org.codehaus.jackson.map.JsonMappingException;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.codehaus.jackson.type.TypeReference;
+import org.strams.commons.file.FileStatus;
+import org.strams.commons.file.FileStatus.FileTrackingStatus.Builder;
+
+import com.googlecode.protobuf.format.JsonFormat;
 
 /**
  * Encapsulates the logic of writing a FileTracingStatus instance to JSON or
@@ -38,17 +42,29 @@ public class FileTrackingStatusFormatter {
 	 * @throws IOException
 	 */
 	@SuppressWarnings("unchecked")
-	public Collection<FileTrackingStatus> readList(FORMAT format, Reader reader)
-			throws JsonParseException, JsonMappingException, IOException {
+	public Collection<FileStatus.FileTrackingStatus> readList(FORMAT format,
+			Reader reader) throws JsonParseException, JsonMappingException,
+			IOException {
 
-		Collection<FileTrackingStatus> coll = null;
+		Collection<FileStatus.FileTrackingStatus> coll = null;
 
 		if (format.equals(FORMAT.JSON)) {
-			coll = (Collection<FileTrackingStatus>) mapper.readValue(reader,
-					new TypeReference<Collection<FileTrackingStatus>>() { });
+			Collection<String> strcoll = (Collection<String>) mapper.readValue(
+					reader, new TypeReference<Collection<String>>() {
+					});
+			coll = new ArrayList<FileStatus.FileTrackingStatus>();
+
+
+			
+			for (String str : strcoll) {
+				Builder builder = FileStatus.FileTrackingStatus.newBuilder();
+				JsonFormat.merge(str, builder);
+				coll.add(builder.build());
+			}
+
 		} else {
 			BufferedReader buff = new BufferedReader(reader);
-			coll = new ArrayList<FileTrackingStatus>();
+			coll = new ArrayList<FileStatus.FileTrackingStatus>();
 
 			String line = null;
 			while ((line = buff.readLine()) != null) {
@@ -60,14 +76,19 @@ public class FileTrackingStatusFormatter {
 		return coll;
 	}
 
-	public Collection<FileTrackingStatus> writeList(FORMAT format, Collection<FileTrackingStatus> coll, Writer writer)
+	public Collection<FileStatus.FileTrackingStatus> writeList(FORMAT format,
+			Collection<FileStatus.FileTrackingStatus> coll, Writer writer)
 			throws JsonParseException, JsonMappingException, IOException {
 
-
 		if (format.equals(FORMAT.JSON)) {
-			mapper.writeValue(writer, coll);
+			Collection<String> strColl = new ArrayList<String>();
+			for (FileStatus.FileTrackingStatus file : coll) {
+				strColl.add(JsonFormat.printToString(file));
+			}
+
+			mapper.writeValue(writer, strColl);
 		} else {
-			for(FileTrackingStatus file: coll){
+			for (FileStatus.FileTrackingStatus file : coll) {
 				String line = write(FORMAT.TXT, file);
 				writer.write(line + "\n");
 			}
@@ -75,14 +96,14 @@ public class FileTrackingStatusFormatter {
 
 		return coll;
 	}
-	
-	
-	public FileTrackingStatus read(FORMAT format, String str) {
-		FileTrackingStatus file = null;
+
+	public FileStatus.FileTrackingStatus read(FORMAT format, String str) {
+		FileStatus.FileTrackingStatus file = null;
 
 		if (format.equals(FORMAT.JSON)) {
 			try {
-				file = mapper.readValue(str, FileTrackingStatus.class);
+				file = mapper.readValue(str,
+						FileStatus.FileTrackingStatus.class);
 			} catch (Exception excp) {
 				RuntimeException rte = new RuntimeException(excp.toString(),
 						excp);
@@ -103,12 +124,12 @@ public class FileTrackingStatusFormatter {
 	 * @param file
 	 * @return
 	 */
-	public String write(FORMAT format, FileTrackingStatus file) {
+	public String write(FORMAT format, FileStatus.FileTrackingStatus file) {
 		String ret = null;
 
 		if (format.equals(FORMAT.JSON)) {
 			try {
-				ret = mapper.writeValueAsString(file);
+				ret = JsonFormat.printToString(file);
 			} catch (Exception excp) {
 				RuntimeException rte = new RuntimeException(excp.toString(),
 						excp);
@@ -128,16 +149,16 @@ public class FileTrackingStatusFormatter {
 	 * @param str
 	 * @return
 	 */
-	private static final FileTrackingStatus readTXT(String str) {
+	private static final FileStatus.FileTrackingStatus readTXT(String str) {
 		// --- This is ugly and done fast we need to revise this to provide a
 		// more elegant implementation.
 		// --- Again time constraints prevail :(
 
-		FileTrackingStatus file = null;
+		Builder file = null;
 
 		String[] split = str.split("\t");
 		if (split != null && split.length > 0) {
-			file = new FileTrackingStatus();
+			file = FileStatus.FileTrackingStatus.newBuilder();
 
 			file.setFileSize(Long.valueOf(split[0]));
 			file.setLogType(split[1]);
@@ -146,7 +167,7 @@ public class FileTrackingStatusFormatter {
 			file.setAgentName(split[4]);
 			file.setFileName(split[5]);
 		}
-		return file;
+		return file.build();
 	}
 
 	/**
@@ -155,12 +176,13 @@ public class FileTrackingStatusFormatter {
 	 * @param file
 	 * @return
 	 */
-	private static final String toTXT(FileTrackingStatus file) {
+	private static final String toTXT(FileStatus.FileTrackingStatus file) {
 		// --- This is ugly and done fast we need to revise this to provide a
 		// more elegant implementation.
 		// --- Again time constraints prevail :(
 
-		return file.getFileSize() + "\t" + file.getLogType() + "\t" 
-			+ file.getFilePointer()  + "\t" + file.getLinePointer() + "\t" + file.getAgentName() + "\t" + file.getFileName();
+		return file.getFileSize() + "\t" + file.getLogType() + "\t"
+				+ file.getFilePointer() + "\t" + file.getLinePointer() + "\t"
+				+ file.getAgentName() + "\t" + file.getFileName();
 	}
 }

@@ -27,8 +27,8 @@ import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.WriteCompletionEvent;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.util.Timer;
+import org.strams.commons.file.FileStatus;
 import org.streams.commons.file.CoordinationException;
-import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
 import org.streams.commons.util.HashedWheelTimerFactory;
 
@@ -102,7 +102,7 @@ public class ClientConnectionResource {
 		}
 	}
 
-	public SyncPointer sendLock(FileTrackingStatus status)
+	public SyncPointer sendLock(FileStatus.FileTrackingStatus status)
 			throws CoordinationException {
 
 		try {

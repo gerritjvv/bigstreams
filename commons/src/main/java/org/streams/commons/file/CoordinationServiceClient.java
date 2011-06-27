@@ -1,5 +1,8 @@
 package org.streams.commons.file;
 
+import org.strams.commons.file.FileStatus;
+
+
 /**
  * 
  * An abstract of idea of coordination sending bytes from an agent to a cluster of collectors.<br/>
@@ -8,26 +11,25 @@ package org.streams.commons.file;
  */
 public interface CoordinationServiceClient {
 
-	/**
-	 * This method will not return unless a lock can be obtained for the agent, log type, file name group.<br/>
-	 * This class will contact with the running coordination service, get the sync pointer and lock it.<br/>
-	 * If a sync pointer is already locked a CoordinationException is thrown.<br/>
-	 * @param file
-	 */
-	SyncPointer getAndLock(FileTrackingStatus file) throws CoordinationException;
-	
-	/**
-	 * This method will free the lock held by the current thread for the agent filename pair
-	 * @param agent
-	 * @param fileName
-	 */
-	void saveAndFreeLock(SyncPointer syncPointer);
-	
 	
 	/**
 	 * Clean any external resources
 	 */
 	void destroy();
+	
+	void withLock(FileStatus.FileTrackingStatus fileStatus,
+			CoordinationServiceListener coordinationServiceListener) throws Exception;
+	
+	public static interface CoordinationServiceListener{
+
+		void inSync(FileStatus.FileTrackingStatus file, SyncPointer pointer, PostWriteAction writeAction) throws Exception;
+
+		void syncConflict(FileStatus.FileTrackingStatus file, SyncPointer pointer) throws Exception;
+		
+		
+	}
+
+
 	
 	
 }
