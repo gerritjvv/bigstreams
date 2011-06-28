@@ -14,11 +14,11 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.GzipCodec;
 import org.junit.Test;
 import org.streams.collector.mon.impl.CollectorStatusImpl;
-import org.streams.collector.write.RollBackOutputStream;
 import org.streams.collector.write.impl.CompressedStreamCreator;
 import org.streams.collector.write.impl.TextFileStreamCreator;
 import org.streams.commons.compression.CompressionPool;
 import org.streams.commons.compression.impl.CompressionPoolImpl;
+import org.streams.commons.file.RollBackOutputStream;
 
 public class TestRollbackOutputStream extends TestCase {
 

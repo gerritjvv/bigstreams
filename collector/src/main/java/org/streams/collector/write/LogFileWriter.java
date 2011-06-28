@@ -2,7 +2,9 @@ package org.streams.collector.write;
 
 import java.io.InputStream;
 
-import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileStatus;
+import org.streams.commons.file.PostWriteAction;
+import org.streams.commons.file.WriterException;
 
 /**
  * 
@@ -17,7 +19,7 @@ public interface LogFileWriter {
 	 * @return the number of bytes written
 	 * @throws WriterException
 	 */
-	int write(FileTrackingStatus fileStatus, InputStream input)
+	int write(FileStatus.FileTrackingStatus fileStatus, InputStream input)
 			throws WriterException, InterruptedException;
 
 	/**
@@ -28,7 +30,7 @@ public interface LogFileWriter {
 	 * @return the number of bytes written
 	 * @throws WriterException
 	 */
-	int write(FileTrackingStatus fileStatus, InputStream input,
+	int write(FileStatus.FileTrackingStatus fileStatus, InputStream input,
 			PostWriteAction postWriteAction) throws WriterException, InterruptedException;
 
 	void close() throws WriterException;

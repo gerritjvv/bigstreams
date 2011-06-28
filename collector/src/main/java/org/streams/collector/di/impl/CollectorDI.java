@@ -50,6 +50,8 @@ import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricChannel;
 import org.streams.commons.metrics.impl.MetricsAppService;
+import org.streams.commons.zookeeper.ZLock;
+import org.streams.commons.zookeeper.ZStore;
 import org.streams.coordination.cli.startup.service.impl.CollectorServerService;
 
 @Configuration
@@ -103,8 +105,8 @@ public class CollectorDI {
 
 		CollectorServerImpl server = new CollectorServerImpl(port,
 				beanFactory.getBean(LogWriterHandler.class),
-				beanFactory.getBean(CoordinationServiceClient.class),
 				configuration, beanFactory.getBean(MetricChannel.class));
+		
 
 		server.setReadTimeout(configuration.getLong(
 				CollectorProperties.WRITER.COLLECTOR_CONNECTION_READ_TIMEOUT
@@ -143,16 +145,20 @@ public class CollectorDI {
 	}
 
 	@Bean
-	public CoordinationServiceClient coordinationServiceClient() {
-
-		CoordinationAddresses coordinationAddresses = beanFactory
-				.getBean(CoordinationAddresses.class);
-
-		return new CoordinationServiceClientImpl(
-				coordinationAddresses.getLockAddressSelector(),
-				coordinationAddresses.getUnlockAddressSelector());
+	public CoordinationServiceClient coordinationServiceClient(){
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+		.getBean(org.apache.commons.configuration.Configuration.class);
+		
+		String hosts = configuration.getString(CollectorProperties.WRITER.COORDINATION_HOST
+				.toString());
+		String group = configuration.getString(CollectorProperties.WRITER.COORDINATION_GROUP
+				.toString(), CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue().toString());
+		
+		long timeout = 10000;
+		
+		return new CoordinationServiceClientImpl(new ZLock(hosts, timeout), new ZStore("/coordination/" + group, hosts, timeout));
 	}
-
+	
 	/**
 	 * Configure and start the CoordinationAddresses with the lock and unlock
 	 * addresses

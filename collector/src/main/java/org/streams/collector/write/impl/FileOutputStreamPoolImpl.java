@@ -2,6 +2,7 @@ package org.streams.collector.write.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,9 +16,9 @@ import org.streams.collector.mon.CollectorStatus;
 import org.streams.collector.write.FileOutputStreamPool;
 import org.streams.collector.write.LogRollover;
 import org.streams.collector.write.LogRolloverCheck;
-import org.streams.collector.write.RollBackOutputStream;
 import org.streams.commons.compression.CompressionPool;
 import org.streams.commons.compression.CompressionPoolFactory;
+import org.streams.commons.file.RollBackOutputStream;
 import org.streams.commons.util.concurrent.KeyLock;
 
 /**
@@ -54,7 +55,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	/**
 	 * Uses to monitor the files that have not been released yet.
 	 */
-	final Set<File> filesExternalLockRequest = new ConcurrentSkipListSet<File>();
+	final Set<String> filesExternalLockRequest = new ConcurrentSkipListSet<String>();
 	
 	/**
 	 * each tmie a file output stream is created an entry is added here.
@@ -259,7 +260,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		//this way we know the user has an external request on the output streams
 		//i.e. although the timeout might expire if the collector is slowing down in writing
 		//because of load it should not timeout the file.
-		filesExternalLockRequest.add(file);
+		filesExternalLockRequest.add(file.getAbsolutePath());
 		fileUpdateTimes.put(file, System.currentTimeMillis());
 
 		return out;
@@ -300,7 +301,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			// the time in milliseconds when the file was created
 			Long creationTime = fileCreationTimes.get(file);
 			// the time in milliseconds when the file was last updated
-			Long updateTime = (filesExternalLockRequest.contains(file)) ? System.currentTimeMillis() : fileUpdateTimes.get(file);
+			Long updateTime = (filesExternalLockRequest.contains(file.getAbsolutePath())) ? System.currentTimeMillis() : fileUpdateTimes.get(file);
 			
 			boolean shouldRollover = false;
 			try{
@@ -314,6 +315,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			if (shouldRollover) {
 				boolean lockAcquired;
 
+				LOG.info("Rollover: " + file.getAbsolutePath() + " locked files: " + Arrays.asList(filesExternalLockRequest.toArray()));
 				try {
 					// this try lock is still good for inactivity checks also
 					// because an inactive file will not have any locks.
@@ -355,9 +357,10 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		keyLock.releaseLock(key);
 
 		File file = openFiles.get(key);
+		
 		if (file != null){
 			fileUpdateTimes.put(file, System.currentTimeMillis());
-			filesExternalLockRequest.remove(file);
+			filesExternalLockRequest.remove(file.getAbsolutePath());
 		}
 
 	}

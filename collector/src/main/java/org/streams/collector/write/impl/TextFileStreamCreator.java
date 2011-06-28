@@ -9,7 +9,7 @@ import java.nio.channels.FileLock;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.log4j.Logger;
-import org.streams.collector.write.StreamCreator;
+import org.streams.commons.file.StreamCreator;
 
 /**
  * 

@@ -14,10 +14,10 @@ import org.streams.collector.write.FileOutputStreamPoolFactory;
 import org.streams.collector.write.LogFileNameExtractor;
 import org.streams.collector.write.LogFileWriter;
 import org.streams.collector.write.LogRolloverCheck;
-import org.streams.collector.write.PostWriteAction;
-import org.streams.collector.write.RollBackOutputStream;
-import org.streams.collector.write.WriterException;
-import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileStatus;
+import org.streams.commons.file.PostWriteAction;
+import org.streams.commons.file.RollBackOutputStream;
+import org.streams.commons.file.WriterException;
 
 /**
  * This class has the following aims:<br/>
@@ -92,7 +92,7 @@ public class LocalLogFileWriter implements LogFileWriter {
 		return baseDir;
 	}
 
-	public int write(FileTrackingStatus fileStatus, InputStream input)
+	public int write(FileStatus.FileTrackingStatus fileStatus, InputStream input)
 			throws WriterException, InterruptedException {
 		return write(fileStatus, input, null);
 	}
@@ -103,7 +103,7 @@ public class LocalLogFileWriter implements LogFileWriter {
 	 * @throws InterruptedException 
 	 */
 	@Override
-	public int write(FileTrackingStatus fileStatus, InputStream input,
+	public int write(FileStatus.FileTrackingStatus fileStatus, InputStream input,
 			PostWriteAction postWriteAction) throws WriterException, InterruptedException {
 
 		String key = logFileNameExtractor.getFileName(fileStatus);

@@ -47,12 +47,10 @@ public class CollectorServerImpl implements CollectorServer {
 	Configuration conf;
 
 	public CollectorServerImpl(int port, ChannelHandler channelHandler,
-			CoordinationServiceClient coordinationServiceClient,
 			Configuration conf, ChannelHandler metricsHandler) {
 		super();
 		this.port = port;
 		this.channelHandler = channelHandler;
-		this.coordinationServiceClient = coordinationServiceClient;
 		this.conf = conf;
 		this.metricsHandler = metricsHandler;
 	}
@@ -181,10 +179,6 @@ public class CollectorServerImpl implements CollectorServer {
 		}
 
 		HashedWheelTimerFactory.shutdown();
-
-		if (coordinationServiceClient != null) {
-			coordinationServiceClient.destroy();
-		}
 
 	}
 

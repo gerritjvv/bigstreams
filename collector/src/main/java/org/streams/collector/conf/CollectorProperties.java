@@ -25,6 +25,8 @@ public interface CollectorProperties {
 		
 		OPEN_FILE_LIMIT("openfile.limit", 30000L),
 		
+		COORDINATION_GROUP("coordination.group", "default"),
+		
 		COORDINATION_LOCK_PORT ("coordination.lock.port", 5420),
 		COORDINATION_UNLOCK_PORT ("coordination.unlock.port", 5430),
 		COORDINATION_HOST ("coordination.host", "localhost"),

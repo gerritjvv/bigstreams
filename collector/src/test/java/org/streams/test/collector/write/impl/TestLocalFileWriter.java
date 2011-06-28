@@ -9,7 +9,6 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.util.Date;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -25,11 +24,11 @@ import org.apache.hadoop.io.compress.GzipCodec;
 import org.apache.log4j.Logger;
 import org.streams.collector.main.Bootstrap;
 import org.streams.collector.write.LogFileWriter;
-import org.streams.collector.write.PostWriteAction;
 import org.streams.collector.write.impl.LocalLogFileWriter;
 import org.streams.commons.cli.CommandLineProcessorFactory;
 import org.streams.commons.file.CoordinationException;
-import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileStatus;
+import org.streams.commons.file.PostWriteAction;
 
 /**
  * Tests the LocalLogFileWriter features
@@ -90,9 +89,14 @@ public class TestLocalFileWriter extends TestCase {
 
 				public Boolean call() throws Exception {
 
-					FileTrackingStatus status = new FileTrackingStatus(new Date(), 0, file
-							.length(), 0, "agent1", file.getName(), "type1", new Date(), 
-							1L);
+					FileStatus.FileTrackingStatus status = FileStatus.FileTrackingStatus.newBuilder()
+						.setFileDate(System.currentTimeMillis())
+						.setDate(System.currentTimeMillis())
+						.setAgentName("agent1")
+						.setFileName(file.getName())
+						.setFileSize(file.length())
+						.setLogType("type1").build();
+						
 
 					BufferedReader reader = new BufferedReader(new FileReader(
 							file));
@@ -204,8 +208,16 @@ public class TestLocalFileWriter extends TestCase {
 				@Override
 				public Boolean call() throws Exception {
 
-					FileTrackingStatus status = new FileTrackingStatus(new Date(), 0, file
-							.length(), 0, "agent1", file.getName(), "type1", new Date(), 1L);
+					
+					FileStatus.FileTrackingStatus status = FileStatus.FileTrackingStatus.newBuilder()
+					.setFileDate(System.currentTimeMillis())
+					.setDate(System.currentTimeMillis())
+					.setAgentName("agent1")
+					.setFileName(file.getName())
+					.setFileSize(file.length())
+					.setLogType("type1").build();
+					
+					
 					BufferedReader reader = new BufferedReader(new FileReader(
 							file));
 					try {
@@ -341,9 +353,14 @@ public class TestLocalFileWriter extends TestCase {
 		// to the writer
 		BufferedReader reader = new BufferedReader(new FileReader(testFile));
 		String line = null;
-		FileTrackingStatus fileStatus = new FileTrackingStatus(new Date(), 0L,
-				testFile.length(), 0, "agent1", testFile.getAbsolutePath(),
-				"type1", new Date(), 1L);
+		FileStatus.FileTrackingStatus fileStatus = FileStatus.FileTrackingStatus.newBuilder()
+		.setFileDate(System.currentTimeMillis())
+		.setDate(System.currentTimeMillis())
+		.setAgentName("agent1")
+		.setFileName(testFile.getAbsolutePath())
+		.setFileSize(testFile.length())
+		.setLogType("type1").build();
+		
 		try {
 			writer.init();
 

@@ -12,8 +12,8 @@ import org.apache.hadoop.io.compress.CompressionInputStream;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.hadoop.io.compress.Compressor;
 import org.apache.hadoop.io.compress.Decompressor;
-import org.streams.collector.write.StreamCreator;
 import org.streams.commons.compression.CompressionPool;
+import org.streams.commons.file.StreamCreator;
 
 /**
  * 

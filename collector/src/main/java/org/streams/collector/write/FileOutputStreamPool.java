@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.streams.commons.file.RollBackOutputStream;
 
 /**
  * 

@@ -8,7 +8,7 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.beanutils.BeanUtils;
 import org.streams.collector.write.LogFileNameExtractor;
-import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileStatus;
 
 /**
  * This implementation will write the log files per date hour, plus an added key
@@ -39,7 +39,7 @@ public class DateHourFileNameExtractor implements LogFileNameExtractor {
 	}
 
 	@Override
-	public String getFileName(FileTrackingStatus status) {
+	public String getFileName(FileStatus.FileTrackingStatus status) {
 
 		StringBuilder buff = new StringBuilder();
 
@@ -75,8 +75,8 @@ public class DateHourFileNameExtractor implements LogFileNameExtractor {
 			// if the original log files are not date formated use the
 			// collection date.
 			Date date = new Date(System.currentTimeMillis());
-			//we must clone DateFormat for thread safety.
-			dateTime = ((DateFormat)dateTimeFormat.clone()).format(date);
+			// we must clone DateFormat for thread safety.
+			dateTime = ((DateFormat) dateTimeFormat.clone()).format(date);
 		}
 
 		return dateTime;

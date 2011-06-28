@@ -2,7 +2,7 @@ package org.streams.collector.server.impl;
 
 import java.io.DataInputStream;
 import java.io.IOException;
-import java.util.Date;
+import java.io.InputStream;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -25,12 +25,13 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelUpstreamHandler;
 import org.streams.collector.mon.CollectorStatus;
 import org.streams.collector.write.LogFileWriter;
-import org.streams.collector.write.PostWriteAction;
 import org.streams.commons.compression.CompressionPool;
 import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.file.CoordinationException;
 import org.streams.commons.file.CoordinationServiceClient;
-import org.streams.commons.file.FileTrackingStatus;
+import org.streams.commons.file.FileStatus;
+import org.streams.commons.file.FileStatus.FileTrackingStatus;
+import org.streams.commons.file.PostWriteAction;
 import org.streams.commons.file.SyncPointer;
 import org.streams.commons.io.Header;
 import org.streams.commons.io.NetworkCodes;
@@ -126,6 +127,13 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 		super.channelClosed(ctx, e);
 	}
 
+	/**
+	 * On Message: (1) get channelBuffer (2) create Data Input Stream (3) Read
+	 * Header data (4) Get Codec (5) Build FileTrackingStatus (6) Aquire Local
+	 * Lock (7) withLock (7).1 If Sync (7).1.a Write to file (7).1.b write 200
+	 * to buffer (7).2 If Sync Conflict (7).2.a Write Conflict to buffer
+	 * (8)write to Agent (9)Close Input Streams (10)Release Local Lock
+	 */
 	@Override
 	public void messageReceived(ChannelHandlerContext ctx, MessageEvent e)
 			throws Exception {
@@ -147,10 +155,8 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 		final String agentName = header.getHost();
 		final String fileName = header.getFileName();
 		final String logType = header.getLogType();
-		final FileTrackingStatus fileStatus = new FileTrackingStatus(
-				new Date(), header.getFilePointer(), header.getFileSize(),
-				header.getLinePointer(), agentName, fileName, logType,
-				header.getFileDate(), System.currentTimeMillis());
+
+		final FileStatus.FileTrackingStatus fileStatus = buildFileStatus(header);
 
 		final AgentSession agentSession = (AgentSession) ctx.getAttachment();
 		agentSession.setMessageReceived();
@@ -158,54 +164,11 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 		agentSession.setFileName(fileName);
 		agentSession.setLogType(logType);
 
-		// save the session to the context
-		ctx.setAttachment(agentSession);
-
-		ChannelFuture future = null;
-		int bytesWritten = -1;
-
-		CompressionPool pool = compressionPoolFactory.get(codec);
-
-		CompressionInputStream compressInput = pool.create(datInput,
-				waitForCompressionResource, TimeUnit.MILLISECONDS);
-		boolean compressInputWasReleased = false;
-
-		if (compressInput == null) {
-			throw new IOException("No compression resource available for "
-					+ codec);
-		}
-
-		final String localKey = fileStatus.getAgentName()
-				+ fileStatus.getLogType() + fileStatus.getFileName();
+		final String localKey = agentName + logType + fileName;
 		boolean localLockAcquired = false;
 
 		try {
 
-			// --------------------- Check Coordination parameters
-			// --------------------- that is that the agent is not
-			// sending
-			// duplicate
-			// data
-
-			// We synchronise here on agent + log type + fileName to
-			// prevent any
-			// agent sending more than one request per file at a time.
-			// during normal expected operation there will only ever be
-			// one
-			// agent
-			// message per agent + fileName
-			// but the collector has to guard against this possible
-			// event.
-
-			// SYNC LOCALLY
-			// this local sync will cause possible faulty sends to be
-			// caught but
-			// will also
-			// Synchronise concurrent calls from agents for the same
-			// file.
-			// This concurrentness is not allowed but offers a gracefull
-			// exit as
-			// any call out of sync will get a resync exception.
 			localLockAcquired = LogWriterHandler.agentFileLocalLock
 					.acquireLock(localKey, 2000L);
 
@@ -222,128 +185,55 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 								+ fileStatus.getFileName());
 			}
 
+			final ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
+
 			// SYNC GLOBALLY
-			final SyncPointer syncPointer = coordinationService
-					.getAndLock(fileStatus);
+			coordinationService
+					.withLock(
+							fileStatus,
+							new CoordinationServiceClient.CoordinationServiceListener() {
+								@Override
+								public void syncConflict(
+										FileTrackingStatus file,
+										SyncPointer pointer) throws Exception {
 
-			if (syncPointer == null) {
-				collectorStatus.setStatus(
-						CollectorStatus.STATUS.COORDINATION_ERROR,
-						"File already Locked ERROR " + fileName);
-				throw new CoordinationException("File already locked "
-						+ fileName);
-			}
+									LOG.info("File pointer Conflict detected: agent "
+											+ header.getHost()
+											+ " file: "
+											+ header.getFileName()
+											+ " agentPointer: "
+											+ header.getFilePointer()
+											+ " collectorPointer: " + pointer);
 
-			// register to session that the coordination lock could be acquired
-			agentSession.setAcquiredCoordinationLock();
+									buffer.writeInt(NetworkCodes.CODE.SYNC_CONFLICT
+											.num());
+									buffer.writeLong(pointer.getFilePointer());
+								}
 
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("LOCK(" + syncPointer.getLockId() + ")");
-			}
+								@Override
+								public void inSync(FileTrackingStatus file,
+										final SyncPointer pointer,
+										PostWriteAction writeAction)
+										throws Exception {
 
-			final long syncFilePointer = syncPointer.getFilePointer();
-			final long filePointer = fileStatus.getFilePointer();
+									// write the data from agent to file
+									writeToFile(codec, datInput, agentSession,
+											pointer, file, writeAction);
 
-			ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
+									buffer.writeInt(200);
 
-			try { // try finally for pointer lock release
+								}
 
-				if (syncFilePointer == filePointer) {
+							});
 
-					try {
-						// Note on rollback:
-						// The writer will writer the file data, and
-						// then
-						// execute the PostWriteAction
-						// if any step fails the file will be rolled
-						// back.
-						// This mean that if the syncPointer release
-						// send to the
-						// CoordinationService fails the file is rolled
-						// back
-						// and an error thrown.
-
-						agentSession.setFileWriteStartTime();
-						
-						bytesWritten = writer.write(fileStatus, compressInput,
-								new PostWriteAction() {
-
-									@Override
-									public void run(int bytesWritten)
-											throws Exception {
-										// INCREMENT FILE SYNCPOINTER
-										syncPointer
-												.incFilePointer(bytesWritten);
-									}
-								});
-
-						// register that the file was written
-						agentSession.setWrittenToFile();
-
-						// check slow writes:
-						if ((agentSession.getFileWriteEndTime() - agentSession
-								.getFileWriteStartTime()) > 500) {
-							LOG.error("File writting is slowing down please check the log directory");
-						}
-
-						
-						buffer.writeInt(200);
-						
-						if(LOG.isDebugEnabled()){
-							LOG.debug("Written file data: " + (agentSession.getFileWriteEndTime() - agentSession
-								.getFileWriteStartTime()));
-						}
-						
-						collectorStatus.setStatus(CollectorStatus.STATUS.OK,
-								"Running");
-						if (bytesWritten > -1) {
-							// send kilobytes written
-							fileBytesWrittenMetric
-									.incrementCounter(bytesWritten / 1024);
-						}
-					} catch (Throwable t) {
-
-						collectorStatus.setStatus(
-								CollectorStatus.STATUS.UNKOWN_ERROR,
-								t.toString());
-
-						LOG.error(t.toString(), t);
-						buffer.writeInt(500);
-					} finally {
-						pool.closeAndRelease(compressInput);
-						compressInputWasReleased = true;
-						IOUtils.closeQuietly(datInput);
-						IOUtils.closeQuietly(channelInput);
-					}
-
-				} else {
-					LOG.info("File pointer Conflict detected: agent "
-							+ header.getHost() + " file: "
-							+ header.getFileName() + " agentPointer: "
-							+ header.getFilePointer() + " collectorPointer: "
-							+ syncFilePointer);
-
-					// send the sync pointer to the agent, this is a
-					// request
-					// made to
-					// the
-					// agent that is sends data starting from this
-					// pointer
-					// write the http codec 409 == Conflict
-					buffer.writeInt(NetworkCodes.CODE.SYNC_CONFLICT.num());
-					buffer.writeLong(syncFilePointer);
-				}
-
-			} finally {
-				// release pointer lock
-				sendSyncRelease(syncPointer);
-				agentSession.setReleasedCoordinationLock();
-			}
-
-			future = e.getChannel().write(buffer);
-			agentSession.setSentResponseRequest();
+			// write responses back to agent
+			writeToAgent(e, buffer, agentSession);
 
 		} finally {
+
+			IOUtils.closeQuietly(datInput);
+			IOUtils.closeQuietly(channelInput);
+
 			// on any error event with coordination these resources must
 			// be
 			// released
@@ -351,28 +241,6 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 			if (localLockAcquired) {
 				agentFileLocalLock.releaseLock(localKey);
 			}
-
-			if (!compressInputWasReleased) {
-				pool.closeAndRelease(compressInput);
-			}
-
-		}
-
-		if (future != null) {
-			future.addListener(new ChannelFutureListener() {
-
-				@Override
-				public void operationComplete(ChannelFuture arg0)
-						throws Exception {
-					try {
-						ChannelFutureListener.CLOSE.operationComplete(arg0);
-					} catch (Throwable t) {
-						LOG.error("ERROR While closing channel :"
-								+ arg0.getChannel() + " " + arg0.getCause());
-					}
-				}
-
-			});
 
 		}
 
@@ -383,35 +251,120 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 	}
 
 	/**
-	 * Calls the saveAndFreeLock method on the coordination service.
+	 * Builder a FileStatus.FileTrackingStatus instance from the header data.
 	 * 
-	 * @param syncPointer
+	 * @param header
+	 * @return
 	 */
-	private final void sendSyncRelease(SyncPointer syncPointer) {
+	private static final FileStatus.FileTrackingStatus buildFileStatus(
+			Header header) {
 
-		try {
-			// if we fail to attain a lock we shoud roll the file back
-			coordinationService.saveAndFreeLock(syncPointer);
-			if (LOG.isDebugEnabled()) {
-				LOG.debug("UNLOCK(" + syncPointer.getLockId() + ")");
-			}
-		} catch (Exception unlockError) {
-			LOG.error("Error while unlocking (" + syncPointer.getLockId()
-					+ ") - " + unlockError.toString(), unlockError);
+		org.streams.commons.file.FileStatus.FileTrackingStatus.Builder builder = FileStatus.FileTrackingStatus
+				.newBuilder();
 
-			throwException(unlockError);
-		}
+		builder.setDate(System.currentTimeMillis());
+		builder.setFilePointer(header.getFilePointer());
+		builder.setLinePointer(header.getLinePointer());
 
+		builder.setFileSize(header.getFileSize());
+		builder.setAgentName(header.getHost());
+		builder.setFileName(header.getFileName());
+		builder.setLogType(header.getLogType());
+		builder.setFileDate(header.getFileDate().getTime());
+
+		return builder.build();
 	}
 
 	/**
-	 * Helper method to throw an exception with a correct stack trace.
+	 * Write response back to agent
+	 * 
+	 * @param e
+	 * @param buffer
+	 * @param agentSession
 	 */
-	private static final void throwException(Throwable t)
-			throws RuntimeException {
-		RuntimeException writerException = new RuntimeException(t.toString(), t);
-		writerException.setStackTrace(t.getStackTrace());
-		throw writerException;
+	private final void writeToAgent(MessageEvent e, ChannelBuffer buffer,
+			AgentSession agentSession) {
+
+		// write responses back to agent
+		ChannelFuture future = e.getChannel().write(buffer);
+		agentSession.setSentResponseRequest();
+
+		agentSession.setReleasedCoordinationLock();
+		// check slow writes:
+		if ((agentSession.getFileWriteEndTime() - agentSession
+				.getFileWriteStartTime()) > 500) {
+			LOG.error("File writting is slowing down please check the log directory");
+		}
+
+		if (future != null) {
+			future.addListener(new ChannelFutureListener() {
+
+				@Override
+				public void operationComplete(ChannelFuture f) throws Exception {
+					try {
+						ChannelFutureListener.CLOSE.operationComplete(f);
+					} catch (Throwable t) {
+						LOG.error("ERROR While closing channel :"
+								+ f.getChannel() + " " + f.getCause());
+					}
+				}
+
+			});
+
+		}
+	}
+
+	/**
+	 * Write data to file
+	 * 
+	 * @param codec
+	 * @param datInput
+	 * @param agentSession
+	 * @param pointer
+	 * @param fileStatus
+	 * @param writeAction
+	 * @throws Exception
+	 */
+	private final void writeToFile(CompressionCodec codec,
+			InputStream datInput, AgentSession agentSession,
+			final SyncPointer pointer,
+			final FileStatus.FileTrackingStatus fileStatus,
+			PostWriteAction writeAction) throws Exception {
+
+		CompressionPool pool = compressionPoolFactory.get(codec);
+
+		CompressionInputStream compressInput = pool.create(datInput,
+				waitForCompressionResource, TimeUnit.MILLISECONDS);
+
+		if (compressInput == null) {
+			throw new IOException("No compression resource available for "
+					+ codec);
+		}
+
+		long bytesWritten = -1;
+		agentSession.setAcquiredCoordinationLock();
+		if (LOG.isDebugEnabled()) {
+			LOG.debug("LOCK(" + pointer.getLockId() + ")");
+		}
+
+		agentSession.setFileWriteStartTime();
+
+		try {
+			// register to session that the
+			// coordination lock could be acquired
+
+			bytesWritten = writer.write(fileStatus, compressInput, writeAction);
+		} finally {
+			pool.closeAndRelease(compressInput);
+		}
+
+		// register that the file was written
+		agentSession.setWrittenToFile();
+
+		if (bytesWritten > -1) {
+			// send kilobytes written
+			fileBytesWrittenMetric.incrementCounter(bytesWritten / 1024);
+		}
 	}
 
 	/**
@@ -451,7 +404,7 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 	@Override
 	public void channelConnected(ChannelHandlerContext ctx, ChannelStateEvent e)
 			throws Exception {
-		
+
 		collectorStatus.incCounter(
 				CollectorStatus.COUNTERS.CHANNELS_OPEN.toString(), 1);
 		super.channelConnected(ctx, e);

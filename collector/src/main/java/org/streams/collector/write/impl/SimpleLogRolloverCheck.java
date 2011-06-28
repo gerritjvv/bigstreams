@@ -3,6 +3,7 @@ package org.streams.collector.write.impl;
 import java.io.File;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.log4j.Logger;
 import org.streams.collector.write.LogRolloverCheck;
 
 /**
@@ -18,12 +19,16 @@ import org.streams.collector.write.LogRolloverCheck;
  * <p/>
  * A file qualifies for rollover if (checked in the order below):<br/>
  * <ul>
- *  <li>Its last updated time is larger or equal to the inactiveTimeout</li>
- *  <li>Its creation time is larger or equal to the rolloverTime</li>
- *  <li>Its size is near to the fileSizeInMb the MB_REACH value is used to calculate 1/8 of a mb within reach.</li>
+ * <li>Its last updated time is larger or equal to the inactiveTimeout</li>
+ * <li>Its creation time is larger or equal to the rolloverTime</li>
+ * <li>Its size is near to the fileSizeInMb the MB_REACH value is used to
+ * calculate 1/8 of a mb within reach.</li>
  * </ul>
  */
 public class SimpleLogRolloverCheck implements LogRolloverCheck {
+
+	private static final Logger LOG = Logger
+			.getLogger(SimpleLogRolloverCheck.class);
 
 	/**
 	 * If the bytes is is within the (fileSizeInMb * FileUtils.ONE_MB) - MB_READ
@@ -54,8 +59,8 @@ public class SimpleLogRolloverCheck implements LogRolloverCheck {
 	 * @param fileSizeInMb
 	 * @param inactiveTimeout
 	 */
-	public SimpleLogRolloverCheck(final long rolloverTime, final long fileSizeInMb,
-			final long inactiveTimeout) {
+	public SimpleLogRolloverCheck(final long rolloverTime,
+			final long fileSizeInMb, final long inactiveTimeout) {
 		this.rolloverTime = rolloverTime;
 		this.fileSizeInMb = fileSizeInMb;
 		this.inactiveTimeout = inactiveTimeout;
@@ -78,10 +83,21 @@ public class SimpleLogRolloverCheck implements LogRolloverCheck {
 		// (1) Check for inactivity
 		// (2) Check for time since creation time
 		// (3) Check for size
-		return lastUpdatedTimeDiff >= inactiveTimeout
+
+		boolean f = lastUpdatedTimeDiff >= inactiveTimeout
 				|| fileCreateTimeDiff >= rolloverTime
 				|| (((file.length() + MB_REACH) / FileUtils.ONE_MB) >= fileSizeInMb);
 
+		if (f && LOG.isDebugEnabled()) {
+			LOG.debug("File: " + file.getName());
+			LOG.debug(lastUpdatedTimeDiff + " >= " + inactiveTimeout + " || "
+					+ fileCreateTimeDiff + " >= " + rolloverTime + " || ((("
+					+ file.length() + " + " + MB_REACH + " )/ "
+					+ FileUtils.ONE_MB + " ) >= " + fileSizeInMb);
+
+		}
+		
+		return f;
 	}
 
 }

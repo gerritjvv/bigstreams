@@ -10,8 +10,8 @@ import java.util.concurrent.TimeUnit;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.hadoop.io.compress.CompressionOutputStream;
 import org.apache.log4j.Logger;
-import org.streams.collector.write.StreamCreator;
 import org.streams.commons.compression.CompressionPool;
+import org.streams.commons.file.StreamCreator;
 
 /**
  * 
