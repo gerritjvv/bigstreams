@@ -14,6 +14,7 @@ import org.jboss.netty.channel.Channels;
 import org.jboss.netty.channel.socket.nio.NioServerSocketChannelFactory;
 import org.jboss.netty.handler.execution.MemoryAwareThreadPoolExecutor;
 import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
+import org.mortbay.log.Log;
 import org.streams.collector.conf.CollectorProperties;
 import org.streams.collector.server.CollectorServer;
 import org.streams.commons.file.CoordinationServiceClient;
@@ -46,34 +47,42 @@ public class CollectorServerImpl implements CollectorServer {
 
 	Configuration conf;
 
+	IpFilterHandler ipFilterHandler;
+
+	ExecutorService workerService;
+	ExecutorService workerbossService;
+	private NioServerSocketChannelFactory channelFactory;
+
 	public CollectorServerImpl(int port, ChannelHandler channelHandler,
-			Configuration conf, ChannelHandler metricsHandler) {
+			Configuration conf, ChannelHandler metricsHandler,
+			IpFilterHandler ipFilterHandler) {
 		super();
 		this.port = port;
 		this.channelHandler = channelHandler;
 		this.conf = conf;
 		this.metricsHandler = metricsHandler;
+		this.ipFilterHandler = ipFilterHandler;
 	}
 
 	@Override
 	public void connect() {
 
-		ExecutorService workerService = createWorkerService(getThreadPoolType(CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_POOL));
+		workerService = createWorkerService(getThreadPoolType(CollectorProperties.WRITER.COLLECTOR_WORKER_THREAD_POOL));
 
-		ExecutorService workerbossService = createWorkderBossService(getThreadPoolType(CollectorProperties.WRITER.COLLECTOR_WORKERBOSS_THREAD_POOL));
+		workerbossService = createWorkderBossService(getThreadPoolType(CollectorProperties.WRITER.COLLECTOR_WORKERBOSS_THREAD_POOL));
+		channelFactory = new NioServerSocketChannelFactory(workerbossService,
+				workerService);
 
-		bootstrap = new ServerBootstrap(new NioServerSocketChannelFactory(
-				workerbossService, workerService));
+		bootstrap = new ServerBootstrap(channelFactory);
 
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 			@Override
 			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(
-						new MessageFrameDecoder(),
-						new ReadTimeoutHandler(HashedWheelTimerFactory
-								.getInstance(), readTimeout,
-								TimeUnit.MILLISECONDS), metricsHandler,
-						channelHandler);
+				return Channels.pipeline(ipFilterHandler,
+						new MessageFrameDecoder(), new ReadTimeoutHandler(
+								HashedWheelTimerFactory.getInstance(),
+								readTimeout, TimeUnit.MILLISECONDS),
+						metricsHandler, channelHandler);
 			}
 		});
 
@@ -174,11 +183,36 @@ public class CollectorServerImpl implements CollectorServer {
 
 	@Override
 	public void shutdown() {
-		if (bootstrap != null) {
-			bootstrap.releaseExternalResources();
+
+		if (workerService != null) {
+			Log.info("Shutdown worker threads");
+
+			workerService.shutdown();
+			try {
+				workerService.awaitTermination(5, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				; // ignore we're shutting down
+			}
+
+			workerService.shutdownNow();
+
+		}
+
+		if (workerbossService != null) {
+			Log.info("Shutdown manage threads");
+			workerService.shutdown();
+			try {
+				workerService.awaitTermination(5, TimeUnit.SECONDS);
+			} catch (InterruptedException e) {
+				; // ignore we're shutting down
+			}
+
+			workerbossService.shutdownNow();
 		}
 
 		HashedWheelTimerFactory.shutdown();
+
+		Log.info("Shutdown Collector Server");
 
 	}
 

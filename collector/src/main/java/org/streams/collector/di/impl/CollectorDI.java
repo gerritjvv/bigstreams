@@ -31,6 +31,7 @@ import org.streams.collector.mon.impl.CollectorStatusResource;
 import org.streams.collector.mon.impl.PingOKResource;
 import org.streams.collector.server.CollectorServer;
 import org.streams.collector.server.impl.CollectorServerImpl;
+import org.streams.collector.server.impl.IpFilterHandler;
 import org.streams.collector.server.impl.LogWriterHandler;
 import org.streams.collector.write.LogFileNameExtractor;
 import org.streams.collector.write.LogFileWriter;
@@ -104,9 +105,9 @@ public class CollectorDI {
 						.getDefaultValue());
 
 		CollectorServerImpl server = new CollectorServerImpl(port,
-				beanFactory.getBean(LogWriterHandler.class),
-				configuration, beanFactory.getBean(MetricChannel.class));
-		
+				beanFactory.getBean(LogWriterHandler.class), configuration,
+				beanFactory.getBean(MetricChannel.class),
+				beanFactory.getBean(IpFilterHandler.class));
 
 		server.setReadTimeout(configuration.getLong(
 				CollectorProperties.WRITER.COLLECTOR_CONNECTION_READ_TIMEOUT
@@ -145,20 +146,40 @@ public class CollectorDI {
 	}
 
 	@Bean
-	public CoordinationServiceClient coordinationServiceClient(){
+	public IpFilterHandler ipFilterHandler() {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
-		.getBean(org.apache.commons.configuration.Configuration.class);
-		
-		String hosts = configuration.getString(CollectorProperties.WRITER.COORDINATION_HOST
-				.toString());
-		String group = configuration.getString(CollectorProperties.WRITER.COORDINATION_GROUP
-				.toString(), CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue().toString());
-		
-		long timeout = 10000;
-		
-		return new CoordinationServiceClientImpl(new ZLock(hosts, timeout), new ZStore("/coordination/" + group, hosts, timeout));
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		IpFilterHandler filter = new IpFilterHandler();
+		String[] hosts = configuration
+				.getStringArray(CollectorProperties.WRITER.BLOCKED_IPS
+						.toString());
+
+		if(hosts != null)
+			filter.getBlockedIps().addAll(Arrays.asList(hosts));
+
+		return filter;
 	}
-	
+
+	@Bean
+	public CoordinationServiceClient coordinationServiceClient() {
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		String hosts = configuration
+				.getString(CollectorProperties.WRITER.COORDINATION_HOST
+						.toString());
+		String group = configuration.getString(
+				CollectorProperties.WRITER.COORDINATION_GROUP.toString(),
+				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
+						.toString());
+
+		long timeout = 10000;
+
+		return new CoordinationServiceClientImpl(new ZLock(hosts, timeout),
+				new ZStore("/coordination/" + group, hosts, timeout));
+	}
+
 	/**
 	 * Configure and start the CoordinationAddresses with the lock and unlock
 	 * addresses

@@ -301,7 +301,16 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			// the time in milliseconds when the file was created
 			Long creationTime = fileCreationTimes.get(file);
 			// the time in milliseconds when the file was last updated
-			Long updateTime = (filesExternalLockRequest.contains(file.getAbsolutePath())) ? System.currentTimeMillis() : fileUpdateTimes.get(file);
+			Long updateTime = null;
+			try{
+				updateTime = (filesExternalLockRequest.contains(file.getAbsolutePath())) ? System.currentTimeMillis() : fileUpdateTimes.get(file);
+			}catch(NullPointerException excp){
+				
+				fileCreationTimes.put(file,
+						Long.valueOf(System.currentTimeMillis()));
+				
+				updateTime = System.currentTimeMillis();
+			}
 			
 			boolean shouldRollover = false;
 			try{
@@ -327,7 +336,12 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 				}
 
 				if (lockAcquired) {
+					
+					fileUpdateTimes.remove(file);
+					
+					
 					try {
+						//remove file
 						closeLockedFile(key, openFiles.get(key));
 					} finally {
 						keyLock.releaseLock(key);
@@ -387,7 +401,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	private void closeLockedFile(String key, File file) throws IOException {
 		// remove from openFiles
 		File fileFound = openFiles.remove(key);
-
+		
 		if (file == null) {
 			LOG.info("No file found to roll for " + key);
 			return;
