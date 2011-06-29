@@ -112,6 +112,7 @@ public class ClientConnectionImpl implements ClientConnection {
 
 		bootstrap = new ClientBootstrap(socketChannelFactory);
 
+		
 		// we set the ReadTimeoutHandler to timeout if no response is received
 		// from the server after default 10 seconds
 		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
@@ -120,12 +121,15 @@ public class ClientConnectionImpl implements ClientConnection {
 				return Channels.pipeline(new ClientMessageFrameDecoder(),
 						new ClientChannelHandler(exchanger,
 								new ClientHandlerContext(header, input,
-										fileLineStreamer), protocol.clone()));
+										fileLineStreamer), protocol.clone(), sendTimeOut));
 			}
 		});
 
 		bootstrap.setOption("connectTimeoutMillis", connectEstablishTimeout);
-
+		bootstrap.setOption("tcpNoDelay", "true");
+		//30 seconds linger timeout.
+		bootstrap.setOption("soLinger", String.valueOf(30000));
+		
 		// Start the connection attempt.
 		bootstrap.connect(inetAddress);
 
@@ -138,7 +142,7 @@ public class ClientConnectionImpl implements ClientConnection {
 			// this is called if the thread is to be closed by some shutdown
 			// process.
 			Thread.currentThread().interrupt();
-
+			
 		} catch (TimeoutException e) {
 			throw new ServerException(
 					"The server did not respond within the timeout "
@@ -237,12 +241,14 @@ public class ClientConnectionImpl implements ClientConnection {
 
 		AtomicBoolean exhanged = new AtomicBoolean(false);
 		Protocol protocol;
+		long sendTimeOut;
 		
 		public ClientChannelHandler(Exchanger<ClientHandlerContext> exchanger,
-				ClientHandlerContext clientHandlerContext, Protocol protocol) {
+				ClientHandlerContext clientHandlerContext, Protocol protocol, long sendTimeout) {
 			this.clientHandlerContext = clientHandlerContext;
 			this.exchanger = exchanger;
 			this.protocol = protocol;
+			this.sendTimeOut = sendTimeout;
 		}
 
 		/**
@@ -304,7 +310,7 @@ public class ClientConnectionImpl implements ClientConnection {
 				// close channel if no write
 				channel.close();
 				if (!exhanged.getAndSet(true)) {
-					exchanger.exchange(clientHandlerContext);
+					exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);
 				}
 			}
 
@@ -332,7 +338,11 @@ public class ClientConnectionImpl implements ClientConnection {
 			}
 
 			if (!exhanged.getAndSet(true)) {
-				exchanger.exchange(clientHandlerContext);
+				try{
+				exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);
+				}catch(TimeoutException te){
+					LOG.error("The calling object did not respond");
+				}
 			}
 
 		}
@@ -387,7 +397,7 @@ public class ClientConnectionImpl implements ClientConnection {
 			}
 
 			if (!exhanged.getAndSet(true)) {
-				exchanger.exchange(clientHandlerContext);
+				exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);
 			}
 
 			super.messageReceived(ctx, e);

@@ -112,6 +112,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			//no status was saved before
 			status = fileStatus;
 		}
+			
 		
 		return new SyncPointer(status);
 	}

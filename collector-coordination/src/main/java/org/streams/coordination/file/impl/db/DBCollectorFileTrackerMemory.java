@@ -7,11 +7,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -20,6 +15,7 @@ import javax.persistence.NoResultException;
 import javax.persistence.Query;
 
 import org.apache.log4j.Logger;
+import org.jboss.netty.util.internal.ConcurrentHashMap;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.FileTrackingStatusKey;
 import org.streams.coordination.file.AgentContact;
@@ -502,25 +498,54 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		return (count == null) ? 0L : count.longValue();
 	}
 
+	@SuppressWarnings("unchecked")
 	@Override
 	public Map<FileTrackingStatusKey, FileTrackingStatus> getStatus(
 			Collection<FileTrackingStatusKey> keys) {
 
-		ExecutorService service = Executors.newCachedThreadPool();
+		LOG.info("Pre loading keys[" + keys.size()
+				+ "] this might take some time");
+
+		// instead of querying the data we just load it all.
+		EntityManager entityManager = entityManagerFactory
+				.createEntityManager();
+
+		Map<FileTrackingStatusKey, FileTrackingStatus> map = new ConcurrentHashMap<FileTrackingStatusKey, FileTrackingStatus>();
+
 		try {
-			Future<Map<FileTrackingStatusKey, FileTrackingStatus>> future = service
-					.submit(new DBGetByKeyTask(keys, 0, keys.size(), service));
+			entityManager.getTransaction().begin();
 
-			return future.get();
+			Query query = entityManager
+					.createNamedQuery("fileTrackingStatus.list");
+			query.setMaxResults(keys.size());
 
-		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			return null;
-		} catch (ExecutionException e) {
-			throw new RuntimeException(e);
+			List<FileTrackingStatusEntity> list = query.getResultList();
+			
+			int i = 0;
+			for (FileTrackingStatusEntity entry : list) {
+				FileTrackingStatusKey key = entry.createStatusKeyObject();
+				if(i%1000 == 0){
+					LOG.info("Loading keys at: " + i);
+				}
+				i++;
+				
+				if (keys.contains(key)) {
+					map.put(key, entry.createStatusObject());
+				}
+			}
+
 		} finally {
-			service.shutdownNow();
+
+			commitReadTx(entityManager);
+
+			try {
+				entityManager.close();
+			} catch (Throwable t) {
+				LOG.error(t);
+			}
 		}
+
+		return map;
 
 	}
 
@@ -822,83 +847,5 @@ public class DBCollectorFileTrackerMemory implements CollectorFileTrackerMemory 
 		return getStatus(key.getAgentName(), key.getLogType(),
 				key.getFileName());
 	}
-
-	static int count = 0;
-
-	/**
-	 * 
-	 * Returns keys from the database using the fork join
-	 * 
-	 */
-	class DBGetByKeyTask implements
-			Callable<Map<FileTrackingStatusKey, FileTrackingStatus>> {
-
-		/**
-		 * 
-		 */
-		private static final long serialVersionUID = 1L;
-
-		Collection<FileTrackingStatusKey> keys;
-
-		int start = 0, totalSize = 0;
-		ExecutorService service;
-
-		Map<FileTrackingStatusKey, FileTrackingStatus> map = null;
-
-		public DBGetByKeyTask(Collection<FileTrackingStatusKey> keys,
-				int start, int totalSize, ExecutorService service) {
-			this.keys = keys;
-			this.start = start;
-			this.totalSize = totalSize;
-			this.service = service;
-		}
-
-		protected Map<FileTrackingStatusKey, FileTrackingStatus> compute() {
-
-			int barrier = 500;
-			if ((start + barrier) < keys.size()) {
-
-				DBGetByKeyTask fork = new DBGetByKeyTask(keys, start + barrier,
-						keys.size(), service);
-				// fork here
-				Future<Map<FileTrackingStatusKey, FileTrackingStatus>> future = service
-						.submit(fork);
-
-				map = _getStatus(keys, start, start + barrier);
-				Map<FileTrackingStatusKey, FileTrackingStatus> forkMap = null;
-				try {
-					forkMap = future.get();
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-				} catch (ExecutionException e) {
-					throw new RuntimeException(e);
-				}
-
-				if (forkMap != null) {
-					forkMap.putAll(map);
-					map = forkMap;
-				}
-
-			} else {
-
-				int end = start + barrier;
-				if (end > keys.size()) {
-					end = keys.size();
-				}
-
-				map = _getStatus(keys, start, end);
-			}
-
-			return map;
-
-		}
-
-		@Override
-		public Map<FileTrackingStatusKey, FileTrackingStatus> call()
-				throws Exception {
-			return compute();
-		}
-
-	};
 
 }

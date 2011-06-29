@@ -14,7 +14,6 @@ import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ExceptionEvent;
 import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
-import org.restlet.resource.Put;
 import org.streams.commons.file.FileTrackingStatus;
 import org.streams.commons.file.SyncPointer;
 import org.streams.coordination.file.FileTrackerStorage;
@@ -114,8 +113,7 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 	 *         locked and is now released
 	 * @throws InterruptedException
 	 */
-	@Put("json")
-	public boolean saveAndReleaseLock(SyncPointer syncPointer, InetSocketAddress remoteAddress)
+	private boolean saveAndReleaseLock(SyncPointer syncPointer, InetSocketAddress remoteAddress)
 			throws InterruptedException {
 
 		// NOTE: Correct usage for thread correctness is important here.
@@ -153,11 +151,12 @@ public class CoordinationUnLockHandler extends SimpleChannelHandler {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
+		
+		e.getChannel().close();
+		
 		LOG.error(e.toString(), e.getCause());
-
 		coordinationStatus.setStatus(STATUS.UNKOWN_ERROR, e.toString());
 
-		e.getChannel().close();
 	}
 
 }

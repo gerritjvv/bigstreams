@@ -32,7 +32,7 @@ public class FileTrackingStatusHazelcastMapStore implements
 
 	CollectorFileTrackerMemory memory;
 
-	long dbTimeout = 60000L;
+	long dbTimeout = 1200000;
 
 	public FileTrackingStatusHazelcastMapStore(CollectorFileTrackerMemory memory) {
 		super();
@@ -47,7 +47,8 @@ public class FileTrackingStatusHazelcastMapStore implements
 
 	@Override
 	public Map<FileTrackingStatusKey, FileTrackingStatus> loadAll(
-			 Collection<FileTrackingStatusKey> keysToLoad) {
+			Collection<FileTrackingStatusKey> keysToLoad) {
+
 		
 		
 		Map<FileTrackingStatusKey, FileTrackingStatus> files = null;
@@ -56,12 +57,12 @@ public class FileTrackingStatusHazelcastMapStore implements
 
 		final Collection<FileTrackingStatusKey> keys;
 		
-		if(keysToLoad.size() > 10000){
-			keys = new ArrayList<FileTrackingStatusKey>(10000);
+		if(keysToLoad.size() > 5000){
+			keys = new ArrayList<FileTrackingStatusKey>(5000);
 			//size down we don't want to take ages to load keys.
 			Iterator<FileTrackingStatusKey> it = keysToLoad.iterator();
 			int i = 0;
-			while( it.hasNext() && i++ < 10000){
+			while( it.hasNext() && i++ < 5000){
 				keys.add(it.next());
 			}
 				
@@ -69,9 +70,8 @@ public class FileTrackingStatusHazelcastMapStore implements
 			keys = keysToLoad;
 		}
 		
-		
 		LOG.info("Loading data for keys: " + keysToLoad.size());
-		
+
 		try {
 			// the files here may take longer than is expected.
 			// we apply a timeout indicator that will timeout after 60 seconds

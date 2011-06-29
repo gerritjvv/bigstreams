@@ -229,56 +229,16 @@ public class CoordinationLockHandler extends SimpleChannelHandler {
 	@Override
 	public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 			throws Exception {
+
+		e.getChannel().close();
+		
 		coordinationStatus.setStatus(STATUS.UNKOWN_ERROR, e.toString());
 		Throwable error = e.getCause();
 		LOG.error(e.toString(), error);
 
-		e.getChannel().close();
 	}
 
-	// /**
-	// * Pings the lock holder on the address /lockPing and checks the response
-	// * code.<br/>
-	// * If the code is ok then true is returned else false is returned.
-	// *
-	// * @param requestFileStatus
-	// * @return
-	// * @throws Exception
-	// */
-	// private boolean _pingLockHolder(FileTrackingStatus requestFileStatus)
-	// throws Exception {
-	//
-	// boolean ret = false;
-	// String msg = null;
-	//
-	// String holderAddress = lockHolders.get(requestFileStatus);
-	//
-	// if (holderAddress != null) {
-	// holderAddress = "http://" + holderAddress + ":" + pingPort + "/";
-	//
-	// // do a simple get operation
-	// // and check status
-	// Client client = new Client(Protocol.HTTP);
-	// try {
-	// client.start();
-	// Response rep = client.get(new Reference(holderAddress));
-	//
-	// ret = rep.getStatus().isSuccess();
-	// msg = rep.getEntityAsText();
-	//
-	// } catch (Throwable t) {
-	// t.printStackTrace();
-	// // ignore any exceptions
-	// msg = "failed " + t.toString();
-	// } finally {
-	// client.stop();
-	// }
-	// }
-	//
-	// Log.info("Lock holder " + holderAddress + " ping " + msg);
-	// return ret;
-	// }
-
+	
 	public CoordinationStatus getCoordinationStatus() {
 		return coordinationStatus;
 	}

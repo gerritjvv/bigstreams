@@ -6,7 +6,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.KeeperException.NodeExistsException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
@@ -84,24 +83,24 @@ public class ZStore {
 	 * @throws InterruptedException
 	 * @throws KeeperException
 	 */
-	public synchronized byte[] store(String key, Message message)
+	public byte[] store(String key, Message message)
 			throws IOException, InterruptedException, KeeperException {
 		return store(key, message.toByteArray());
 	}
 
-	public synchronized Message get(String key, Builder<?> builder) throws IOException,
-	InterruptedException, KeeperException {
+	public  Message get(String key, Builder<?> builder)
+			throws IOException, InterruptedException, KeeperException {
 		byte[] data = get(key);
 		return (data == null) ? null : builder.mergeFrom(data).build();
 	}
-	
-	public synchronized byte[] get(String key) throws IOException,
+
+	public byte[] get(String key) throws IOException,
 			InterruptedException, KeeperException {
 		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
 		if (!init.get()) {
 			init(zk);
 		}
-		
+
 		String keyPath = path + "/" + key;
 
 		try {
@@ -127,7 +126,7 @@ public class ZStore {
 	 * @throws InterruptedException
 	 * @throws KeeperException
 	 */
-	public synchronized byte[] store(String key, byte[] data)
+	public byte[] store(String key, byte[] data)
 			throws IOException, InterruptedException, KeeperException {
 
 		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
@@ -138,31 +137,40 @@ public class ZStore {
 		String keyPath = path + "/" + key;
 		int retryCount = 0;
 
-		try {
-			zk.create(keyPath, data, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-			return null;
-		} catch (NodeExistsException excp) {
+		Stat stat = new Stat();
 
-			Stat stat = new Stat();
+		while (true) {
+			byte[] oldVal = null;
 
-			while (true) {
-				byte[] oldVal = zk.getData(key, false, stat);
+			try {
+				oldVal = zk.getData(keyPath, false, stat);
+			} catch (KeeperException.NoNodeException noNode) {
+				zk.create(keyPath, data, Ids.OPEN_ACL_UNSAFE,
+						CreateMode.PERSISTENT);
+				return null;
+			}
 
-				try {
-					zk.setData(keyPath, data, stat.getVersion());
-					return oldVal;
-				} catch (KeeperException.BadVersionException badVersion) {
-					if (retryCount > 3)
-						throw badVersion;
+			try {
+				zk.setData(keyPath, data, stat.getVersion());
+				return oldVal;
+			} catch (KeeperException.BadVersionException badVersion) {
+				if (retryCount > 3)
+					throw badVersion;
 
-					LOG.warn("Caught Bad Version attempt " + retryCount + " 3");
-					retryCount++;
-					Thread.sleep(100);
-				}
-
+				LOG.warn("Caught Bad Version attempt " + retryCount + " 3");
+				retryCount++;
+				Thread.sleep(100);
 			}
 
 		}
 
 	}
+
+	public void sync(String key) {
+		String keyPath = path + "/" + key;
+		
+		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
+		zk.sync(keyPath, org.apache.zookeeper.AsyncCallback.VoidCallback, null);
+	}
+	
 }

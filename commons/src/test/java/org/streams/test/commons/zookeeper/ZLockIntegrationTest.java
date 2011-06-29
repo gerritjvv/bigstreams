@@ -15,7 +15,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.AfterClass;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.streams.commons.zookeeper.ZConnection;
@@ -80,7 +80,7 @@ public class ZLockIntegrationTest {
 		}
 
 		// wait for atleast 1 thread to get lock
-		assertTrue(lockHeldLatch.await(10, TimeUnit.SECONDS));
+		assertTrue(lockHeldLatch.await(30, TimeUnit.SECONDS));
 
 		Thread.sleep(500L);
 		
@@ -127,8 +127,8 @@ public class ZLockIntegrationTest {
 		assertTrue(ret);
 	}
 
-	@AfterClass
-	public static void after() {
+	@After
+	public void after() {
 		ZConnection.getInstance().close();
 	}
 

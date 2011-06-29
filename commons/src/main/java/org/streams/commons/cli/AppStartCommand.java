@@ -1,6 +1,10 @@
 package org.streams.commons.cli;
 
 import java.io.OutputStream;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.commons.cli.CommandLine;
 import org.streams.commons.app.AppLifeCycleManager;
@@ -18,7 +22,9 @@ import org.streams.commons.cli.CommandLineProcessor;
 public class AppStartCommand implements CommandLineProcessor {
 
 	AppLifeCycleManager appLifeCycleManager;
-
+	ExecutorService shutdownService = Executors.newFixedThreadPool(1);
+	AtomicBoolean isShutdown = new AtomicBoolean(false);
+	
 	@Override
 	public void process(CommandLine cmdLine, OutputStream out) throws Exception {
 
@@ -34,7 +40,26 @@ public class AppStartCommand implements CommandLineProcessor {
 	}
 
 	private void shutdown() {
-		appLifeCycleManager.shutdown();
+		//only shutdown once
+		if(isShutdown.getAndSet(true)) return;
+		
+		shutdownService.submit(new Runnable(){
+			public void run(){
+				try{
+				appLifeCycleManager.shutdown();
+				}catch(Throwable t){
+					t.printStackTrace();
+				}
+			}
+		});
+		shutdownService.shutdown();
+		try {
+			shutdownService.awaitTermination(15, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			//ignore we are shutting down
+		}
+		shutdownService.shutdownNow();
+		
 		Runtime.getRuntime().halt(0);
 	}
 
