@@ -3,6 +3,7 @@ package org.streams.commons.file.impl;
 import java.io.IOException;
 import java.util.concurrent.Callable;
 
+import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
 import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.FileStatus;
@@ -25,6 +26,8 @@ import org.streams.commons.zookeeper.ZStore;
  */
 public class CoordinationServiceClientImpl implements CoordinationServiceClient {
 
+	private static final Logger LOG = Logger.getLogger(CoordinationServiceClientImpl.class);
+	
 	ZLock zlock;
     ZStore zstore;
 	
@@ -46,26 +49,27 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 	 * syncConflict
 	 */
 	@Override
-	public void withLock(final FileStatus.FileTrackingStatus fileStatus,
-			final CoordinationServiceListener coordinationServiceListener)
+	public <T> T withLock(final FileStatus.FileTrackingStatus fileStatus,
+			final CoordinationServiceListener<T> coordinationServiceListener)
 			throws Exception {
 
 		final String lockId = fileStatus.getAgentName() + fileStatus.getLogType()
 				+ fileStatus.getFileName().replace('/', '_');
 
-		zlock.withLock(lockId, new Callable<Boolean>() {
+		return zlock.withLock(lockId, new Callable<T>() {
 
 			@Override
-			public Boolean call() throws Exception {
+			public T call() throws Exception {
 
 				final SyncPointer pointer = getSyncPointer(lockId, fileStatus);
-
+				
+				
 				if (fileStatus.getFilePointer() == pointer.getFilePointer()) {
 
 					// we call the inSync method, and PostWriteAction, the
 					// listener should write out
 					// the client data and then call the PostWriteAction
-					coordinationServiceListener.inSync(fileStatus, pointer,
+					return coordinationServiceListener.inSync(fileStatus, pointer,
 							new PostWriteAction() {
 
 								@Override
@@ -85,11 +89,10 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 							});
 
 				} else {
-					coordinationServiceListener.syncConflict(fileStatus,
+					return coordinationServiceListener.syncConflict(fileStatus,
 							pointer);
 				}
 
-				return null;
 			}
 
 		});
@@ -102,19 +105,53 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		
 		builder.setFilePointer(pointer.getFilePointer());
 		builder.setLinePointer(pointer.getLinePointer());
+		FileTrackingStatus statusNew = builder.build();
 		
-		zstore.store(key, builder.build());
+		LOG.info("Store " + fileStatus.getFileName() + " from: " + fileStatus.getFilePointer() + " to " + pointer.getFilePointer() + " saving: " + statusNew.getFilePointer());
+		zstore.store(key, statusNew);
 	}
 
 	private final SyncPointer getSyncPointer(String key, FileStatus.FileTrackingStatus fileStatus) throws IOException, InterruptedException, KeeperException {
 		FileStatus.FileTrackingStatus status = (FileTrackingStatus) zstore.get(key,  FileStatus.FileTrackingStatus.newBuilder());
+		
+		SyncPointer syncPointer;
+		
 		if(status == null){
 			//no status was saved before
 			status = fileStatus;
-		}
+			syncPointer = new SyncPointer(status);
+		}else{
 			
+			if(fileStatus.getFilePointer() != status.getFilePointer()){
+				//the zookeeper client might be out of sync. sync and retry.
+				
+				long statusFilePointer = status.getFilePointer();
+				
+				zstore.sync(key);
+				status = (FileTrackingStatus) zstore.get(key,  FileStatus.FileTrackingStatus.newBuilder());
 		
-		return new SyncPointer(status);
+				
+				if(status != null){
+					syncPointer = new SyncPointer(status);
+					
+					LOG.info("Possible sync conflict: syncing zookeeper agent: " + fileStatus.getFilePointer()
+							+ " zookeeper.old " + statusFilePointer 
+							+ " zookeeper.new " + status.getFilePointer() + " key: " + key + " syncid: " + syncPointer.getTimeStamp());
+					
+				}
+			}
+			
+			//check null again
+			if(status == null){
+				status = fileStatus;
+			}
+			
+			syncPointer = new SyncPointer(status);
+			
+		}
+		
+		
+		return syncPointer;
 	}
 
 	public ZLock getZlock() {

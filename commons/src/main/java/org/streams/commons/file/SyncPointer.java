@@ -15,7 +15,7 @@ public class SyncPointer implements Comparable<SyncPointer>, Serializable {
 	private static final long serialVersionUID = 1L;
 
 	String lockId;
-	long filePointer;
+	volatile long filePointer;
 	int linePointer;
 	long fileSize;
 

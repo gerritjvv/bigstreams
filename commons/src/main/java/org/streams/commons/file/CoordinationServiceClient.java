@@ -16,14 +16,14 @@ public interface CoordinationServiceClient {
 	 */
 	void destroy();
 	
-	void withLock(FileStatus.FileTrackingStatus fileStatus,
-			CoordinationServiceListener coordinationServiceListener) throws Exception;
+	<T> T withLock(FileStatus.FileTrackingStatus fileStatus,
+			CoordinationServiceListener<T> coordinationServiceListener) throws Exception;
 	
-	public static interface CoordinationServiceListener{
+	public static interface CoordinationServiceListener<T>{
 
-		void inSync(FileStatus.FileTrackingStatus file, SyncPointer pointer, PostWriteAction writeAction) throws Exception;
+		T inSync(FileStatus.FileTrackingStatus file, SyncPointer pointer, PostWriteAction writeAction) throws Exception;
 
-		void syncConflict(FileStatus.FileTrackingStatus file, SyncPointer pointer) throws Exception;
+		T syncConflict(FileStatus.FileTrackingStatus file, SyncPointer pointer) throws Exception;
 		
 		
 	}

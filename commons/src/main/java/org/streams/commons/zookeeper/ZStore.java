@@ -1,9 +1,11 @@
 package org.streams.commons.zookeeper;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
@@ -33,6 +35,7 @@ public class ZStore {
 		this.hosts = hosts;
 		this.timeout = timeout;
 		this.path = path;
+
 	}
 
 	/**
@@ -74,6 +77,60 @@ public class ZStore {
 
 	}
 
+	public synchronized void removeExpired(int seconds) throws IOException,
+			InterruptedException, KeeperException {
+
+		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
+		if (!init.get()) {
+			init(zk);
+		}
+
+		zk.getChildren(path, false, new AsyncCallback.ChildrenCallback() {
+
+			@Override
+			public void processResult(int rc, String path, Object ctx,
+					List<String> children) {
+
+				ZooKeeper zk1;
+				try {
+					zk1 = ZConnection.getConnectedInstance(hosts, timeout);
+					long timeoutMilliseconds = ((Integer) ctx) * 1000;
+
+					for (String child : children) {
+
+						String childPath = path + "/" + child;
+
+						Stat stat = zk1.exists(childPath, false);
+
+						if (stat != null) {
+							if ((System.currentTimeMillis() - stat.getMtime()) > timeoutMilliseconds) {
+								zk1.delete(childPath, stat.getVersion(),
+										new AsyncCallback.VoidCallback() {
+
+											@Override
+											public void processResult(int rc,
+													String path, Object ctx) {
+												LOG.info("Deleted " + path);
+											}
+										}, null);
+							}
+						}
+
+					}
+
+				} catch (KeeperException e) {
+					LOG.error(e);
+				} catch (InterruptedException e) {
+					Thread.currentThread().interrupt();
+					return;
+				} catch (IOException e) {
+					LOG.error(e);
+				}
+
+			}
+		}, seconds);
+	}
+
 	/**
 	 * 
 	 * @param key
@@ -83,19 +140,19 @@ public class ZStore {
 	 * @throws InterruptedException
 	 * @throws KeeperException
 	 */
-	public byte[] store(String key, Message message)
-			throws IOException, InterruptedException, KeeperException {
+	public byte[] store(String key, Message message) throws IOException,
+			InterruptedException, KeeperException {
 		return store(key, message.toByteArray());
 	}
 
-	public  Message get(String key, Builder<?> builder)
-			throws IOException, InterruptedException, KeeperException {
+	public Message get(String key, Builder<?> builder) throws IOException,
+			InterruptedException, KeeperException {
 		byte[] data = get(key);
 		return (data == null) ? null : builder.mergeFrom(data).build();
 	}
 
-	public byte[] get(String key) throws IOException,
-			InterruptedException, KeeperException {
+	public byte[] get(String key) throws IOException, InterruptedException,
+			KeeperException {
 		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
 		if (!init.get()) {
 			init(zk);
@@ -126,8 +183,8 @@ public class ZStore {
 	 * @throws InterruptedException
 	 * @throws KeeperException
 	 */
-	public byte[] store(String key, byte[] data)
-			throws IOException, InterruptedException, KeeperException {
+	public byte[] store(String key, byte[] data) throws IOException,
+			InterruptedException, KeeperException {
 
 		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
 		if (!init.get()) {
@@ -138,7 +195,6 @@ public class ZStore {
 		int retryCount = 0;
 
 		Stat stat = new Stat();
-
 		while (true) {
 			byte[] oldVal = null;
 
@@ -166,11 +222,13 @@ public class ZStore {
 
 	}
 
-	public void sync(String key) {
+	public void sync(String key) throws IOException, InterruptedException,
+			KeeperException {
 		String keyPath = path + "/" + key;
-		
+
 		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
-		zk.sync(keyPath, org.apache.zookeeper.AsyncCallback.VoidCallback, null);
+		zk.sync(keyPath, null, null);
+
 	}
-	
+
 }
