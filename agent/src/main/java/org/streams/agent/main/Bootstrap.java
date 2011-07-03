@@ -58,7 +58,6 @@ public class Bootstrap {
 
 	public void close(){
 		appContext.close();
-		appContext.destroy();
 	}
 	
 	/**

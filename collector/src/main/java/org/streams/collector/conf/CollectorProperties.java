@@ -28,6 +28,12 @@ public interface CollectorProperties {
 		COORDINATION_GROUP("coordination.group", "default"),
 		BLOCKED_IPS("blocked.ips", ""),
 		
+		
+		ZSTORE_TIMEOUT_DELAY("zstore.timeout.delay", 10000L),
+		ZSTORE_TIMEOUT_CHECK("zstore.timeout.check",  86400L), //1 days
+		ZSTORE_DATA_TIMEOUT("zstore.timeout.seconds", 2592000), // 30 days
+		
+		
 		COORDINATION_LOCK_PORT ("coordination.lock.port", 5420),
 		COORDINATION_UNLOCK_PORT ("coordination.unlock.port", 5430),
 		COORDINATION_HOST ("coordination.host", "localhost"),

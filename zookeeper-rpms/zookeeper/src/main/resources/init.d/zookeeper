@@ -1,0 +1,125 @@
+#!/bin/bash
+# chkconfig: 2345 20 80
+# description: zookeeper
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.
+# The ASF licenses this file to You under the Apache License, Version 2.0
+# (the "License"); you may not use this file except in compliance with
+# the License.  You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+PATH=/usr/bin:/sbin:/bin:/usr/sbin
+export PATH
+
+[ -f /etc/sysconfig/zookeeper ] && . /etc/sysconfig/zookeeper
+lockfile=${LOCKFILE-/var/lock/subsys/zookeeper}
+streamsd=${STREAMSD-/opt/zookeeper/bin/zkServer.sh}
+REGEX="org.apache.zookeeper.server.quorum.QuorumPeerMain"
+
+RETVAL=0
+
+# Source function library.
+. /etc/rc.d/init.d/functions
+
+if [ -f /etc/profile.d/java.sh ]; then
+ . /etc/profile.d/java.sh
+fi
+
+
+if [ -z "$JAVA_HOME" ]; then
+
+  echo "JAVA_HOME not set using /usr/java/latest"
+  export JAVA_HOME="/usr/java/latest"
+
+fi
+
+
+start() {
+
+   pid=`pgrep -f "$REGEX"`
+
+   if [ -n "$pid" ]; then
+    echo "The zookeeper is already running"
+    RETVAL=2
+   else
+
+    echo -n $"Starting zookeeper: "
+        daemon $streamsd start&
+    RETVAL=$?
+    echo
+        [ $RETVAL = 0 ] && touch ${lockfile}
+
+   fi
+
+   return $RETVAL
+
+}
+
+stop() {
+
+    pid=`pgrep -f "$REGEX"`
+    if [ -n "$pid" ]; then
+      echo -n $"Stopping zookeeper: "
+        $streamsd stop
+      RETVAL=$?
+      echo
+       [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+    else
+       echo "No zookeeper instance is running" 
+       RETVAL=2
+    fi
+
+    return $RETVAL
+
+}
+
+restart() {
+    stop
+    start
+}
+
+status() {
+
+   pid=`pgrep -f "$REGEX"`
+   if [ -n "$pid" ]; then
+      echo "zookeeper is running"
+      echo "$pid"
+      RETVAL=1
+   else
+       echo "zookeeper instance is stopped" 
+       RETVAL=2
+   fi
+
+   return $RETVAL
+}
+
+case "$1" in
+  start)
+    start
+    ;;
+  stop)
+    stop
+    ;;
+  restart)
+    stop
+    start
+    ;;
+  status)
+        status
+    ;;
+  *)
+    echo $"Usage: $0 {start|stop|status|restart}"
+    exit 1
+esac
+
+exit $RETVAL
+

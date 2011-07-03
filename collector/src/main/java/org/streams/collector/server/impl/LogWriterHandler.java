@@ -30,7 +30,6 @@ import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.file.CoordinationException;
 import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.FileStatus;
-import org.streams.commons.file.FileStatus.FileTrackingStatus;
 import org.streams.commons.file.PostWriteAction;
 import org.streams.commons.file.SyncPointer;
 import org.streams.commons.io.Header;
@@ -185,33 +184,42 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 								+ fileStatus.getFileName());
 			}
 
-			final ChannelBuffer buffer = ChannelBuffers.dynamicBuffer();
-
 			// SYNC GLOBALLY
-			coordinationService
+			final ChannelBuffer buffer = coordinationService
 					.withLock(
 							fileStatus,
-							new CoordinationServiceClient.CoordinationServiceListener() {
+							new CoordinationServiceClient.CoordinationServiceListener<ChannelBuffer>() {
 								@Override
-								public void syncConflict(
-										FileTrackingStatus file,
+								public ChannelBuffer syncConflict(
+										FileStatus.FileTrackingStatus file,
 										SyncPointer pointer) throws Exception {
 
+									long syncFilePointer = pointer
+											.getFilePointer();
 									LOG.info("File pointer Conflict detected: agent "
 											+ header.getHost()
 											+ " file: "
 											+ header.getFileName()
 											+ " agentPointer: "
+											+ file.getFilePointer()
+											+ " headerPointer: "
 											+ header.getFilePointer()
-											+ " collectorPointer: " + pointer);
+											+ " collectorPointer: "
+											+ syncFilePointer
+											+ " syncid: "
+											+ pointer.getTimeStamp());
 
+									ChannelBuffer buffer = ChannelBuffers
+											.dynamicBuffer();
 									buffer.writeInt(NetworkCodes.CODE.SYNC_CONFLICT
 											.num());
-									buffer.writeLong(pointer.getFilePointer());
+									buffer.writeLong(syncFilePointer);
+									return buffer;
 								}
 
 								@Override
-								public void inSync(FileTrackingStatus file,
+								public ChannelBuffer inSync(
+										FileStatus.FileTrackingStatus file,
 										final SyncPointer pointer,
 										PostWriteAction writeAction)
 										throws Exception {
@@ -220,8 +228,10 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 									writeToFile(codec, datInput, agentSession,
 											pointer, file, writeAction);
 
+									ChannelBuffer buffer = ChannelBuffers
+											.dynamicBuffer();
 									buffer.writeInt(200);
-
+									return buffer;
 								}
 
 							});

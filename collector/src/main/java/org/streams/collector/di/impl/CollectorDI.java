@@ -53,6 +53,7 @@ import org.streams.commons.metrics.impl.MetricChannel;
 import org.streams.commons.metrics.impl.MetricsAppService;
 import org.streams.commons.zookeeper.ZLock;
 import org.streams.commons.zookeeper.ZStore;
+import org.streams.commons.zookeeper.ZStoreExpireCheckService;
 import org.streams.coordination.cli.startup.service.impl.CollectorServerService;
 
 @Configuration
@@ -84,7 +85,8 @@ public class CollectorDI {
 						.getBean("restletPingComponent")), new RestletService(
 						(Component) beanFactory.getBean("restletComponent")),
 				beanFactory.getBean(CollectorServerService.class), beanFactory
-						.getBean(MetricsAppService.class));
+						.getBean(MetricsAppService.class),
+						beanFactory.getBean(ZStoreExpireCheckService.class));
 
 		List<? extends StartupCheck> postStartupList = Arrays
 				.asList(beanFactory.getBean(PingCheck.class));
@@ -93,6 +95,38 @@ public class CollectorDI {
 				postStartupList);
 	}
 
+	@Bean 
+	public ZStoreExpireCheckService zStoreExpireCheckService(){
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+		.getBean(org.apache.commons.configuration.Configuration.class);
+
+		
+		long initialDelay = configuration.getLong(
+				CollectorProperties.WRITER.ZSTORE_TIMEOUT_DELAY.toString(),
+				(Long) CollectorProperties.WRITER.ZSTORE_TIMEOUT_DELAY
+						.getDefaultValue());
+		
+		long checkFrequency = configuration.getLong(
+				CollectorProperties.WRITER.ZSTORE_TIMEOUT_CHECK.toString(),
+				(Long) CollectorProperties.WRITER.ZSTORE_TIMEOUT_CHECK
+						.getDefaultValue());
+		
+		int dataTimeOut = configuration.getInt(
+				CollectorProperties.WRITER.ZSTORE_DATA_TIMEOUT.toString(),
+				(Integer) CollectorProperties.WRITER.ZSTORE_DATA_TIMEOUT
+						.getDefaultValue());
+		
+		
+		
+		ZStoreExpireCheckService z = new ZStoreExpireCheckService();
+		z.setInitialDelay(initialDelay);
+		z.setCheckFrequency(checkFrequency);
+		z.setDataTimeOut(dataTimeOut);
+		
+		return z;
+	}
+	
+	
 	@Bean
 	public CollectorServer collectorServer() {
 
@@ -166,18 +200,34 @@ public class CollectorDI {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
-		String hosts = configuration
-				.getString(CollectorProperties.WRITER.COORDINATION_HOST
+		String[] hostsArr = configuration
+				.getStringArray(CollectorProperties.WRITER.COORDINATION_HOST
 						.toString());
+		
+		StringBuilder buff = new StringBuilder();
+		int i = 0;
+		for(String host: hostsArr){
+			if(i++ != 0) buff.append(',');
+			
+			buff.append(host);
+		}
+		
+		String hosts = buff.toString();
 		String group = configuration.getString(
 				CollectorProperties.WRITER.COORDINATION_GROUP.toString(),
 				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
 						.toString());
 
 		long timeout = 10000;
-
+		
+		
+		ZStoreExpireCheckService expireCheckService = beanFactory.getBean(ZStoreExpireCheckService.class);
+		ZStore zstore = new ZStore("/coordination/" + group, hosts, timeout);
+		
+		expireCheckService.getStores().add(zstore);
+		
 		return new CoordinationServiceClientImpl(new ZLock(hosts, timeout),
-				new ZStore("/coordination/" + group, hosts, timeout));
+				zstore);
 	}
 
 	/**

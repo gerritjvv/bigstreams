@@ -107,7 +107,6 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		builder.setLinePointer(pointer.getLinePointer());
 		FileTrackingStatus statusNew = builder.build();
 		
-		LOG.info("Store " + fileStatus.getFileName() + " from: " + fileStatus.getFilePointer() + " to " + pointer.getFilePointer() + " saving: " + statusNew.getFilePointer());
 		zstore.store(key, statusNew);
 	}
 

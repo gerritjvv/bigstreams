@@ -175,7 +175,11 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 	@Override
 	public void releaseLock(FileTrackingStatus status) {
 		String key = makeKey(status);
-		keyLock.releaseLock(key);
+		try {
+			keyLock.releaseLock(key);
+		} catch (IllegalMonitorStateException emexcp) {
+			;// ignore
+		}
 		filesLocked.remove(key);
 	}
 

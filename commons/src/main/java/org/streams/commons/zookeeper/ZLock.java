@@ -3,11 +3,8 @@ package org.streams.commons.zookeeper;
 import java.util.concurrent.Callable;
 import java.util.concurrent.TimeoutException;
 
-import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
-
 import org.apache.zookeeper.recipes.lock.WriteLock;
 
 /**
@@ -60,10 +57,10 @@ public class ZLock {
 		// this is not an acurate calc, because the lock timeout is progressive.
 		// but will do as a first implementation
 		long delay = lockTimeout / 10;
-		
-		if(delay < 1) delay = 100;
-		
-		
+
+		if (delay < 1)
+			delay = 100;
+
 		writeLock.setRetryDelay(delay);
 
 		boolean locked = false;
@@ -76,12 +73,12 @@ public class ZLock {
 						+ " using zookeeper " + hosts);
 			}
 		} finally {
-			if (locked){
-				try{
-				writeLock.unlock();
-				}catch(Throwable iexp){
-					//ignore or eat it
-					
+			if (locked) {
+				try {
+					writeLock.unlock();
+				} catch (Throwable iexp) {
+					// ignore or eat it
+
 				}
 			}
 		}

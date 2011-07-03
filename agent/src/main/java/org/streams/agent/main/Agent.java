@@ -39,7 +39,11 @@ public class Agent {
 		
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 		    public void run() { 
+		    	try{
 		    	bootstrap.close();
+		    	}catch(Throwable t){
+		    		t.printStackTrace();
+		    	}
 		    	System.out.println("Agent shutdown");
 		    }
 		});
