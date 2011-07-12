@@ -45,7 +45,7 @@ public class ZStore {
 	 * @throws KeeperException
 	 * @throws InterruptedException
 	 */
-	private final void init(ZooKeeper zk) throws KeeperException,
+	private final synchronized void init(ZooKeeper zk) throws KeeperException,
 			InterruptedException {
 
 		String[] paths = path.split("/");

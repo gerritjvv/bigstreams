@@ -19,9 +19,11 @@ public class ZStoreExpireCheckService implements ApplicationService{
 	private static final Logger LOG = Logger.getLogger(ZStoreExpireCheckService.class);
 	
 	long initialDelay = 1000L;
-	long checkFrequency = 60000;
+	//24 hours in milliseconds
+	long checkFrequency =  86400000;
 	
-	int dataTimeOut = 3600;
+	//one month in seconds
+	int dataTimeOut =  2629743;
 	
 	List<ZStore> stores;
 	
@@ -50,7 +52,7 @@ public class ZStoreExpireCheckService implements ApplicationService{
 				int i = 0;
 				for(ZStore store : stores){
 					try{
-						LOG.info("Checking store " + (i++) + " of " + stores.size());
+						LOG.info("Checking store " + (++i) + " of " + stores.size());
 					  	store.removeExpired(dataTimeOut);
 					  	
 					}catch(Throwable t){
