@@ -479,6 +479,8 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 			collectorStatus.incCounter("Errors_Caught", 1);
 
 			LOG.error(agentSession.toString());
+			LOG.error(exception.toString(), exception);
+			
 			// LOG.error(exception, exception);
 		} catch (Throwable t) {
 			LOG.error("Throwed exception in catchException " + t);
