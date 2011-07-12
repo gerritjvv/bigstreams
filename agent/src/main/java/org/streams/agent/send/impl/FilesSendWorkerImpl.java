@@ -81,9 +81,8 @@ public class FilesSendWorkerImpl implements Runnable {
 			try {
 
 				fileStatus = pollInterruptibly();
-				
-				try {
-					fileObj = new File(fileStatus.getPath());
+
+				fileObj = new File(fileStatus.getPath());
 					// lets see if the file exists.
 					// if it doesn't mark as DELETED.
 					if (!fileObj.exists()) {
@@ -94,9 +93,7 @@ public class FilesSendWorkerImpl implements Runnable {
 						// the FileSendTask.
 						fileSendTask.sendFileData(fileStatus);
 					}
-				} finally {
-					queue.releaseLock(fileStatus);
-				}
+				
 
 				// sleep for a second between files
 				Thread.sleep(waitBetweenFileSends);
@@ -141,6 +138,9 @@ public class FilesSendWorkerImpl implements Runnable {
 					break;
 				}
 
+			}finally {
+				if(fileStatus != null)
+					queue.releaseLock(fileStatus);
 			}
 
 		}

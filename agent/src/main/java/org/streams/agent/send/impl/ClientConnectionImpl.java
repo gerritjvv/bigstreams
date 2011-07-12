@@ -80,7 +80,7 @@ public class ClientConnectionImpl implements ClientConnection {
 
 	Timer timeoutTimer;
 
-	final ClientSocketChannelFactory socketChannelFactory;
+	volatile ClientSocketChannelFactory socketChannelFactory = null;
 
 	public ClientConnectionImpl(
 			ClientSocketChannelFactory socketChannelFactory, Timer timeoutTimer) {

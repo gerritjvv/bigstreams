@@ -140,21 +140,22 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 
 		try {
 			if (status != null) {
-				String key = makeKey(status);
-				if (keyLock.acquireLock(key, 1000L)) {
-					// check for null again, and if not set the status to
-					// READING locking
-					// the file
-					filesLocked.add(key);
-					status.setStatus(FileTrackingStatus.STATUS.READING);
-					trackerMemory.updateFile(status);
-				} else {
-					// this file is already being read by some other process.
-					// try poll to get the next item in queue
-					status = poll();
+				
+					String key = makeKey(status);
+					if (keyLock.acquireLock(key, 1000L)) {
+						// check for null again, and if not set the status to
+						// READING locking
+						// the file
+						filesLocked.add(key);
+						status.setStatus(FileTrackingStatus.STATUS.READING);
+						trackerMemory.updateFile(status);
+					} else {
+						// this file is already being read by some other process.
+						// try poll to get the next item in queue
+						status = getNext();
+					}
 				}
 
-			}
 		} catch (InterruptedException e) {
 			// do not do anything if interrupted, return immediately
 			Thread.interrupted();
@@ -173,11 +174,12 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 	}
 
 	@Override
-	public void releaseLock(FileTrackingStatus status) {
+	public synchronized void releaseLock(FileTrackingStatus status) {
 		String key = makeKey(status);
 		try {
 			keyLock.releaseLock(key);
 		} catch (IllegalMonitorStateException emexcp) {
+			LOG.warn(emexcp)
 			;// ignore
 		}
 		filesLocked.remove(key);
@@ -191,4 +193,5 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 		this.fileParkTimeOut = fileParkTimeOut;
 	}
 
+	
 }
