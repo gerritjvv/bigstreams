@@ -28,6 +28,7 @@ public interface CollectorProperties {
 		COORDINATION_GROUP("coordination.group", "default"),
 		BLOCKED_IPS("blocked.ips", ""),
 		
+		HEARTBEAT_FREQUENCY("hearbeat.frequency", 300000L),
 		
 		ZSTORE_TIMEOUT_DELAY("zstore.timeout.delay", 10000L),
 		ZSTORE_TIMEOUT_CHECK("zstore.timeout.check",  86400L), //1 days

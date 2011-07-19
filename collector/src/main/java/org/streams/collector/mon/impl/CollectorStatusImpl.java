@@ -6,12 +6,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.streams.collector.mon.CollectorStatus;
 
-
 /**
- * Simple status implementation of the CoordinationStatus interface. 
- *
+ * Simple status implementation of the CoordinationStatus interface.
+ * 
  */
-public class CollectorStatusImpl implements CollectorStatus{
+public class CollectorStatusImpl implements CollectorStatus {
 
 	STATUS status = STATUS.OK;
 	String msg = "Working";
@@ -32,12 +31,11 @@ public class CollectorStatusImpl implements CollectorStatus{
 		return status;
 	}
 
-
 	@Override
-	public void setCounter(String name, int value){
+	public void setCounter(String name, int value) {
 		getSetCounter(name).set(value);
 	}
-	
+
 	@Override
 	public void incCounter(String name, int value) {
 		getSetCounter(name).addAndGet(value);
@@ -67,7 +65,6 @@ public class CollectorStatusImpl implements CollectorStatus{
 		return counter;
 	}
 
-
 	public Map<String, AtomicInteger> getCounterMap() {
 		return counterMap;
 	}
@@ -88,6 +85,9 @@ public class CollectorStatusImpl implements CollectorStatus{
 		this.msg = msg;
 	}
 
-
+	@Override
+	public String getStatusMessage() {
+		return getMsg();
+	}
 
 }

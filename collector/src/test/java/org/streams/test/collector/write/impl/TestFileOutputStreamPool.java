@@ -43,6 +43,24 @@ public class TestFileOutputStreamPool extends TestCase {
 			public void setCounter(String status, int counter) {
 
 			}
+
+			@Override
+			public STATUS getStatus() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public String getStatusMessage() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public void setStatus(STATUS status, String msg) {
+				// TODO Auto-generated method stub
+				
+			}
 		};
 
 		CompressionPoolFactory compressionPoolFactory = new CompressionPoolFactoryImpl(
@@ -111,6 +129,24 @@ public class TestFileOutputStreamPool extends TestCase {
 			public void setCounter(String status, int counter) {
 
 			}
+
+			@Override
+			public STATUS getStatus() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public String getStatusMessage() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public void setStatus(STATUS status, String msg) {
+				// TODO Auto-generated method stub
+				
+			}
 		};
 
 		CompressionPoolFactory compressionPoolFactory = new CompressionPoolFactoryImpl(
@@ -178,6 +214,24 @@ public class TestFileOutputStreamPool extends TestCase {
 			@Override
 			public void setCounter(String status, int counter) {
 
+			}
+
+			@Override
+			public STATUS getStatus() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public String getStatusMessage() {
+				// TODO Auto-generated method stub
+				return null;
+			}
+
+			@Override
+			public void setStatus(STATUS status, String msg) {
+				// TODO Auto-generated method stub
+				
 			}
 		};
 

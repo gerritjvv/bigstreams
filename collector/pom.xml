@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector</artifactId>
-	<version>0.2.1</version>
+	<version>0.2.2</version>
 	<name>collector</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -90,10 +90,28 @@
 	<build>
 		<plugins>
 
+                       <plugin>
+                                <groupId>com.objectdriven.maven</groupId>
+                                <artifactId>maven-zookeeper-plugin</artifactId>
+                                <version>1.0-SNAPSHOT</version>
+                                <configuration>
+                                        <port>3001</port>
+                                        <daemon>true</daemon>
+                                </configuration>
+                                <executions>
+                                        <execution>
+                                                <phase>pre-integration-test</phase>
+                                                <goals>
+                                                        <goal>start</goal>
+                                                </goals>
+                                        </execution>
+                                </executions>
+                        </plugin>
+
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
-					<skip>false</skip>
+					<skip>true</skip>
 					<forkMode>once</forkMode>
 
 					<environmentVariables>
@@ -106,6 +124,19 @@
 							<value>target/nativetmplib</value>
 						</property>
 					</systemProperties>
+					<executions>
+                                        <execution>
+                                                <id>surefire-it</id>
+                                                <phase>integration-test</phase>
+                                                <goals>
+                                                        <goal>test</goal>
+                                                </goals>
+                                                <configuration>
+                                                        <skip>false</skip>
+                                                </configuration>
+                                        </execution>
+                                </executions>
+
 				</configuration>
 
 				<executions>
@@ -149,7 +180,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>2</release>
+					<release>1</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
@@ -282,7 +313,12 @@
 
 		</plugins>
 	</reporting>
-
+        <pluginRepositories>
+                <pluginRepository>
+                        <id>dtrott</id>
+                        <url>http://maven.davidtrott.com/repository</url>
+                </pluginRepository>
+        </pluginRepositories>
 	<repositories>
 		<repository>
 			<id>repo2.maven.org</id>
