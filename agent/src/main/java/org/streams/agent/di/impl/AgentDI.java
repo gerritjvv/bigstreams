@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -17,7 +18,10 @@ import java.util.concurrent.Executors;
 import javax.inject.Inject;
 import javax.persistence.EntityManagerFactory;
 
+import org.apache.commons.configuration.ConfigurationException;
 import org.apache.hadoop.io.compress.CompressionCodec;
+import org.apache.log4j.Logger;
+import org.apache.zookeeper.KeeperException;
 import org.jboss.netty.channel.socket.nio.NioClientSocketChannelFactory;
 import org.restlet.Application;
 import org.restlet.Component;
@@ -28,6 +32,7 @@ import org.restlet.resource.Finder;
 import org.restlet.resource.ServerResource;
 import org.restlet.routing.Router;
 import org.restlet.routing.Template;
+import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.BeanFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -81,12 +86,16 @@ import org.streams.commons.cli.AppStartCommand;
 import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.file.FileDateExtractor;
 import org.streams.commons.file.impl.SimpleFileDateExtractor;
+import org.streams.commons.group.Group;
+import org.streams.commons.group.GroupHeartbeatService;
+import org.streams.commons.group.GroupKeeper;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.net.AddressSelector;
 import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricsAppService;
 import org.streams.commons.util.HashedWheelTimerFactory;
+import org.streams.commons.zookeeper.ZGroup;
 
 /**
  * Injects the AppLifeCycleManager and all of its dependencies
@@ -96,6 +105,8 @@ import org.streams.commons.util.HashedWheelTimerFactory;
 @Import(MetricsDI.class)
 public class AgentDI {
 
+	private static final Logger LOG = Logger.getLogger(AgentDI.class);
+	
 	@Autowired(required = true)
 	BeanFactory beanFactory;
 
@@ -157,10 +168,67 @@ public class AgentDI {
 				beanFactory.getBean(RestletService.class),
 				beanFactory.getBean(FilesSendService.class),
 				beanFactory.getBean(MetricsAppService.class),
-				beanFactory.getBean(FileLogActionManager.class));
+				beanFactory.getBean(FileLogActionManager.class),
+				beanFactory.getBean(GroupHeartbeatService.class));
 
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				null);
+	}
+
+	@Bean
+	public GroupKeeper groupKeeper() throws KeeperException,
+			InterruptedException, IOException, ConfigurationException {
+
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		String[] hostsArr = configuration
+				.getStringArray(AgentProperties.ZOOKEEPER.toString());
+
+		if (hostsArr == null || hostsArr.length < 1) {
+			throw new ConfigurationException("Please defined the Property "
+					+ AgentProperties.ZOOKEEPER);
+		}
+
+		StringBuilder buff = new StringBuilder();
+		int i = 0;
+		for (String host : hostsArr) {
+			if (i++ != 0)
+				buff.append(',');
+
+			buff.append(host);
+		}
+
+		String hosts = buff.toString();
+		String group = configuration.getString(
+				AgentProperties.ZOOKEEPER_GROUP.toString(), "default");
+
+		return new ZGroup(group, hosts, 10000L);
+
+	}
+
+	@Bean
+	public GroupHeartbeatService groupHeartbeatService() throws BeansException,
+			UnknownHostException {
+
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		long initialDelay = 10000L;
+
+		long checkFrequency = configuration.getLong(
+				AgentProperties.HEARTBEAT_FREQUENCY.toString(), 300000L);
+
+		AgentStatus status = beanFactory.getBean(AgentStatus.class);
+		LOG.info("USING status: " + status);
+		
+		GroupHeartbeatService service = new GroupHeartbeatService(
+				beanFactory.getBean(GroupKeeper.class),
+				Group.GroupStatus.Type.AGENT,
+				status, initialDelay,
+				checkFrequency, 10000L);
+
+		return service;
 	}
 
 	@Bean

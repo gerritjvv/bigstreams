@@ -37,6 +37,12 @@ public interface AgentProperties {
 	
 	static final String CLIENT_THREAD_COUNT = "agent.send.thread.count";
 
+	static final String HEARTBEAT_FREQUENCY = "agent.heartbeat.frequency";
+	static final String ZOOKEEPER_GROUP = "agent.zookeeper.group";
+	static final String ZOOKEEPER = "agent.zookeeper";
+	static final String ZOOKEEPER_TIMEOUT = "agent.zookeeper.timeout";
+	
+	
 	static final String COLLECTOR = "agent.send.collector";
 	static final String THREAD_WAIT_IFEMPTY = "agent.send.thread.waitifempty";
 	static final String THREAD_RETRIES = "agent.send.thread.retries";

@@ -9,6 +9,7 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
+import org.apache.taglibs.standard.tag.common.xml.UnresolvableException;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferInputStream;
@@ -131,8 +132,13 @@ public class ClientConnectionImpl implements ClientConnection {
 		bootstrap.setOption("soLinger", String.valueOf(30000));
 		
 		// Start the connection attempt.
-		bootstrap.connect(inetAddress);
-
+		try{
+			bootstrap.connect(inetAddress);
+		}catch(Throwable addressException){
+			LOG.error(addressException);
+			//do not leave here, we need to wait for handler to return the exception.
+		}
+		
 		ClientHandlerContext clientHandlerContext = null;
 
 		try {
@@ -321,22 +327,30 @@ public class ClientConnectionImpl implements ClientConnection {
 		public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 				throws Exception {
 			LOG.warn("Client Exception Caught");
+			
 			// any client side exception in the IO pipeline is captured here.
 			// if this happens close the connection
 			try {
 				clientHandlerContext
 						.setClientStatusCode(ClientHandlerContext.STATUS_ERROR);
 				Throwable t = e.getCause();
+				
 				clientHandlerContext.setErrorCause(t);
 
 				String msg = "Client Error: " + t.toString();
 				LOG.error(msg, t);
 
+
+				if(t instanceof UnresolvableException){
+					throw t;
+				}
+				
 				ctx.getChannel().close();
 			} catch (Throwable t) {
 				LOG.error(t.toString(), t);
 			}
 
+			//only wait if the channel has been connected
 			if (!exhanged.getAndSet(true)) {
 				try{
 				exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);

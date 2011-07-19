@@ -7,9 +7,6 @@ import org.streams.commons.status.Status;
  */
 public interface AgentStatus extends Status{
 
-	enum STATUS {
-		SERVER_ERROR, CLIENT_ERROR, UNKOWN_ERROR, OK
-	};
 	
 	enum FILE_LOG_MANAGE_STATUS{
 		ERROR, OK

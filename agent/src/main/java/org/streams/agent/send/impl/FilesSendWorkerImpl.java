@@ -11,6 +11,7 @@ import org.streams.agent.send.ClientException;
 import org.streams.agent.send.FileSendTask;
 import org.streams.agent.send.FilesToSendQueue;
 import org.streams.agent.send.ServerException;
+import org.streams.commons.status.Status;
 
 /**
  * 
@@ -83,17 +84,16 @@ public class FilesSendWorkerImpl implements Runnable {
 				fileStatus = pollInterruptibly();
 
 				fileObj = new File(fileStatus.getPath());
-					// lets see if the file exists.
-					// if it doesn't mark as DELETED.
-					if (!fileObj.exists()) {
-						fileStatus.setStatus(FileTrackingStatus.STATUS.DELETED);
-						memory.updateFile(fileStatus);
-					} else {
-						// delegate the actual work of sending the file data to
-						// the FileSendTask.
-						fileSendTask.sendFileData(fileStatus);
-					}
-				
+				// lets see if the file exists.
+				// if it doesn't mark as DELETED.
+				if (!fileObj.exists()) {
+					fileStatus.setStatus(FileTrackingStatus.STATUS.DELETED);
+					memory.updateFile(fileStatus);
+				} else {
+					// delegate the actual work of sending the file data to
+					// the FileSendTask.
+					fileSendTask.sendFileData(fileStatus);
+				}
 
 				// sleep for a second between files
 				Thread.sleep(waitBetweenFileSends);
@@ -102,9 +102,11 @@ public class FilesSendWorkerImpl implements Runnable {
 
 			} catch (InterruptedException iexcp) {
 				// this thread was interrupted
+				LOG.error("Interrupted Exception" + iexcp);
 				interrupted = true;
 				break;
 			} catch (java.util.concurrent.RejectedExecutionException rejectedException) {
+
 				// if we see this error it means that some thread executor
 				// service has been closed.
 				// this only happens when the application is shutdown.
@@ -118,6 +120,9 @@ public class FilesSendWorkerImpl implements Runnable {
 			} catch (Throwable t) {
 				// any unexpected error in this method will result in the thread
 				// terminating
+				LOG.error("FileSendWorkerImplERROR: " + t.toString());
+				agentStatus.setStatus(Status.STATUS.UNKOWN_ERROR, t.toString());
+
 				try {
 					handleFileError(fileStatus, fileObj, t);
 				} catch (RuntimeException rte) {
@@ -138,8 +143,8 @@ public class FilesSendWorkerImpl implements Runnable {
 					break;
 				}
 
-			}finally {
-				if(fileStatus != null)
+			} finally {
+				if (fileStatus != null)
 					queue.releaseLock(fileStatus);
 			}
 
@@ -228,9 +233,9 @@ public class FilesSendWorkerImpl implements Runnable {
 			// to ready
 			// set park time
 			LOG.info("Parking file  " + fileStatus.getPath());
-			
+
 			fileStatus.setPark();
-			
+
 			memory.updateFile(fileStatus);
 
 			LOG.error(t.toString(), t);

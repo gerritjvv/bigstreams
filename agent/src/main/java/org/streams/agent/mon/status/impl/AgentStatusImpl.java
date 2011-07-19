@@ -13,14 +13,14 @@ import org.streams.agent.mon.status.AgentStatus;
  */
 public class AgentStatusImpl implements AgentStatus {
 
-	STATUS status = STATUS.OK;
-	String msg = "Working";
+	volatile  STATUS status = STATUS.OK;
+	volatile  String msg = "Working";
 
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
 	FILE_LOG_MANAGE_STATUS logManageStatus = FILE_LOG_MANAGE_STATUS.OK;
 	
-	String logManageMsg = "Working";
+	volatile String logManageMsg = "Working";
 	
 	public int getCounter(String name) {
 		return getSetCounter(name).get();

@@ -58,6 +58,7 @@ public class FilesSendService implements ApplicationService {
 		this.agentStatus = agentStatus;
 		this.memory = memory;
 		this.queue = queue;
+		LOG.info("Using status " + agentStatus);
 	}
 
 	/**
