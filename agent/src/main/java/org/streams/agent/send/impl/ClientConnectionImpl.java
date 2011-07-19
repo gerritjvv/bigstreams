@@ -9,7 +9,6 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
-import org.apache.taglibs.standard.tag.common.xml.UnresolvableException;
 import org.jboss.netty.bootstrap.ClientBootstrap;
 import org.jboss.netty.buffer.ChannelBuffer;
 import org.jboss.netty.buffer.ChannelBufferInputStream;
@@ -135,15 +134,18 @@ public class ClientConnectionImpl implements ClientConnection {
 		try{
 			bootstrap.connect(inetAddress);
 		}catch(Throwable addressException){
-			LOG.error(addressException);
+			LOG.error("Error connecting to " + inetAddress);
 			//do not leave here, we need to wait for handler to return the exception.
+			throw new RuntimeException("Error connecting to " + inetAddress);
 		}
 		
 		ClientHandlerContext clientHandlerContext = null;
 
 		try {
+			LOG.info("Agent waiting on exhanger");
 			clientHandlerContext = exchanger.exchange(null, sendTimeOut * 2,
 					TimeUnit.MILLISECONDS);
+			LOG.info("Agent received from exhanger");
 		} catch (InterruptedException e) {
 			// this is called if the thread is to be closed by some shutdown
 			// process.
@@ -244,7 +246,8 @@ public class ClientConnectionImpl implements ClientConnection {
 
 		private final ClientHandlerContext clientHandlerContext;
 		Exchanger<ClientHandlerContext> exchanger;
-
+        
+		//we only want exchange once the channel has connected
 		AtomicBoolean exhanged = new AtomicBoolean(false);
 		Protocol protocol;
 		long sendTimeOut;
@@ -264,9 +267,9 @@ public class ClientConnectionImpl implements ClientConnection {
 		@Override
 		public void channelConnected(ChannelHandlerContext ctx,
 				ChannelStateEvent e) throws Exception {
-			// super.channelConnected(ctx, e);
+		
 			// as soon as connected send data
-
+			
 			Channel channel = e.getChannel();
 			boolean sentLines = false;
 
@@ -339,20 +342,15 @@ public class ClientConnectionImpl implements ClientConnection {
 
 				String msg = "Client Error: " + t.toString();
 				LOG.error(msg, t);
-
-
-				if(t instanceof UnresolvableException){
-					throw t;
-				}
 				
 				ctx.getChannel().close();
 			} catch (Throwable t) {
 				LOG.error(t.toString(), t);
 			}
-
-			//only wait if the channel has been connected
+			
 			if (!exhanged.getAndSet(true)) {
 				try{
+					LOG.error("echanger agent waiting");
 				exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);
 				}catch(TimeoutException te){
 					LOG.error("The calling object did not respond");
