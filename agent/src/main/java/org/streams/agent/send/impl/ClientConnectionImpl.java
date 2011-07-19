@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.concurrent.Exchanger;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -68,8 +69,6 @@ public class ClientConnectionImpl implements ClientConnection {
 	private static final Logger LOG = Logger
 			.getLogger(ClientConnectionImpl.class);
 
-	private ClientBootstrap bootstrap;
-
 	long connectEstablishTimeout = 10000L;
 
 	long sendTimeOut = 20000L;
@@ -82,9 +81,12 @@ public class ClientConnectionImpl implements ClientConnection {
 
 	volatile ClientSocketChannelFactory socketChannelFactory = null;
 
-	public ClientConnectionImpl(
+	ExecutorService connectService;
+
+	public ClientConnectionImpl(ExecutorService connectService,
 			ClientSocketChannelFactory socketChannelFactory, Timer timeoutTimer) {
 		super();
+		this.connectService = connectService;
 		this.socketChannelFactory = socketChannelFactory;
 		this.timeoutTimer = timeoutTimer;
 	}
@@ -94,6 +96,60 @@ public class ClientConnectionImpl implements ClientConnection {
 	 */
 	public void connect(InetSocketAddress inetAddress) throws IOException {
 		this.inetAddress = inetAddress;
+	}
+
+	/**
+	 * Tries to connect using an async method call.<br/>
+	 * Any response is sent via the exchanger
+	 * 
+	 * @param header
+	 * @param fileLineStreamer
+	 * @param input
+	 * @return Exchanger
+	 */
+	private Exchanger<ClientHandlerContext> asyncConnect(final Header header,
+			final FileStreamer fileLineStreamer, final BufferedReader input) {
+
+		final Exchanger<ClientHandlerContext> exchanger = new Exchanger<ClientHandlerContext>();
+
+		connectService.submit(new Runnable() {
+			public void run() {
+				try {
+
+					ClientBootstrap bootstrap = new ClientBootstrap(
+							socketChannelFactory);
+
+					// we set the ReadTimeoutHandler to timeout if no response
+					// is
+					// received
+					// from the server after default 10 seconds
+					bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
+						@Override
+						public ChannelPipeline getPipeline() throws Exception {
+							return Channels.pipeline(
+									new ClientMessageFrameDecoder(),
+									new ClientChannelHandler(exchanger,
+											new ClientHandlerContext(header,
+													input, fileLineStreamer),
+											protocol.clone(), sendTimeOut));
+						}
+					});
+
+					bootstrap.setOption("connectTimeoutMillis",
+							connectEstablishTimeout);
+					bootstrap.setOption("tcpNoDelay", "true");
+					// 30 seconds linger timeout.
+					bootstrap.setOption("soLinger", String.valueOf(30000));
+
+					// Start the connection attempt.
+					bootstrap.connect(inetAddress);
+				} catch (Throwable t) {
+					LOG.error(t.toString(), t);
+				}
+			}
+		});
+
+		return exchanger;
 	}
 
 	/**
@@ -108,49 +164,19 @@ public class ClientConnectionImpl implements ClientConnection {
 			throw new ClientException("Please set a protocol", -1);
 		}
 
-		final Exchanger<ClientHandlerContext> exchanger = new Exchanger<ClientHandlerContext>();
+		Exchanger<ClientHandlerContext> exchanger = asyncConnect(header,
+				fileLineStreamer, input);
 
-		bootstrap = new ClientBootstrap(socketChannelFactory);
-
-		
-		// we set the ReadTimeoutHandler to timeout if no response is received
-		// from the server after default 10 seconds
-		bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
-			@Override
-			public ChannelPipeline getPipeline() throws Exception {
-				return Channels.pipeline(new ClientMessageFrameDecoder(),
-						new ClientChannelHandler(exchanger,
-								new ClientHandlerContext(header, input,
-										fileLineStreamer), protocol.clone(), sendTimeOut));
-			}
-		});
-
-		bootstrap.setOption("connectTimeoutMillis", connectEstablishTimeout);
-		bootstrap.setOption("tcpNoDelay", "true");
-		//30 seconds linger timeout.
-		bootstrap.setOption("soLinger", String.valueOf(30000));
-		
-		// Start the connection attempt.
-		try{
-			bootstrap.connect(inetAddress);
-		}catch(Throwable addressException){
-			LOG.error("Error connecting to " + inetAddress);
-			//do not leave here, we need to wait for handler to return the exception.
-			throw new RuntimeException("Error connecting to " + inetAddress);
-		}
-		
 		ClientHandlerContext clientHandlerContext = null;
 
 		try {
-			LOG.info("Agent waiting on exhanger");
 			clientHandlerContext = exchanger.exchange(null, sendTimeOut * 2,
 					TimeUnit.MILLISECONDS);
-			LOG.info("Agent received from exhanger");
 		} catch (InterruptedException e) {
 			// this is called if the thread is to be closed by some shutdown
 			// process.
 			Thread.currentThread().interrupt();
-			
+
 		} catch (TimeoutException e) {
 			throw new ServerException(
 					"The server did not respond within the timeout "
@@ -246,14 +272,14 @@ public class ClientConnectionImpl implements ClientConnection {
 
 		private final ClientHandlerContext clientHandlerContext;
 		Exchanger<ClientHandlerContext> exchanger;
-        
-		//we only want exchange once the channel has connected
+
 		AtomicBoolean exhanged = new AtomicBoolean(false);
 		Protocol protocol;
 		long sendTimeOut;
-		
+
 		public ClientChannelHandler(Exchanger<ClientHandlerContext> exchanger,
-				ClientHandlerContext clientHandlerContext, Protocol protocol, long sendTimeout) {
+				ClientHandlerContext clientHandlerContext, Protocol protocol,
+				long sendTimeout) {
 			this.clientHandlerContext = clientHandlerContext;
 			this.exchanger = exchanger;
 			this.protocol = protocol;
@@ -267,9 +293,9 @@ public class ClientConnectionImpl implements ClientConnection {
 		@Override
 		public void channelConnected(ChannelHandlerContext ctx,
 				ChannelStateEvent e) throws Exception {
-		
+			// super.channelConnected(ctx, e);
 			// as soon as connected send data
-			
+
 			Channel channel = e.getChannel();
 			boolean sentLines = false;
 
@@ -278,7 +304,6 @@ public class ClientConnectionImpl implements ClientConnection {
 			ChannelBufferOutputStream output = new ChannelBufferOutputStream(
 					channelBuffer);
 
-			
 			protocol.send(clientHandlerContext.getHeader(),
 					clientHandlerContext.getFileLineStreamer().getCodec(),
 					output);
@@ -291,13 +316,11 @@ public class ClientConnectionImpl implements ClientConnection {
 			// is a
 			// compressed.
 
-			
 			sentLines = clientHandlerContext.getFileLineStreamer()
 					.streamContent(
 							clientHandlerContext.getIntermediatePointer(),
 							clientHandlerContext.getReader(), output);
 
-			
 			if (sentLines) {
 				// get the total message length, and write integer as first
 				// bytes of message
@@ -319,7 +342,8 @@ public class ClientConnectionImpl implements ClientConnection {
 				// close channel if no write
 				channel.close();
 				if (!exhanged.getAndSet(true)) {
-					exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);
+					exchanger.exchange(clientHandlerContext, sendTimeOut,
+							TimeUnit.MILLISECONDS);
 				}
 			}
 
@@ -330,29 +354,30 @@ public class ClientConnectionImpl implements ClientConnection {
 		public void exceptionCaught(ChannelHandlerContext ctx, ExceptionEvent e)
 				throws Exception {
 			LOG.warn("Client Exception Caught");
-			
+
 			// any client side exception in the IO pipeline is captured here.
 			// if this happens close the connection
 			try {
 				clientHandlerContext
 						.setClientStatusCode(ClientHandlerContext.STATUS_ERROR);
 				Throwable t = e.getCause();
-				
+
 				clientHandlerContext.setErrorCause(t);
 
 				String msg = "Client Error: " + t.toString();
 				LOG.error(msg, t);
-				
+
 				ctx.getChannel().close();
 			} catch (Throwable t) {
 				LOG.error(t.toString(), t);
 			}
-			
+
+			// only wait if the channel has been connected
 			if (!exhanged.getAndSet(true)) {
-				try{
-					LOG.error("echanger agent waiting");
-				exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);
-				}catch(TimeoutException te){
+				try {
+					exchanger.exchange(clientHandlerContext, sendTimeOut,
+							TimeUnit.MILLISECONDS);
+				} catch (TimeoutException te) {
 					LOG.error("The calling object did not respond");
 				}
 			}
@@ -409,7 +434,8 @@ public class ClientConnectionImpl implements ClientConnection {
 			}
 
 			if (!exhanged.getAndSet(true)) {
-				exchanger.exchange(clientHandlerContext, sendTimeOut, TimeUnit.MILLISECONDS);
+				exchanger.exchange(clientHandlerContext, sendTimeOut,
+						TimeUnit.MILLISECONDS);
 			}
 
 			super.messageReceived(ctx, e);

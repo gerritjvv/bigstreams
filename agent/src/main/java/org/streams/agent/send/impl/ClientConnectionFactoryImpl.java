@@ -1,5 +1,9 @@
 package org.streams.agent.send.impl;
 
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
 import org.jboss.netty.util.Timer;
 import org.streams.agent.send.ClientConnection;
@@ -19,6 +23,13 @@ public class ClientConnectionFactoryImpl implements ClientConnectionFactory {
 	Protocol protocol;
 
 	Timer timeoutTimer;
+
+	/**
+	 * A cached thread pool for any threaded services apart from the netty
+	 * framework that the<br/>
+	 * connections need.
+	 */
+	ExecutorService connectService = Executors.newCachedThreadPool();
 
 	public ClientConnectionFactoryImpl(Timer timeoutTimer,
 			ClientSocketChannelFactory socketChannelFactory,
@@ -53,7 +64,8 @@ public class ClientConnectionFactoryImpl implements ClientConnectionFactory {
 	 * @return
 	 */
 	protected ClientConnection createConnection() {
-		return new ClientConnectionImpl(socketChannelFactory, timeoutTimer);
+		return new ClientConnectionImpl(connectService, socketChannelFactory,
+				timeoutTimer);
 	}
 
 	public long getConnectEstablishTimeout() {
@@ -82,10 +94,21 @@ public class ClientConnectionFactoryImpl implements ClientConnectionFactory {
 
 	@Override
 	public void close() {
-		//IMPORTANT - never call sockerChannelFactory.destroyExternalResources
+		// IMPORTANT - never call sockerChannelFactory.destroyExternalResources
 		// this method will hang and cause the agent to hang if called.
-		// The ThreadResourceService will be called by the ApplicationLifeCycleManager to shutdown any threads.
+		// The ThreadResourceService will be called by the
+		// ApplicationLifeCycleManager to shutdown any threads.
 		socketChannelFactory = null;
+
+		connectService.shutdown();
+		try {
+			connectService.awaitTermination(500, TimeUnit.MILLISECONDS);
+			connectService.shutdownNow();
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+			return;
+		}
+
 	}
 
 }
