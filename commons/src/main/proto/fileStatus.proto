@@ -1,5 +1,7 @@
 package org.streams.commons.file;
 
+option optimize_for = SPEED;
+
 message FileTrackingStatus{
  
     optional int64 date = 1;

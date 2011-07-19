@@ -1,0 +1,39 @@
+package org.streams.commons.group;
+
+option java_outer_classname = "Group";
+option java_package = "org.streams.commons.group";
+
+option optimize_for = SPEED;
+
+
+
+message GroupStatus{
+ 
+    enum Type{
+       AGENT = 0;
+       COLLECTOR = 1;
+    }
+    
+    enum Status{
+      SERVER_ERROR = 0;
+      CLIENT_ERROR = 1;
+      UNKOWN_ERROR = 2;
+      OK           = 3;
+      SHUTDOWN     = 4;
+      COORDINATION_ERROR = 5;
+      COORDINATION_LOCK_ERROR = 6;
+    }
+    
+    optional int64 lastUpdate = 1;
+    
+    optional Status status    = 2;   
+    optional Type   type      = 3;
+    
+    optional string streams_version = 4;
+    
+    optional int32 load       = 5;
+    
+    optional string host      = 6;
+    optional string msg       = 7;
+    
+ }

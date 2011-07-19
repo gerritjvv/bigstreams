@@ -5,10 +5,8 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.data.Stat;
-import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.recipes.lock.WriteLock;
 
@@ -20,13 +18,13 @@ import org.apache.zookeeper.recipes.lock.WriteLock;
 public class ZLock {
 
 	private static final Logger LOG = Logger.getLogger(ZLock.class);
-	
+
 	String hosts;
 	long lockTimeout;
 	String baseDir;
 
 	private final AtomicBoolean init = new AtomicBoolean(false);
-	
+
 	public ZLock(String hosts, long lockTimeout) {
 		super();
 		this.hosts = hosts;
@@ -39,9 +37,9 @@ public class ZLock {
 		this.hosts = hosts;
 		this.baseDir = baseDir;
 		this.lockTimeout = lockTimeout;
-		if(!baseDir.endsWith("/"))
+		if (!baseDir.endsWith("/"))
 			baseDir = baseDir + "/";
-		
+
 	}
 
 	/**
@@ -53,36 +51,11 @@ public class ZLock {
 	 */
 	private final synchronized void init(ZooKeeper zk) throws KeeperException,
 			InterruptedException {
-
-		String[] paths = baseDir.split("/");
-		StringBuilder pathBuilder = new StringBuilder();
-		final byte[] nullBytes = new byte[0];
-
-		for (String pathSeg : paths) {
-			if (!pathSeg.isEmpty()) {
-
-				pathBuilder.append('/').append(pathSeg);
-				String currentPath = pathBuilder.toString();
-
-				Stat stat = zk.exists(currentPath, false);
-				if (stat == null) {
-					try {
-						zk.create(currentPath, nullBytes, Ids.OPEN_ACL_UNSAFE,
-								CreateMode.PERSISTENT);
-					} catch (KeeperException.NodeExistsException e) {
-						// ignore... someone else has created it since we
-						// checked
-					}
-				}
-
-			}
-
-		}
-
+		ZPathUtil.mkdirs(zk, baseDir);
 		init.set(true);
 
 	}
-	
+
 	/**
 	 * Run the callable only if the lock can be obtained.
 	 * 
@@ -96,53 +69,49 @@ public class ZLock {
 	 */
 	public <T> T withLock(String lockId, Callable<T> c) throws Exception {
 		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, lockTimeout);
-		
-		if(!init.get()){
+
+		if (!init.get()) {
 			init(zk);
 		}
-		
 
 		if (!lockId.startsWith("/")) {
 			lockId = baseDir + lockId.substring(1, lockId.length());
-		}
-		else{
+		} else {
 			lockId = baseDir + lockId;
 		}
 
-		
 		// KeptLock lock = new KeptLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
 		WriteLock writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
 		writeLock.setRetryDelay(100);
-		
-		
+
 		boolean locked = false;
 		try {
 			locked = writeLock.lock();
-			
+
 			if (locked)
 				return c.call();
 			else {
-				
-				//if no lock go into retry logic
+
+				// if no lock go into retry logic
 				int retries = 10;
 				int retryCount = 0;
-				
-				while( !locked && retryCount++ < retries ){
+
+				while (!locked && retryCount++ < retries) {
 					zk = ZConnection.getConnectedInstance(hosts, lockTimeout);
 					writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
 					writeLock.setRetryDelay(100);
-					
+
 					LOG.info("LOCK Retry " + retryCount + " of " + retries);
 					locked = writeLock.lock();
 					Thread.sleep(500L);
 				}
-				
-				if(locked){
+
+				if (locked) {
 					return c.call();
-				}else{
+				} else {
 					LOG.info("Unable to attain lock for " + lockId);
 				}
-				
+
 				throw new TimeoutException("Unable to attain lock " + lockId
 						+ " using zookeeper " + hosts);
 			}
