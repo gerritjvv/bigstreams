@@ -1,11 +1,14 @@
 package org.streams.commons.io.net.impl;
 
 import java.net.InetSocketAddress;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import org.apache.log4j.Logger;
+import org.streams.commons.group.GroupChangeListener;
 import org.streams.commons.io.net.AddressSelector;
 
 /**
@@ -17,9 +20,11 @@ import org.streams.commons.io.net.AddressSelector;
  * Using random gives a good event spread of usage over all addresses
  * 
  */
-public class RandomDistAddressSelector implements AddressSelector {
+public class RandomDistAddressSelector implements AddressSelector, GroupChangeListener {
 
-	private List<InetSocketAddress> addresses;
+	private static final Logger LOG = Logger.getLogger(RandomDistAddressSelector.class);
+	
+	private volatile List<InetSocketAddress> addresses;
 	private final Random random = new Random();
 
 	public RandomDistAddressSelector() {
@@ -32,6 +37,10 @@ public class RandomDistAddressSelector implements AddressSelector {
 
 	public RandomDistAddressSelector(InetSocketAddress... addresses) {
 		this.addresses = new CopyOnWriteArrayList<InetSocketAddress>(addresses);
+	}
+
+	public void setAddresses(List<InetSocketAddress> socketAddress) {
+		addresses = new CopyOnWriteArrayList<InetSocketAddress>(socketAddress);
 	}
 
 	@Override
@@ -67,20 +76,33 @@ public class RandomDistAddressSelector implements AddressSelector {
 		return new RandomDistAddressSelector(addresses);
 	}
 
-	public String toString(){
+	public String toString() {
 		StringBuilder buff = new StringBuilder();
 		buff.append("addresses[ ");
-		if(addresses != null){
+		if (addresses != null) {
 			int i = 0;
-			for(InetSocketAddress address: addresses){
-				if(i++ != 0) buff.append(",");
-				
+			for (InetSocketAddress address : addresses) {
+				if (i++ != 0)
+					buff.append(",");
+
 				buff.append(address);
 			}
 		}
-		
+
 		buff.append(" ]");
-		
+
 		return buff.toString();
 	}
+
+	@Override
+	public void groupChanged(List<InetSocketAddress> members) {
+		if(members == null){
+			addresses.clear();
+			return;
+		}
+		
+		setAddresses(members);
+		LOG.info("Using " + Arrays.toString(members.toArray()));
+	}
+	
 }

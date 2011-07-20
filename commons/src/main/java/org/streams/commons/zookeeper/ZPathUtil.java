@@ -83,6 +83,11 @@ public class ZPathUtil {
 	 */
 	public static void mkdirs(ZooKeeper zk, String path)
 			throws KeeperException, InterruptedException {
+		mkdirs(zk, path, CreateMode.PERSISTENT);
+	}
+
+	public static void mkdirs(ZooKeeper zk, String path,
+			CreateMode mode) throws KeeperException, InterruptedException {
 		String[] paths = path.split("/");
 		StringBuilder pathBuilder = new StringBuilder();
 		final byte[] nullBytes = new byte[0];
@@ -97,7 +102,7 @@ public class ZPathUtil {
 				if (stat == null) {
 					try {
 						zk.create(currentPath, nullBytes, Ids.OPEN_ACL_UNSAFE,
-								CreateMode.PERSISTENT);
+								mode);
 					} catch (KeeperException.NodeExistsException e) {
 						// ignore... someone else has created it since we
 						// checked
@@ -107,7 +112,6 @@ public class ZPathUtil {
 			}
 
 		}
-
 	}
 
 }

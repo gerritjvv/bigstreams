@@ -32,17 +32,18 @@ public class GroupHeartbeatService implements ApplicationService {
 	Group.GroupStatus.Type type;
 
 	String hostName;
-	
+	int port;
 	Status status;
 	
 	public GroupHeartbeatService(GroupKeeper groupKeeper, Group.GroupStatus.Type type,
-			Status status,
+			Status status, int port,
 			long initialDelay,
 			long frequency, long timeout) throws UnknownHostException {
 
 		this.groupKeeper = groupKeeper;
 		this.type = type;
 		this.status = status;
+		this.port = port;
 		this.initialDelay = initialDelay;
 		this.frequency = frequency;
 		this.timeout = timeout;
@@ -76,13 +77,21 @@ public class GroupHeartbeatService implements ApplicationService {
 				try{
 					String msg = status.getStatusMessage();
 					
+					//if the hearbeat error was set previously we need to change it to OK.
+					Group.GroupStatus.Status gstat = getStatus(status.getStatus());
+					
+					if(gstat.equals(Group.GroupStatus.Status.HEARTBEAT_ERROR)){
+						gstat = Group.GroupStatus.Status.OK;
+						status.setStatus(STATUS.OK, "Working");
+					}
 					
 					GroupStatus groupStatus = GroupStatus.newBuilder()
-									.setStatus(getStatus(status.getStatus()))
+									.setStatus(gstat)
 									.setMsg(msg)
 									.setLastUpdate(System.currentTimeMillis())
 									.setType(type)
 									.setHost(hostName)
+									.setPort(port)
 									.build();
 					
 					groupKeeper.updateStatus(groupStatus);

@@ -22,12 +22,13 @@ message GroupStatus{
       SHUTDOWN     = 4;
       COORDINATION_ERROR = 5;
       COORDINATION_LOCK_ERROR = 6;
+      HEARTBEAT_ERROR = 7;
     }
     
     optional int64 lastUpdate = 1;
     
-    optional Status status    = 2;   
-    optional Type   type      = 3;
+    optional Status status    = 2 [default = OK ];   
+    optional Type   type      = 3 [default = AGENT ];
     
     optional string streams_version = 4;
     
@@ -35,5 +36,6 @@ message GroupStatus{
     
     optional string host      = 6;
     optional string msg       = 7;
-    
+    optional int32  port      = 8;
+        
  }

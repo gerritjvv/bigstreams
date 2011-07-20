@@ -1,6 +1,7 @@
 package org.streams.commons.io.net;
 
 import java.net.InetSocketAddress;
+import java.util.List;
 
 /**
  *
@@ -12,6 +13,8 @@ public interface AddressSelector {
 	public AddressSelector removeAddress(InetSocketAddress socketAddress);
 	
 	public InetSocketAddress nextAddress();
+	
+	public void setAddresses(List<InetSocketAddress> socketAddress);
 	
 	public AddressSelector clone();
 	
