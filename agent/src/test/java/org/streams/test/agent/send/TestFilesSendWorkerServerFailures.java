@@ -266,7 +266,7 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 		
 		RandomDistAddressSelector selector = new RandomDistAddressSelector(new InetSocketAddress("localhost", port));
 		
-		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
+		FileSendTask fileSendTask = new FileSendTaskImpl(agentStatus, clientResourceFactory,
 				selector, memory,
 				new IntegerCounterPerSecondMetric("TEST", new Status() {
 

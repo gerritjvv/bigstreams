@@ -363,7 +363,7 @@ public class ClientConnectionImpl implements ClientConnection {
 				Throwable t = e.getCause();
 
 				clientHandlerContext.setErrorCause(t);
-
+				
 				String msg = "Client Error: " + t.toString();
 				LOG.error(msg, t);
 

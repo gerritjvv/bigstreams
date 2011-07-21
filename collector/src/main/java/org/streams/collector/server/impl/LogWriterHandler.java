@@ -3,6 +3,7 @@ package org.streams.collector.server.impl;
 import java.io.DataInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Date;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -280,7 +281,12 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 		builder.setAgentName(header.getHost());
 		builder.setFileName(header.getFileName());
 		builder.setLogType(header.getLogType());
-		builder.setFileDate(header.getFileDate().getTime());
+		Date fileDate = header.getFileDate();
+		if(fileDate == null){
+			builder.setFileDate(System.currentTimeMillis());
+		}else{
+			builder.setFileDate(fileDate.getTime());
+		}
 
 		return builder.build();
 	}

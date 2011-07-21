@@ -9,11 +9,13 @@ import org.apache.log4j.Logger;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.file.FileTrackerMemory;
 import org.streams.agent.file.FileTrackingStatus;
+import org.streams.agent.mon.status.AgentStatus;
 import org.streams.agent.send.ClientResource;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
 import org.streams.commons.io.net.AddressSelector;
 import org.streams.commons.metrics.CounterMetric;
+import org.streams.commons.status.Status;
 
 /**
  * 
@@ -27,6 +29,8 @@ public class FileSendTaskImpl implements FileSendTask {
 
 	private static final Logger LOG = Logger.getLogger(FileSendTaskImpl.class);
 
+	AgentStatus agentStatus;
+	
 	/**
 	 * Creates and manages the ClientResource instances that will be used by the
 	 * FileSendTaskImpl instance.
@@ -50,10 +54,11 @@ public class FileSendTaskImpl implements FileSendTask {
 	 * @param collectorAddress
 	 * @param memory
 	 */
-	public FileSendTaskImpl(ClientResourceFactory clientResourceFactory,
+	public FileSendTaskImpl(AgentStatus agentStatus, ClientResourceFactory clientResourceFactory,
 			AddressSelector collectorAddressSelector, FileTrackerMemory memory,
 			CounterMetric fileKilobytesReadMetric) {
 		super();
+		this.agentStatus = agentStatus;
 		this.clientResourceFactory = clientResourceFactory;
 		this.collectorAddressSelector = collectorAddressSelector;
 		this.memory = memory;
@@ -82,9 +87,14 @@ public class FileSendTaskImpl implements FileSendTask {
 
 		InetSocketAddress collectorAddress = collectorAddressSelector
 				.nextAddress();
-		LOG.info("Sending to collector: " + collectorAddress.getHostName()
+		
+		if(collectorAddress == null){
+			throw new RuntimeException("No collector address available");
+		}else{
+			LOG.info("Sending to collector: " + collectorAddress.getHostName()
 				+ ": " + collectorAddress.getPort());
-
+		}
+		
 		boolean interrupted = false;
 		LOG.info("FILE SEND START " + fileStatus.getPath());
 		long fileSendStart = System.currentTimeMillis();
@@ -167,6 +177,8 @@ public class FileSendTaskImpl implements FileSendTask {
 					memory.updateFile(fileStatus);
 				}
 
+				agentStatus.setStatus(Status.STATUS.OK, "Working");
+				
 				// every 100 batches refresh the status of the file
 				// make sure no other process has flagged this file as error.
 				if (statusRefreshCount++ > 100) {

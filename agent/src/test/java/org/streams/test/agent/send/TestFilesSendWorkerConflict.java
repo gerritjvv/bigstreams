@@ -146,7 +146,7 @@ public class TestFilesSendWorkerConflict extends TestCase {
 
 		ClientResourceFactory clientResourceFactory = new ClientResourceFactoryImpl(
 				ccFact, fileLineStreamer, new SimpleFileDateExtractor());
-		FileSendTask fileSendTask = new FileSendTaskImpl(clientResourceFactory,
+		FileSendTask fileSendTask = new FileSendTaskImpl(agentStatus, clientResourceFactory,
 				selector, memory, new IntegerCounterPerSecondMetric("TEST",
 						new Status() {
 

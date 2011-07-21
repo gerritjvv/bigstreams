@@ -88,6 +88,7 @@ public class TestClientConnectionImpl extends TestCase {
 					"localhost", testPort);
 
 			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					Executors.newCachedThreadPool(),
 					new NioClientSocketChannelFactory(service, service),
 					timeoutTimer);
 			binClient.setProtocol(new ProtocolImpl(
@@ -178,6 +179,7 @@ public class TestClientConnectionImpl extends TestCase {
 					"localhost", testPort);
 
 			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					Executors.newCachedThreadPool(),
 					new NioClientSocketChannelFactory(service, service),
 					timeoutTimer);
 
@@ -229,6 +231,7 @@ public class TestClientConnectionImpl extends TestCase {
 					"localhost", testPort);
 
 			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					Executors.newCachedThreadPool(),
 					new NioClientSocketChannelFactory(service, service),
 					timeoutTimer);
 			binClient.setProtocol(new ProtocolImpl(
@@ -308,6 +311,7 @@ public class TestClientConnectionImpl extends TestCase {
 					"localhost", testPort);
 
 			ClientConnectionImpl binClient = new ClientConnectionImpl(
+					Executors.newCachedThreadPool(),
 					new NioClientSocketChannelFactory(service, service),
 					timeoutTimer);
 

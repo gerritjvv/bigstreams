@@ -30,8 +30,10 @@ import org.streams.collector.cli.startup.check.impl.PingCheck;
 import org.streams.collector.conf.CollectorProperties;
 import org.streams.collector.coordination.impl.CoordinationAddresses;
 import org.streams.collector.mon.CollectorStatus;
+import org.streams.collector.mon.impl.AgentsStatusResource;
 import org.streams.collector.mon.impl.CollectorConfigResource;
 import org.streams.collector.mon.impl.CollectorStatusResource;
+import org.streams.collector.mon.impl.CollectorsStatusResource;
 import org.streams.collector.mon.impl.PingOKResource;
 import org.streams.collector.server.CollectorServer;
 import org.streams.collector.server.impl.CollectorServerImpl;
@@ -94,8 +96,10 @@ public class CollectorDI {
 						(Component) beanFactory.getBean("restletComponent")),
 				beanFactory.getBean(CollectorServerService.class), beanFactory
 						.getBean(GroupHeartbeatService.class), beanFactory
-						.getBean(MetricsAppService.class), beanFactory
-						.getBean(ZStoreExpireCheckService.class));
+						.getBean(MetricsAppService.class)); 
+						
+						//beanFactory
+						//.getBean(ZStoreExpireCheckService.class));
 
 		List<? extends StartupCheck> postStartupList = Arrays
 				.asList(beanFactory.getBean(PingCheck.class));
@@ -151,10 +155,15 @@ public class CollectorDI {
 				(Long) CollectorProperties.WRITER.HEARTBEAT_FREQUENCY
 						.getDefaultValue());
 
+		int port = configuration.getInt(
+				CollectorProperties.WRITER.COLLECTOR_PORT.toString(),
+				(Integer) CollectorProperties.WRITER.COLLECTOR_PORT
+						.getDefaultValue());
+
 		GroupHeartbeatService service = new GroupHeartbeatService(
 				beanFactory.getBean(GroupKeeper.class),
 				Group.GroupStatus.Type.COLLECTOR,
-				beanFactory.getBean(CollectorStatus.class), initialDelay,
+				beanFactory.getBean(CollectorStatus.class), port, initialDelay,
 				checkFrequency, 10000L);
 
 		return service;
@@ -436,6 +445,12 @@ public class CollectorDI {
 		attachFinder(router, "/collector/shutdown", AppShutdownResource.class,
 				Template.MODE_STARTS_WITH);
 
+		attachFinder(router, "/collectors/status",
+				CollectorsStatusResource.class, Template.MODE_STARTS_WITH);
+
+		attachFinder(router, "/agents/status", AgentsStatusResource.class,
+				Template.MODE_STARTS_WITH);
+
 		Application app = new Application() {
 
 			@Override
@@ -489,6 +504,17 @@ public class CollectorDI {
 	public CollectorStatusResource collectorStatusResource() {
 		return new CollectorStatusResource(
 				beanFactory.getBean(CollectorStatus.class));
+	}
+
+	@Bean
+	public CollectorsStatusResource collectorsStatusResource() {
+		return new CollectorsStatusResource(
+				beanFactory.getBean(GroupKeeper.class));
+	}
+
+	@Bean
+	public AgentsStatusResource agentsStatusResource() {
+		return new AgentsStatusResource(beanFactory.getBean(GroupKeeper.class));
 	}
 
 	/**

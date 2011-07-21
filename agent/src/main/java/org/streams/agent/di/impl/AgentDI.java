@@ -89,6 +89,7 @@ import org.streams.commons.file.impl.SimpleFileDateExtractor;
 import org.streams.commons.group.Group;
 import org.streams.commons.group.GroupHeartbeatService;
 import org.streams.commons.group.GroupKeeper;
+import org.streams.commons.group.GroupKeeper.GROUPS;
 import org.streams.commons.io.Protocol;
 import org.streams.commons.io.net.AddressSelector;
 import org.streams.commons.io.net.impl.RandomDistAddressSelector;
@@ -106,7 +107,7 @@ import org.streams.commons.zookeeper.ZGroup;
 public class AgentDI {
 
 	private static final Logger LOG = Logger.getLogger(AgentDI.class);
-	
+
 	@Autowired(required = true)
 	BeanFactory beanFactory;
 
@@ -213,19 +214,22 @@ public class AgentDI {
 
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
+		final AgentConfiguration conf = beanFactory
+				.getBean(AgentConfiguration.class);
 
 		long initialDelay = 10000L;
 
 		long checkFrequency = configuration.getLong(
 				AgentProperties.HEARTBEAT_FREQUENCY.toString(), 300000L);
 
+		int port = (int)conf.getMonitoringPort();
+
 		AgentStatus status = beanFactory.getBean(AgentStatus.class);
 		LOG.info("USING status: " + status);
-		
+
 		GroupHeartbeatService service = new GroupHeartbeatService(
 				beanFactory.getBean(GroupKeeper.class),
-				Group.GroupStatus.Type.AGENT,
-				status, initialDelay,
+				Group.GroupStatus.Type.AGENT, status, port, initialDelay,
 				checkFrequency, 10000L);
 
 		return service;
@@ -639,7 +643,7 @@ public class AgentDI {
 							+ AgentProperties.COLLECTOR);
 		}
 
-		return new FileSendTaskImpl(
+		return new FileSendTaskImpl(beanFactory.getBean(AgentStatus.class),
 				beanFactory.getBean(ClientResourceFactory.class),
 				beanFactory.getBean("collectorAddressSelector",
 						AddressSelector.class),
@@ -669,7 +673,12 @@ public class AgentDI {
 
 		}
 
-		return new RandomDistAddressSelector(addressColl);
+		//we register the random address selector to listen to collectors
+		RandomDistAddressSelector selector = new RandomDistAddressSelector(addressColl);
+		GroupKeeper groupKeeper = beanFactory.getBean(GroupKeeper.class);
+		groupKeeper.registerAddressSelector(GROUPS.COLLECTORS, selector);
+		
+		return selector;
 	}
 
 	@Bean

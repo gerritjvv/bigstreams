@@ -61,9 +61,7 @@ public class ZGroup implements GroupKeeper {
 		this.hosts = hosts;
 		this.timeout = timeout;
 		this.group = group;
-		ZPathUtil.mkdirs(ZConnection.getConnectedInstance(hosts, timeout),
-				BASEDIR);
-
+		
 		// register thread that will attach watchers if not attached
 		service.scheduleWithFixedDelay(new Runnable() {
 
@@ -201,6 +199,7 @@ public class ZGroup implements GroupKeeper {
 
 			mode = CreateMode.EPHEMERAL;
 			group = GROUPS.COLLECTORS.toString();
+			
 		} else {
 			mode = CreateMode.PERSISTENT;
 			group = GROUPS.AGENTS.toString();
@@ -219,7 +218,11 @@ public class ZGroup implements GroupKeeper {
 			// at any time external code can remove the nodes, here we ensure
 			// its created
 			// before updating
-			ZPathUtil.mkdirs(ZConnection.getConnectedInstance(hosts, timeout),
+			if(status.getType().equals(GroupStatus.Type.COLLECTOR)){
+				ZPathUtil.mkdirs(zk, makePath(group), CreateMode.PERSISTENT);
+			}
+			
+			ZPathUtil.mkdirs(zk,
 					path, mode);
 
 			ZPathUtil.store(zk, path, data, mode);

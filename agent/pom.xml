@@ -138,6 +138,9 @@
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
+				        <configuration>
+                                         <skip>true</skip>
+                                        </configuration>
 
 					<forkMode>once</forkMode>
 
@@ -151,9 +154,38 @@
 							<value>target/nativetmplib</value>
 						</property>
 					</systemProperties>
+                                  </configuration>
+				 <executions>
+                                        <execution>
+                                                <id>surefire-it</id>
+                                                <phase>integration-test</phase>
+                                                <goals>
+                                                        <goal>test</goal>
+                                                </goals>
+                                                <configuration>
+                                                        <skip>false</skip>
+                                                </configuration>
+                                        </execution>
+                                </executions>
 
-				</configuration>
 			</plugin>
+ 			<plugin>
+                                <groupId>com.objectdriven.maven</groupId>
+                                <artifactId>maven-zookeeper-plugin</artifactId>
+                                <version>1.0-SNAPSHOT</version>
+                                <configuration>
+                                        <port>3001</port>
+                                        <daemon>true</daemon>
+                                </configuration>
+                                <executions>
+                                        <execution>
+                                                <phase>test</phase>
+                                                <goals>
+                                                        <goal>start</goal>
+                                                </goals>
+                                        </execution>
+                                </executions>
+                        </plugin>
 
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
@@ -165,7 +197,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>1</release>
+					<release>3</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
@@ -323,6 +355,12 @@
 			</plugin>
 		</plugins>
 	</reporting>
+	<pluginRepositories>
+                <pluginRepository>
+                        <id>dtrott</id>
+                        <url>http://maven.davidtrott.com/repository</url>
+                </pluginRepository>
+        </pluginRepositories>
 
 	<repositories>
 		<repository>

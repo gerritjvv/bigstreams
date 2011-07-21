@@ -54,7 +54,11 @@ public class AgentShutdownResource extends ServerResource {
 					} catch (InterruptedException e) {
 						e.printStackTrace();
 					}
-					appLifeCycleManager.shutdown();
+					try{
+						appLifeCycleManager.shutdown();
+					}catch(Throwable t){
+					  t.printStackTrace();
+					}
 					if(callSystemExit){
 						System.exit(0);
 					}
