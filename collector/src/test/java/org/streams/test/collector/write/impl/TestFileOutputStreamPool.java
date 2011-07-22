@@ -121,6 +121,12 @@ public class TestFileOutputStreamPool extends TestCase {
 				return rolledFile;
 			}
 
+			@Override
+			public boolean isRolledFile(File file) {
+				// TODO Auto-generated method stub
+				return false;
+			}
+
 		};
 
 		Status status = new Status() {
@@ -205,6 +211,12 @@ public class TestFileOutputStreamPool extends TestCase {
 				File rolledFile = simpleRollover.rollover(file);
 				rolledFiles.add(rolledFile);
 				return rolledFile;
+			}
+
+			@Override
+			public boolean isRolledFile(File file) {
+				// TODO Auto-generated method stub
+				return false;
 			}
 
 		};

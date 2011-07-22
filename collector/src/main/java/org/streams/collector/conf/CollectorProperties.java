@@ -34,6 +34,8 @@ public interface CollectorProperties {
 		ZSTORE_TIMEOUT_CHECK("zstore.timeout.check",  86400L), //1 days
 		ZSTORE_DATA_TIMEOUT("zstore.timeout.seconds", 2592000), // 30 days
 		
+		ORPHANED_LOG_CHECK_FREQUENCY("orphaned.check.frequency",  1200000L), //20 minutes
+		ORPHANED_FILE_LOWER_MODE("orphaned.filelowermod", 3600000L), //1 hour
 		
 		COORDINATION_LOCK_PORT ("coordination.lock.port", 5420),
 		COORDINATION_UNLOCK_PORT ("coordination.unlock.port", 5430),

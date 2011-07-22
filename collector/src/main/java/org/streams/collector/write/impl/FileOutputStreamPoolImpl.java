@@ -3,6 +3,7 @@ package org.streams.collector.write.impl;
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -113,6 +114,17 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		this.compressionPoolFactory = compressionPoolFactory;
 	}
 
+	/**
+	 * If a file is open return true.
+	 * @param file
+	 * @return
+	 */
+	public boolean isFileOpen(File file){
+		
+		return filesExternalLockRequest.contains(file.getAbsolutePath());
+		
+	}
+	
 	/**
 	 * Will always return an opened output stream.<br/>
 	 * 

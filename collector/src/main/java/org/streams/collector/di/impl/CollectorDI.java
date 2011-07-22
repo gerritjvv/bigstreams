@@ -1,5 +1,6 @@
 package org.streams.collector.di.impl;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -39,9 +40,14 @@ import org.streams.collector.server.CollectorServer;
 import org.streams.collector.server.impl.CollectorServerImpl;
 import org.streams.collector.server.impl.IpFilterHandler;
 import org.streams.collector.server.impl.LogWriterHandler;
+import org.streams.collector.write.FileOutputStreamPoolFactory;
 import org.streams.collector.write.LogFileNameExtractor;
 import org.streams.collector.write.LogFileWriter;
+import org.streams.collector.write.LogRollover;
+import org.streams.collector.write.LogRolloverCheck;
+import org.streams.collector.write.OrphanedFilesCheck;
 import org.streams.collector.write.impl.DateHourFileNameExtractor;
+import org.streams.collector.write.impl.OrphanedFilesCheckImpl;
 import org.streams.commons.app.AppLifeCycleManager;
 import org.streams.commons.app.ApplicationService;
 import org.streams.commons.app.StartupCheck;
@@ -65,6 +71,7 @@ import org.streams.commons.zookeeper.ZLock;
 import org.streams.commons.zookeeper.ZStore;
 import org.streams.commons.zookeeper.ZStoreExpireCheckService;
 import org.streams.coordination.cli.startup.service.impl.CollectorServerService;
+import org.streams.coordination.cli.startup.service.impl.OrphanedFilesCheckService;
 
 @Configuration
 @Import(MetricsDI.class)
@@ -96,16 +103,58 @@ public class CollectorDI {
 						(Component) beanFactory.getBean("restletComponent")),
 				beanFactory.getBean(CollectorServerService.class), beanFactory
 						.getBean(GroupHeartbeatService.class), beanFactory
-						.getBean(MetricsAppService.class)); 
-						
-						//beanFactory
-						//.getBean(ZStoreExpireCheckService.class));
+						.getBean(MetricsAppService.class), beanFactory
+						.getBean(OrphanedFilesCheckService.class));
+
+		// beanFactory
+		// .getBean(ZStoreExpireCheckService.class));
 
 		List<? extends StartupCheck> postStartupList = Arrays
 				.asList(beanFactory.getBean(PingCheck.class));
 
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				postStartupList);
+	}
+
+	@Bean
+	public OrphanedFilesCheckService OrphanedFilesCheckService() {
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		long frequency = configuration.getLong(
+				CollectorProperties.WRITER.ORPHANED_LOG_CHECK_FREQUENCY
+						.toString(),
+				(Long) CollectorProperties.WRITER.ORPHANED_LOG_CHECK_FREQUENCY
+						.getDefaultValue());
+
+		return new OrphanedFilesCheckService(
+				beanFactory.getBean(OrphanedFilesCheck.class), 10000L,
+				frequency);
+	}
+
+	@Bean
+	public OrphanedFilesCheck OrphanedFilesCheck() {
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		String baseDir = configuration.getString(
+				CollectorProperties.WRITER.BASE_DIR.toString(),
+				CollectorProperties.WRITER.BASE_DIR.getDefaultValue()
+						.toString());
+
+		long lowerMod = configuration.getLong(
+				CollectorProperties.WRITER.ORPHANED_FILE_LOWER_MODE.toString(),
+				(Long) CollectorProperties.WRITER.ORPHANED_FILE_LOWER_MODE
+						.getDefaultValue());
+
+		File file = new File(baseDir);
+
+		return new OrphanedFilesCheckImpl(file,
+				beanFactory.getBean(LogRolloverCheck.class),
+				beanFactory.getBean(LogFileNameExtractor.class),
+				beanFactory.getBean(LogRollover.class),
+				beanFactory.getBean(FileOutputStreamPoolFactory.class).getPoolForKey("orphanedFiles"), lowerMod);
+
 	}
 
 	@Bean

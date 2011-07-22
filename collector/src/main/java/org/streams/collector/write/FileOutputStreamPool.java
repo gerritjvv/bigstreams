@@ -24,8 +24,11 @@ public interface FileOutputStreamPool {
 	void checkFilesForRollover(LogRolloverCheck rolloverCheck)
 			throws IOException;
 
+    boolean isFileOpen(File file);
+	
 	void releaseFile(String key) throws IOException;
 
+	
 	void closeAll() throws IOException;
 
 	void close(String key) throws IOException;

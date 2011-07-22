@@ -43,7 +43,7 @@ esac
 
 
 
-for f in $( find $LOCAL_LOG_DIR -name "*[0-9][0-9][0-9][0-9]-[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9].*?$LOG_FILE_EXTENSION" )
+for f in $( find -L $LOCAL_LOG_DIR -name "*[0-9][0-9][0-9][0-9]-[0-9][0-9]\-[0-9][0-9]\-[0-9][0-9].*?$LOG_FILE_EXTENSION" )
 do
 
 if [ -a $COMPRESSION_TOOL ] 

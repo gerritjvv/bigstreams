@@ -35,5 +35,17 @@ public class TestLogRollover extends TestCase{
 		
 		
 	}
+
+	public void testIsRolled() throws Throwable{
+
+		LogRollover logRollover = new SimpleLogRollover();
+		File rolledFile = new File("mytype.2011-07-22-0985.30851411659234.lzo");
+		
+		assertTrue(logRollover.isRolledFile(rolledFile));
+		
+		File notRolledFile = new File("mytype.2011-07-22-09.lzo");
+		assertFalse(logRollover.isRolledFile(notRolledFile));
+		
+	}
 	
 }

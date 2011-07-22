@@ -72,5 +72,22 @@ public class SimpleLogRollover implements LogRollover{
 		
 		return ret;
 	}
+
+	@Override
+	public boolean isRolledFile(File file) {
+		//get the second extension i.e. the times stamp extension
+		
+		boolean isLong = false;
+		try{
+			Long l = Long.valueOf(FilenameUtils.getExtension(FilenameUtils.removeExtension(file.getName())));
+			isLong = l != null && l > 0;
+			
+		}catch(NumberFormatException excp){
+			isLong = false;
+		}
+		
+		return isLong;
+		
+	}
 	
 }
