@@ -28,7 +28,7 @@ public interface CollectorProperties {
 		COORDINATION_GROUP("coordination.group", "default"),
 		BLOCKED_IPS("blocked.ips", ""),
 		
-		HEARTBEAT_FREQUENCY("hearbeat.frequency", 300000L),
+		HEARTBEAT_FREQUENCY("heartbeat.frequency", 300000L),
 		
 		ZOOTIMEOUT("zoo.timeout", 80000L),
 
