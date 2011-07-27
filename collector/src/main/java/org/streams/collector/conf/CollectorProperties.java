@@ -30,6 +30,8 @@ public interface CollectorProperties {
 		
 		HEARTBEAT_FREQUENCY("hearbeat.frequency", 300000L),
 		
+		ZOOTIMEOUT("zoo.timeout", 80000L),
+
 		ZSTORE_TIMEOUT_DELAY("zstore.timeout.delay", 10000L),
 		ZSTORE_TIMEOUT_CHECK("zstore.timeout.check",  86400L), //1 days
 		ZSTORE_DATA_TIMEOUT("zstore.timeout.seconds", 2592000), // 30 days

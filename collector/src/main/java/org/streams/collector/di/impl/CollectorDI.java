@@ -183,7 +183,15 @@ public class CollectorDI {
 				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
 						.toString());
 
-		return new ZGroup(group, hosts, 10000L);
+               Long timeout = configuration.getLong(
+				CollectorProperties.WRITER.ZOOTIMEOUT.toString(),
+				(Long)CollectorProperties.WRITER.ZOOTIMEOUT.getDefaultValue()
+						);
+
+                if(timeout == null)
+                   timeout = new Long(80000);
+
+		return new ZGroup(group, hosts, timeout);
 
 	}
 
@@ -338,7 +346,13 @@ public class CollectorDI {
 				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
 						.toString());
 
-		long timeout = 10000;
+              Long timeout = configuration.getLong(
+				CollectorProperties.WRITER.ZOOTIMEOUT.toString(),
+				(Long)CollectorProperties.WRITER.ZOOTIMEOUT.getDefaultValue()
+						);
+
+                if(timeout == null)
+                   timeout = new Long(80000);
 
 		ZStoreExpireCheckService expireCheckService = beanFactory
 				.getBean(ZStoreExpireCheckService.class);
