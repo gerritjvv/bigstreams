@@ -320,19 +320,6 @@
                 </pluginRepository>
         </pluginRepositories>
         <pluginRepositories>
-    <pluginRepository>
-                        <id>oss.sonatype</id>
-                        <name>oss.sonatype.org</name>
-                        <url>https://oss.sonatype.org/content/groups/public/</url>
-      
-      <layout>default</layout>
-      <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-      <releases>
-        <updatePolicy>never</updatePolicy>
-      </releases>
-    </pluginRepository>
       </pluginRepositories>
 
 
