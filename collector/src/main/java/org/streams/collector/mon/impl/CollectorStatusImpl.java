@@ -93,7 +93,7 @@ public class CollectorStatusImpl implements CollectorStatus {
 		return getMsg();
 	}
 
-	public long getStatusTimestmap(){
+	public long getStatusTimestamp(){
 		return statusTimestamp;
 	}
 }
