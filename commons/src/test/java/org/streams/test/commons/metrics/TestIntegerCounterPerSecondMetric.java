@@ -68,6 +68,12 @@ public class TestIntegerCounterPerSecondMetric extends TestCase{
 			// TODO Auto-generated method stub
 			
 		}
+
+		@Override
+		public long getStatusTimestamp() {
+			// TODO Auto-generated method stub
+			return 0;
+		}
 		
 	}
 }

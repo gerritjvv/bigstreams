@@ -35,6 +35,8 @@ public class GroupHeartbeatService implements ApplicationService {
 	int port;
 	Status status;
 	
+	long lastStatusChange = 0L;
+	
 	public GroupHeartbeatService(GroupKeeper groupKeeper, Group.GroupStatus.Type type,
 			Status status, int port,
 			long initialDelay,
@@ -60,9 +62,17 @@ public class GroupHeartbeatService implements ApplicationService {
 
 	}
 
-	private static final Group.GroupStatus.Status getStatus(Status.STATUS progStat){
+	private final Group.GroupStatus.Status getStatus(Status.STATUS progStat){
 		try{
-		return Group.GroupStatus.Status.valueOf(progStat.toString());
+			
+			//we want the heartbeat status to reset itself if the last status did not change.
+			if(status.getStatusTimestamp() == lastStatusChange){
+				progStat = Status.STATUS.OK;
+			}
+			
+			lastStatusChange = status.getStatusTimestamp();
+			
+			return Group.GroupStatus.Status.valueOf(progStat.toString());
 		}catch(Throwable t){
 			LOG.error(t.toString(), t);
 			return Group.GroupStatus.Status.UNKOWN_ERROR;

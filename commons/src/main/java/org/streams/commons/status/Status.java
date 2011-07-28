@@ -15,4 +15,6 @@ public interface Status {
 
 	void setStatus(STATUS status, String msg);
 
+	long getStatusTimestamp();
+	
 }

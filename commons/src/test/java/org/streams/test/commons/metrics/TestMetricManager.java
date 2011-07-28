@@ -73,6 +73,12 @@ public class TestMetricManager extends TestCase {
 			
 		}
 
+		@Override
+		public long getStatusTimestamp() {
+			// TODO Auto-generated method stub
+			return 0;
+		}
+
 	}
 
 }
