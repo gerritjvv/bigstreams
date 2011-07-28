@@ -186,7 +186,7 @@
 					<provides>
 						<provide>streams-collector</provide>
 					</provides>
-					<needarch>x86_64</needarch>
+					<needarch>i386-32</needarch>
 					<requires>
 					</requires>
 					<changelogFile>src/changelog</changelogFile>
@@ -319,6 +319,23 @@
                         <url>http://maven.davidtrott.com/repository</url>
                 </pluginRepository>
         </pluginRepositories>
+        <pluginRepositories>
+    <pluginRepository>
+                        <id>oss.sonatype</id>
+                        <name>oss.sonatype.org</name>
+                        <url>https://oss.sonatype.org/content/groups/public/</url>
+      
+      <layout>default</layout>
+      <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+      <releases>
+        <updatePolicy>never</updatePolicy>
+      </releases>
+    </pluginRepository>
+      </pluginRepositories>
+
+
 	<repositories>
 		<repository>
 			<id>repo2.maven.org</id>
@@ -330,6 +347,14 @@
 			<name>Public online Restlet repository</name>
 			<url>http://maven.restlet.org</url>
 		</repository>
+                <repository>
+                        <id>oss.sonatype</id>
+                        <name>oss.sonatype.org</name>
+			<url>https://oss.sonatype.org/content/groups/public/</url>
+  <snapshots>
+        <enabled>true</enabled>
+      </snapshots>
+                </repository>
 		<repository>
 			<id>streams-releases</id>
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>

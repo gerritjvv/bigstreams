@@ -309,7 +309,7 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 		// check slow writes:
 		if ((agentSession.getFileWriteEndTime() - agentSession
 				.getFileWriteStartTime()) > 500) {
-			LOG.error("File writting is slowing down please check the log directory");
+			LOG.error("File writing is slowing down please check the log directory");
 		}
 
 		if (future != null) {

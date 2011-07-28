@@ -14,7 +14,8 @@ public class CollectorStatusImpl implements CollectorStatus {
 
 	STATUS status = STATUS.OK;
 	String msg = "Working";
-
+    long statusTimestamp = System.currentTimeMillis();
+    
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
 	public int getCounter(String name) {
@@ -25,6 +26,7 @@ public class CollectorStatusImpl implements CollectorStatus {
 	public void setStatus(STATUS status, String statusMessage) {
 		this.status = status;
 		this.msg = statusMessage;
+		this.statusTimestamp = System.currentTimeMillis();
 	}
 
 	public STATUS getStatus() {
@@ -75,6 +77,7 @@ public class CollectorStatusImpl implements CollectorStatus {
 
 	public void setStatus(STATUS status) {
 		this.status = status;
+		this.statusTimestamp = System.currentTimeMillis();
 	}
 
 	public String getMsg() {
@@ -90,4 +93,7 @@ public class CollectorStatusImpl implements CollectorStatus {
 		return getMsg();
 	}
 
+	public long getStatusTimestmap(){
+		return statusTimestamp;
+	}
 }
