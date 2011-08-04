@@ -15,7 +15,8 @@ public class AgentStatusImpl implements AgentStatus {
 
 	volatile  STATUS status = STATUS.OK;
 	volatile  String msg = "Working";
-
+    volatile long statusTimestamp = System.currentTimeMillis();
+    
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
 	FILE_LOG_MANAGE_STATUS logManageStatus = FILE_LOG_MANAGE_STATUS.OK;
@@ -30,6 +31,7 @@ public class AgentStatusImpl implements AgentStatus {
 	public void setStatus(STATUS status, String msg) {
 		this.status = status;
 		this.msg = msg;
+		this.statusTimestamp = System.currentTimeMillis();
 	}
 
 	public STATUS getStatus() {
@@ -98,6 +100,15 @@ public class AgentStatusImpl implements AgentStatus {
 	 */
 	public String getLogManageMsg() {
 		return logManageMsg;
+	}
+
+	public long getStatusTimeStamp() {
+		return statusTimestamp;
+	}
+
+	@Override
+	public long getStatusTimestamp() {
+		return statusTimestamp;
 	}
 
 

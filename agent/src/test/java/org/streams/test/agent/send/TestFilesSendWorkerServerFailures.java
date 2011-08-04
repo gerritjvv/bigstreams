@@ -292,6 +292,12 @@ public class TestFilesSendWorkerServerFailures extends TestCase {
 						// TODO Auto-generated method stub
 						
 					}
+
+					@Override
+					public long getStatusTimestamp() {
+						// TODO Auto-generated method stub
+						return 0;
+					}
 				}));
 
 		FilesSendWorkerImpl worker = new FilesSendWorkerImpl(queue,

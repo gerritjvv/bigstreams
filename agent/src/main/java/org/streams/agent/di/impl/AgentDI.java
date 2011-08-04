@@ -96,6 +96,7 @@ import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricsAppService;
 import org.streams.commons.util.HashedWheelTimerFactory;
+import org.streams.commons.zookeeper.ZConnection;
 import org.streams.commons.zookeeper.ZGroup;
 
 /**
@@ -183,6 +184,18 @@ public class AgentDI {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
+		String group = configuration.getString(
+				AgentProperties.ZOOKEEPER_GROUP.toString(), "default");
+
+		return new ZGroup(group, beanFactory.getBean(ZConnection.class));
+
+	}
+
+	@Bean
+	public ZConnection zConnection() throws ConfigurationException {
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
 		String[] hostsArr = configuration
 				.getStringArray(AgentProperties.ZOOKEEPER.toString());
 
@@ -201,11 +214,10 @@ public class AgentDI {
 		}
 
 		String hosts = buff.toString();
-		String group = configuration.getString(
-				AgentProperties.ZOOKEEPER_GROUP.toString(), "default");
 
-		return new ZGroup(group, hosts, 10000L);
-
+		int timeout = configuration.getInt(AgentProperties.ZOOKEEPER_TIMEOUT.toString(), 10000);
+		
+		return new ZConnection(hosts, timeout);
 	}
 
 	@Bean
@@ -222,7 +234,7 @@ public class AgentDI {
 		long checkFrequency = configuration.getLong(
 				AgentProperties.HEARTBEAT_FREQUENCY.toString(), 300000L);
 
-		int port = (int)conf.getMonitoringPort();
+		int port = (int) conf.getMonitoringPort();
 
 		AgentStatus status = beanFactory.getBean(AgentStatus.class);
 		LOG.info("USING status: " + status);
@@ -673,11 +685,12 @@ public class AgentDI {
 
 		}
 
-		//we register the random address selector to listen to collectors
-		RandomDistAddressSelector selector = new RandomDistAddressSelector(addressColl);
+		// we register the random address selector to listen to collectors
+		RandomDistAddressSelector selector = new RandomDistAddressSelector(
+				addressColl);
 		GroupKeeper groupKeeper = beanFactory.getBean(GroupKeeper.class);
 		groupKeeper.registerAddressSelector(GROUPS.COLLECTORS, selector);
-		
+
 		return selector;
 	}
 
