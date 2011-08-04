@@ -37,8 +37,7 @@ public class ZGroup implements GroupKeeper {
 	private static final Logger LOG = Logger.getLogger(ZGroup.class);
 
 	public static final String BASEDIR = "/streams_groups";
-	final String hosts;
-	final long timeout;
+	ZConnection connection;
 	String group;
 
 	Map<GROUPS, List<GroupChangeListener>> addressSelectorMap = new ConcurrentHashMap<GroupKeeper.GROUPS, List<GroupChangeListener>>();
@@ -51,15 +50,14 @@ public class ZGroup implements GroupKeeper {
 	ScheduledExecutorService service = Executors
 			.newSingleThreadScheduledExecutor();
 
-	public ZGroup(String hosts, long timeout) throws KeeperException,
+	public ZGroup(ZConnection connection) throws KeeperException,
 			InterruptedException, IOException {
-		this("default", hosts, timeout);
+		this("default", connection);
 	}
 
-	public ZGroup(final String group, final String hosts, final long timeout)
+	public ZGroup(final String group, final ZConnection connection)
 			throws KeeperException, InterruptedException, IOException {
-		this.hosts = hosts;
-		this.timeout = timeout;
+		this.connection = connection;
 		this.group = group;
 		
 		// register thread that will attach watchers if not attached
@@ -239,7 +237,7 @@ public class ZGroup implements GroupKeeper {
 	}
 
 	private ZooKeeper getZK() throws IOException, InterruptedException {
-		return ZConnection.getConnectedInstance(hosts, timeout);
+		return connection.get();
 	}
 
 	@Override

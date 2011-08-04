@@ -25,14 +25,11 @@ public class ZStore {
 
 	private final AtomicBoolean init = new AtomicBoolean(false);
 
-	String hosts;
-	long timeout;
+	final ZConnection connection;
+	final String path;
 
-	String path;
-
-	public ZStore(String path, String hosts, long timeout) {
-		this.hosts = hosts;
-		this.timeout = timeout;
+	public ZStore(String path, ZConnection connection) {
+		this.connection = connection;
 		this.path = path;
 
 	}
@@ -55,7 +52,7 @@ public class ZStore {
 	public synchronized void removeExpired(int seconds) throws IOException,
 			InterruptedException, KeeperException {
 
-		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
+		ZooKeeper zk = connection.get();
 		if (!init.get()) {
 			init(zk);
 		}
@@ -68,7 +65,7 @@ public class ZStore {
 
 				ZooKeeper zk1;
 				try {
-					zk1 = ZConnection.getConnectedInstance(hosts, timeout);
+					zk1 = connection.get();
 					long timeoutMilliseconds = ((Integer) ctx) * 1000;
 
 					for (String child : children) {
@@ -128,7 +125,7 @@ public class ZStore {
 
 	public byte[] get(String key) throws IOException, InterruptedException,
 			KeeperException {
-		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
+		ZooKeeper zk = connection.get();
 		if (!init.get()) {
 			init(zk);
 		}
@@ -154,7 +151,7 @@ public class ZStore {
 	public byte[] store(String key, byte[] data) throws IOException,
 			InterruptedException, KeeperException {
 
-		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
+		ZooKeeper zk = connection.get();
 		if (!init.get()) {
 			init(zk);
 		}
@@ -168,7 +165,7 @@ public class ZStore {
 			KeeperException {
 		String keyPath = path + "/" + key;
 
-		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, timeout);
+		ZooKeeper zk = connection.get();
 		zk.sync(keyPath, null, null);
 
 	}

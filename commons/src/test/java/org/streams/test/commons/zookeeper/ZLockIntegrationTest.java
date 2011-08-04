@@ -15,8 +15,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.junit.After;
-import org.junit.Before;
 import org.junit.Test;
 import org.streams.commons.zookeeper.ZConnection;
 import org.streams.commons.zookeeper.ZLock;
@@ -32,7 +30,7 @@ public class ZLockIntegrationTest {
 	public void testNoConnection() throws Exception {
 
 		// we expect the connection to fail
-		new ZLock("localhost:2000", 1000L).withLock("a",
+		new ZLock(new ZConnection("localhost:200", 1000L)).withLock("a",
 				new Callable<Boolean>() {
 
 					@Override
@@ -62,7 +60,7 @@ public class ZLockIntegrationTest {
 			futures.add(service.submit(new Callable<Boolean>() {
 				public Boolean call() throws Exception {
 					// we expect this lock to complete and release
-					return new ZLock("localhost:3001", 500L).withLock("a",
+					return new ZLock(new ZConnection("localhost:3001", 500L)).withLock("a",
 							new Callable<Boolean>() {
 
 								@Override
@@ -102,7 +100,7 @@ public class ZLockIntegrationTest {
 	public void testLock() throws Exception {
 
 		// we expect this lock to complete and release
-		new ZLock("localhost:3001", 1000L).withLock("a",
+		new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
 				new Callable<Boolean>() {
 
 					@Override
@@ -114,7 +112,7 @@ public class ZLockIntegrationTest {
 
 		// if the lock was properly release this block will complete without
 		// exceptions
-		boolean ret = new ZLock("localhost:3001", 1000L).withLock("a",
+		boolean ret = new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
 				new Callable<Boolean>() {
 
 					@Override
@@ -125,16 +123,6 @@ public class ZLockIntegrationTest {
 				});
 
 		assertTrue(ret);
-	}
-
-	@After
-	public void after() {
-		ZConnection.getInstance().close();
-	}
-
-	@Before
-	public void before() {
-		ZConnection.getInstance().reset();
 	}
 
 }

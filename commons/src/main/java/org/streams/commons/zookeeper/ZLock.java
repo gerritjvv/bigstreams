@@ -19,27 +19,26 @@ public class ZLock {
 
 	private static final Logger LOG = Logger.getLogger(ZLock.class);
 
-	String hosts;
-	long lockTimeout;
-	String baseDir;
+	final ZConnection connection;
+	final String baseDir;
 
 	private final AtomicBoolean init = new AtomicBoolean(false);
 
-	public ZLock(String hosts, long lockTimeout) {
+	public ZLock(ZConnection connection) {
 		super();
-		this.hosts = hosts;
+		this.connection = connection;
 		this.baseDir = "/locks/";
-		this.lockTimeout = lockTimeout;
+		
 	}
 
-	public ZLock(String hosts, String baseDir, long lockTimeout) {
+	public ZLock(ZConnection connection, String baseDir, long lockTimeout) {
 		super();
-		this.hosts = hosts;
-		this.baseDir = baseDir;
-		this.lockTimeout = lockTimeout;
+		this.connection = connection;
 		if (!baseDir.endsWith("/"))
-			baseDir = baseDir + "/";
-
+			this.baseDir = baseDir + "/";
+		else{
+			this.baseDir = baseDir;
+		}
 	}
 
 	/**
@@ -68,7 +67,7 @@ public class ZLock {
 	 * @throws Exception
 	 */
 	public <T> T withLock(String lockId, Callable<T> c) throws Exception {
-		ZooKeeper zk = ZConnection.getConnectedInstance(hosts, lockTimeout);
+		ZooKeeper zk = connection.get();
 
 		if (!init.get()) {
 			init(zk);
@@ -97,7 +96,7 @@ public class ZLock {
 				int retryCount = 0;
 
 				while (!locked && retryCount++ < retries) {
-					zk = ZConnection.getConnectedInstance(hosts, lockTimeout);
+					zk = connection.get();
 					writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
 					writeLock.setRetryDelay(100);
 
@@ -113,7 +112,7 @@ public class ZLock {
 				}
 
 				throw new TimeoutException("Unable to attain lock " + lockId
-						+ " using zookeeper " + hosts);
+						+ " using zookeeper ");
 			}
 		} finally {
 			if (locked) {
@@ -126,22 +125,6 @@ public class ZLock {
 			}
 		}
 
-	}
-
-	public String getHosts() {
-		return hosts;
-	}
-
-	public void setHosts(String hosts) {
-		this.hosts = hosts;
-	}
-
-	public long getLockTimeout() {
-		return lockTimeout;
-	}
-
-	public void setLockTimeout(long lockTimeout) {
-		this.lockTimeout = lockTimeout;
 	}
 
 }

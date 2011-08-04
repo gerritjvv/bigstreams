@@ -23,11 +23,10 @@ public class ZGroupIntegrationTest {
 
 	@Before
 	public void before() throws IOException, InterruptedException, KeeperException {
-		ZConnection.getInstance().reset();
 
 		// create agent
 
-		group = new ZGroup("localhost:3001", 10000L);
+		group = new ZGroup(new ZConnection("localhost:3001", 10000L));
 		GroupStatus agent = GroupStatus.newBuilder().setHost("localhost")
 				.setLastUpdate(System.currentTimeMillis()).setLoad(10)
 				.setMsg("TEST").setType(GroupStatus.Type.AGENT)
@@ -45,7 +44,6 @@ public class ZGroupIntegrationTest {
 
 	@AfterClass
 	public static void after() {
-		ZConnection.getInstance().close();
 	}
 
 	@Test
@@ -53,7 +51,7 @@ public class ZGroupIntegrationTest {
 			KeeperException {
 
 		//assert that the basedir exists
-		ZooKeeper zk = ZConnection.getConnectedInstance("localhost:3001", 10000L);
+		ZooKeeper zk = new ZConnection("localhost:3001", 10000L).get();
 		assertNotNull(zk.exists(ZGroup.BASEDIR, false));
 		
 		

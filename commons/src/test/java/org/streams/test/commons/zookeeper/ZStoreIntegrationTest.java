@@ -21,25 +21,18 @@ import com.google.protobuf.Message;
 
 public class ZStoreIntegrationTest {
 
-	@Before
-	public void before() {
-		ZConnection.getInstance().reset();
-	}
 
-	@After
-	public void after() {
-		ZConnection.getInstance().close();
-	}
 
 	@Test
 	public void testPutGetExist() throws IOException, InterruptedException, KeeperException {
 		
 		// we expect a ConnectException to be thrown
-		ZooKeeper zk = ZConnection.getConnectedInstance("localhost:3001",
-				10000L);
+		ZooKeeper zk =new ZConnection("localhost:3001",
+				10000L).get();
 		assertTrue(zk.getState().isAlive());
 
-		ZStore store = new ZStore("/a/b/c/d", "localhost:3001", 10000L);
+		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:3001",
+				10000L));
 		long uniqueId = System.currentTimeMillis();
 		
 		FileTrackingStatus fileStatus = FileStatus.FileTrackingStatus.newBuilder().setFileName("testName").build();
@@ -57,12 +50,13 @@ public class ZStoreIntegrationTest {
 	public void testGetNotExist() throws IOException, InterruptedException, KeeperException {
 
 		// we expect a ConnectException to be thrown
-		ZooKeeper zk = ZConnection.getConnectedInstance("localhost:3001",
-				10000L);
+		ZooKeeper zk = new ZConnection("localhost:3001",
+				10000L).get();
 
 		assertTrue(zk.getState().isAlive());
 
-		ZStore store = new ZStore("/a/b/c/d", "localhost:3001", 10000L);
+		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:3001",
+				10000L));
 		long uniqueId = System.currentTimeMillis();
 		Message msg = store.get("myKey-" + uniqueId, FileStatus.FileTrackingStatus.newBuilder());
 		assertNull(msg);

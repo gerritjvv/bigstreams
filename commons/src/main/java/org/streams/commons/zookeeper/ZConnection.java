@@ -24,16 +24,21 @@ import org.apache.zookeeper.ZooKeeper;
 public class ZConnection implements Watcher {
 	private static final Logger LOG = Logger.getLogger(ZConnection.class);
 
-	private static final ZConnection DEFAULT = new ZConnection(80);
-
 	int sessionTimeout;
+	String hosts;
 	ZooKeeper zoo;
 
 	private CountDownLatch latch = new CountDownLatch(1);
 
 	private AtomicBoolean closed = new AtomicBoolean(false);
 
-	public ZConnection(int sessionTimeout) {
+	public ZConnection(String hosts, long sessionTimeout) {
+		this.hosts = hosts;
+		this.sessionTimeout = (int)sessionTimeout;
+	}
+	
+	public ZConnection(String hosts, int sessionTimeout) {
+		this.hosts = hosts;
 		this.sessionTimeout = sessionTimeout;
 	}
 
@@ -46,18 +51,7 @@ public class ZConnection implements Watcher {
 		zoo = null;
 	}
 
-	/**
-	 * 
-	 * @param hosts
-	 * @param timeout
-	 * @return
-	 * @throws IOException
-	 * @throws InterruptedException
-	 */
-	public static ZooKeeper getConnectedInstance(String hosts, long timeout)
-			throws IOException, InterruptedException {
-		return getInstance().get(hosts, timeout);
-	}
+	
 
 	/**
 	 * Returns a ZooKeeper instance If timeout and no connection was made a
@@ -69,10 +63,10 @@ public class ZConnection implements Watcher {
 	 * @throws IOException
 	 * @throws InterruptedException
 	 */
-	public ZooKeeper get(String hosts, long timeout) throws IOException,
+	public ZooKeeper get() throws IOException,
 			InterruptedException {
 		if (zoo == null) {
-			_connect(hosts, timeout);
+			_connect(hosts, sessionTimeout);
 		} else {
 
 			// if closed throw exception
@@ -86,7 +80,7 @@ public class ZConnection implements Watcher {
 			// we need to check the count latch.
 			if(zoo.getState() != ZooKeeper.States.CONNECTED){
 				System.out.println("State: " + zoo.getState());
-				checkTimeout(hosts, timeout);
+				checkTimeout(hosts, sessionTimeout);
 			}
 
 			// check that the state is connected if not and the latch has been
@@ -97,9 +91,10 @@ public class ZConnection implements Watcher {
 			if (!zoo.getState().isAlive()) {
 
 				synchronized (this) {
+					zoo = null;
 					latch = new CountDownLatch(1);
 					LOG.info("Connecting newly to zookeeper");
-					_connect(hosts, timeout);
+					_connect(hosts, sessionTimeout);
 				}
 
 			}
@@ -163,8 +158,5 @@ public class ZConnection implements Watcher {
 		}
 	}
 
-	public static final ZConnection getInstance() {
-		return DEFAULT;
-	}
-
+	
 }
