@@ -76,6 +76,11 @@
 		</dependency>
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
+			<artifactId>org.restlet.ext.velocity</artifactId>
+			<version>${restlet.version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet.ext.jackson</artifactId>
 			<version>${restlet.version}</version>
 		</dependency>
@@ -90,23 +95,23 @@
 	<build>
 		<plugins>
 
-                       <plugin>
-                                <groupId>com.objectdriven.maven</groupId>
-                                <artifactId>maven-zookeeper-plugin</artifactId>
-                                <version>1.0-SNAPSHOT</version>
-                                <configuration>
-                                        <port>3001</port>
-                                        <daemon>true</daemon>
-                                </configuration>
-                                <executions>
-                                        <execution>
-                                                <phase>pre-integration-test</phase>
-                                                <goals>
-                                                        <goal>start</goal>
-                                                </goals>
-                                        </execution>
-                                </executions>
-                        </plugin>
+			<plugin>
+				<groupId>com.objectdriven.maven</groupId>
+				<artifactId>maven-zookeeper-plugin</artifactId>
+				<version>1.0-SNAPSHOT</version>
+				<configuration>
+					<port>3001</port>
+					<daemon>true</daemon>
+				</configuration>
+				<executions>
+					<execution>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>start</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
@@ -125,17 +130,17 @@
 						</property>
 					</systemProperties>
 					<executions>
-                                        <execution>
-                                                <id>surefire-it</id>
-                                                <phase>integration-test</phase>
-                                                <goals>
-                                                        <goal>test</goal>
-                                                </goals>
-                                                <configuration>
-                                                        <skip>false</skip>
-                                                </configuration>
-                                        </execution>
-                                </executions>
+						<execution>
+							<id>surefire-it</id>
+							<phase>integration-test</phase>
+							<goals>
+								<goal>test</goal>
+							</goals>
+							<configuration>
+								<skip>false</skip>
+							</configuration>
+						</execution>
+					</executions>
 
 				</configuration>
 
@@ -180,7 +185,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>4</release>
+					<release>5</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
@@ -229,6 +234,18 @@
 							<sources>
 								<source>
 									<location>src/main/resources/conf</location>
+								</source>
+							</sources>
+						</mapping>
+						<mapping>
+							<directory>/opt/streams-collector/web</directory>
+							<configuration>true</configuration>
+							<filemode>444</filemode>
+							<username>root</username>
+							<groupname>root</groupname>
+							<sources>
+								<source>
+									<location>src/main/resources/web</location>
 								</source>
 							</sources>
 						</mapping>
@@ -319,9 +336,6 @@
                         <url>http://maven.davidtrott.com/repository</url>
                 </pluginRepository>
         </pluginRepositories>
-        <pluginRepositories>
-      </pluginRepositories>
-
 
 	<repositories>
 		<repository>
@@ -334,14 +348,14 @@
 			<name>Public online Restlet repository</name>
 			<url>http://maven.restlet.org</url>
 		</repository>
-                <repository>
-                        <id>oss.sonatype</id>
-                        <name>oss.sonatype.org</name>
+		<repository>
+			<id>oss.sonatype</id>
+			<name>oss.sonatype.org</name>
 			<url>https://oss.sonatype.org/content/groups/public/</url>
-  <snapshots>
-        <enabled>true</enabled>
-      </snapshots>
-                </repository>
+			<snapshots>
+				<enabled>true</enabled>
+			</snapshots>
+		</repository>
 		<repository>
 			<id>streams-releases</id>
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/releases</url>

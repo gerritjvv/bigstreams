@@ -51,6 +51,8 @@ public class TestCollectorResource extends TestCase {
 			assertNotNull(entity);
 
 			ObjectMapper objMapper = new ObjectMapper();
+			System.out.println("Status: " + entity);
+			
 			CollectorStatus status = objMapper.readValue(entity,
 					CollectorStatusImpl.class);
 

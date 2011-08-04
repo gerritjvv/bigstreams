@@ -1,0 +1,37 @@
+<html>
+<head>
+<title>Agents Status</title>
+</head>
+<body>
+
+<b>Agents</b> : $agents.size()
+
+<table border="1">
+##Look through each map that defines the properties for each collector.
+## host, port, status, msg, lastUpdate, lastUpdateDate
+
+#foreach( $agent in $agents) 
+ <tr>
+   <td>$agent.host<td/>
+   <td>$agent.port</td>
+   <td>$agent.status</td>
+   <td>$agent.msg</td>
+   
+      #if($agent.lastUpdateDiffHours < 0.5)
+         <td bgcolor="green">
+      #elseif($agent.lastUpdateDiffHours < 0.1)
+         <td bgcolor="yellow">
+      #else
+         <td bgcolor="red">
+      #end
+         $agent.lastUpdateDate
+      
+   </td>     
+      
+ </tr> 
+#end
+ 
+</table>
+
+</body>
+</html>

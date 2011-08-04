@@ -1,5 +1,6 @@
 package org.streams.collector.mon.impl;
 
+import java.io.StringWriter;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -9,6 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 import org.apache.log4j.Logger;
+import org.apache.velocity.VelocityContext;
+import org.apache.velocity.app.Velocity;
+import org.apache.velocity.exception.ParseErrorException;
+import org.apache.velocity.exception.ResourceNotFoundException;
+import org.restlet.data.MediaType;
+import org.restlet.representation.Representation;
+import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.streams.commons.group.Group.GroupStatus;
@@ -32,6 +40,19 @@ public class CollectorsStatusResource extends ServerResource {
 		this.groupKeeper = groupKeeper;
 	}
 
+	
+	@Get("html")
+	public Representation getCollectorsHtml() throws ResourceNotFoundException, ParseErrorException, Exception{
+		
+		List<Map<String, Object>> collectors = getCollectors();
+		//TemplateRepresentation rep = new TemplateRepresentation(Velocity.getTemplate("collectorsStatusResource.vm"), model, MediaType.TEXT_HTML);
+		VelocityContext ctx = new VelocityContext();
+		ctx.put("collectors", collectors);
+		StringWriter writer = new StringWriter();
+		Velocity.getTemplate("collectorsStatusResource.vm").merge(ctx, writer);
+		return new  StringRepresentation(writer.toString(), MediaType.TEXT_HTML);
+	}
+	
 	@Get("json")
 	public List<Map<String, Object>> getCollectors() {
 
@@ -51,7 +72,9 @@ public class CollectorsStatusResource extends ServerResource {
 					map.put("status", stat.getStatus());
 					map.put("msg", stat.getMsg());
 					map.put("lastUpdate", stat.getLastUpdate());
-					
+					map.put("lastUpdateDiffHours",
+							(System.currentTimeMillis()- stat.getLastUpdate())/ 3600000F
+							);
 					map.put("lastUpdateDate", dateFormat.format(new Date(stat.getLastUpdate())));
 					
 					propertyColl.add(map);

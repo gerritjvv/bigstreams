@@ -1,0 +1,13 @@
+<html>
+<head>
+<title>Collectors Status</title>
+</head>
+<body>
+
+<table>
+<tr><td><b>Collector status</b>: </td><td> $status.getStatus()</td></tr>
+<tr><td><b>Message</b>: </td><td> $status.getMsg()</td></tr>
+</table>
+
+</body>
+</html>

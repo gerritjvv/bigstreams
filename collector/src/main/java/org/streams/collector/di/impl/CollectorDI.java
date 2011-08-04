@@ -10,6 +10,8 @@ import java.util.List;
 import javax.inject.Inject;
 
 import org.apache.log4j.Logger;
+import org.apache.velocity.runtime.RuntimeConstants;
+import org.apache.velocity.runtime.RuntimeSingleton;
 import org.apache.zookeeper.KeeperException;
 import org.restlet.Application;
 import org.restlet.Component;
@@ -66,6 +68,7 @@ import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricChannel;
 import org.streams.commons.metrics.impl.MetricsAppService;
+import org.streams.commons.zookeeper.ZConnection;
 import org.streams.commons.zookeeper.ZGroup;
 import org.streams.commons.zookeeper.ZLock;
 import org.streams.commons.zookeeper.ZStore;
@@ -152,8 +155,9 @@ public class CollectorDI {
 		return new OrphanedFilesCheckImpl(file,
 				beanFactory.getBean(LogRolloverCheck.class),
 				beanFactory.getBean(LogFileNameExtractor.class),
-				beanFactory.getBean(LogRollover.class),
-				beanFactory.getBean(FileOutputStreamPoolFactory.class).getPoolForKey("orphanedFiles"), lowerMod);
+				beanFactory.getBean(LogRollover.class), beanFactory.getBean(
+						FileOutputStreamPoolFactory.class).getPoolForKey(
+						"orphanedFiles"), lowerMod);
 
 	}
 
@@ -161,6 +165,20 @@ public class CollectorDI {
 	public GroupKeeper groupKeeper() throws KeeperException,
 			InterruptedException, IOException {
 
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		String group = configuration.getString(
+				CollectorProperties.WRITER.COORDINATION_GROUP.toString(),
+				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
+						.toString());
+
+		return new ZGroup(group, beanFactory.getBean(ZConnection.class));
+
+	}
+
+	@Bean
+	public ZConnection zConnection() {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
@@ -178,20 +196,15 @@ public class CollectorDI {
 		}
 
 		String hosts = buff.toString();
-		String group = configuration.getString(
-				CollectorProperties.WRITER.COORDINATION_GROUP.toString(),
-				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
-						.toString());
 
-               Long timeout = configuration.getLong(
+		Long timeout = configuration.getLong(
 				CollectorProperties.WRITER.ZOOTIMEOUT.toString(),
-				(Long)CollectorProperties.WRITER.ZOOTIMEOUT.getDefaultValue()
-						);
+				(Long) CollectorProperties.WRITER.ZOOTIMEOUT.getDefaultValue());
 
-                if(timeout == null)
-                   timeout = new Long(80000);
+		if (timeout == null)
+			timeout = new Long(80000);
 
-		return new ZGroup(group, hosts, timeout);
+		return new ZConnection(hosts, timeout);
 
 	}
 
@@ -327,41 +340,20 @@ public class CollectorDI {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
 
-		String[] hostsArr = configuration
-				.getStringArray(CollectorProperties.WRITER.COORDINATION_HOST
-						.toString());
-
-		StringBuilder buff = new StringBuilder();
-		int i = 0;
-		for (String host : hostsArr) {
-			if (i++ != 0)
-				buff.append(',');
-
-			buff.append(host);
-		}
-
-		String hosts = buff.toString();
 		String group = configuration.getString(
 				CollectorProperties.WRITER.COORDINATION_GROUP.toString(),
 				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
 						.toString());
 
-              Long timeout = configuration.getLong(
-				CollectorProperties.WRITER.ZOOTIMEOUT.toString(),
-				(Long)CollectorProperties.WRITER.ZOOTIMEOUT.getDefaultValue()
-						);
-
-                if(timeout == null)
-                   timeout = new Long(80000);
+		ZConnection connection = beanFactory.getBean(ZConnection.class);
 
 		ZStoreExpireCheckService expireCheckService = beanFactory
 				.getBean(ZStoreExpireCheckService.class);
-		ZStore zstore = new ZStore("/coordination/" + group, hosts, timeout);
+		ZStore zstore = new ZStore("/coordination/" + group, connection);
 
 		expireCheckService.getStores().add(zstore);
 
-		return new CoordinationServiceClientImpl(new ZLock(hosts, timeout),
-				zstore);
+		return new CoordinationServiceClientImpl(new ZLock(connection), zstore);
 	}
 
 	/**
@@ -469,11 +461,35 @@ public class CollectorDI {
 	 * Configures a restlet component
 	 * 
 	 * @return
+	 * @throws Exception
 	 */
 	@Bean
-	public Component restletComponent() {
+	public Component restletComponent() throws Exception {
+
 		org.apache.commons.configuration.Configuration configuration = beanFactory
 				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		// we must initialise velocity before hand.
+		// a cleaner solution for this must be found in the future.
+
+		String templateDir = configuration.getString(
+				CollectorProperties.WEB.VELOCITY_TEMPLATE_DIR.toString(),
+				(String) CollectorProperties.WEB.VELOCITY_TEMPLATE_DIR
+						.getDefaultValue());
+
+		String logFile = configuration.getString(
+				CollectorProperties.WEB.VELOCITY_LOG_FILE.toString(),
+				(String) CollectorProperties.WEB.VELOCITY_LOG_FILE
+						.getDefaultValue());
+
+		RuntimeSingleton.setProperty(
+				RuntimeConstants.FILE_RESOURCE_LOADER_PATH, templateDir);
+		RuntimeSingleton.setProperty(RuntimeConstants.RUNTIME_LOG, logFile);
+		RuntimeSingleton.init();
+
+		LOG.info("Using templates: " + templateDir);
+		LOG.info("Using display log file : " + logFile);
+
 		Component component = new Component();
 
 		int port = configuration.getInt(

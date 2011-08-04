@@ -82,6 +82,24 @@ public interface CollectorProperties {
 	
 	}
 	
+
+	enum WEB{
+		
+		VELOCITY_TEMPLATE_DIR("velocity.template.dir", "/opt/streams-collector/web/templates"),
+		VELOCITY_LOG_FILE("velocity.log.dir", "/opt/streams-collector/logs/streams-collector.log");
+		
+		String name;
+		Object defaultValue;
+		
+		WEB(String name, Object defaultValue){this.name = name; this.defaultValue = defaultValue;};
+		
+		public String toString(){return name;}
+
+		public Object getDefaultValue() {
+			return defaultValue;
+		}
 	
+
+	}
 	
 }

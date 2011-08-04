@@ -1,0 +1,36 @@
+<html>
+<head>
+<title>Collectors Status</title>
+</head>
+<body>
+
+<b>Collectors</b> : $collectors.size()
+
+<table border="1">
+##Look through each map that defines the properties for each collector.
+## host, port, status, msg, lastUpdate, lastUpdateDate
+
+#foreach( $collector in $collectors) 
+ <tr>
+   <td>$collector.host<td/>
+   <td>$collector.port</td>
+   <td>$collector.status</td>
+   <td>$collector.msg</td>
+   
+      #if($collector.lastUpdateDiffHours < 0.5)
+         <td bgcolor="green">
+      #elseif($collector.lastUpdateDiffHours < 0.1)
+         <td bgcolor="yellow">
+      #else
+         <td bgcolor="red">
+      #end
+         $collector.lastUpdateDate
+   </td>     
+      
+ </tr> 
+#end
+ 
+</table>
+
+</body>
+</html>

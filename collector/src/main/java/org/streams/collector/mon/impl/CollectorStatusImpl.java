@@ -88,11 +88,19 @@ public class CollectorStatusImpl implements CollectorStatus {
 		this.msg = msg;
 	}
 
+	public void setStatusMessage(String msg) {
+		this.msg = msg;
+	}
+
 	@Override
 	public String getStatusMessage() {
 		return getMsg();
 	}
 
+	public void setStatusTimestamp(long timestamp){
+		statusTimestamp = timestamp;
+	}
+	
 	public long getStatusTimestamp(){
 		return statusTimestamp;
 	}

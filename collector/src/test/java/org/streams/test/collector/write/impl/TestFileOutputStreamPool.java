@@ -61,6 +61,12 @@ public class TestFileOutputStreamPool extends TestCase {
 				// TODO Auto-generated method stub
 				
 			}
+
+			@Override
+			public long getStatusTimestamp() {
+				// TODO Auto-generated method stub
+				return 0;
+			}
 		};
 
 		CompressionPoolFactory compressionPoolFactory = new CompressionPoolFactoryImpl(
@@ -153,6 +159,12 @@ public class TestFileOutputStreamPool extends TestCase {
 				// TODO Auto-generated method stub
 				
 			}
+
+			@Override
+			public long getStatusTimestamp() {
+				// TODO Auto-generated method stub
+				return 0;
+			}
 		};
 
 		CompressionPoolFactory compressionPoolFactory = new CompressionPoolFactoryImpl(
@@ -244,6 +256,12 @@ public class TestFileOutputStreamPool extends TestCase {
 			public void setStatus(STATUS status, String msg) {
 				// TODO Auto-generated method stub
 				
+			}
+
+			@Override
+			public long getStatusTimestamp() {
+				// TODO Auto-generated method stub
+				return 0;
 			}
 		};
 
