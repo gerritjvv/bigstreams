@@ -1,0 +1,144 @@
+<html>
+<head>
+<title>Agent $agentHost Status</title>
+
+<LINK href="/static/main.css" rel="stylesheet" type="text/css">
+<style>
+   th.header { 
+    cursor: pointer; 
+   } 
+</style>
+ 
+ <script src="/static/jquery-1.6.2.min.js"></script>
+<script src="/static/jquery.tablesorter.js"></script>
+
+<script language="JavaScript">
+
+ var doneFiles = JSON.parse('$DONE');
+ var readyFiles = JSON.parse('$READY');
+ var readingFiles = JSON.parse('$READING');
+ var parkedFiles = JSON.parse('$PARKED');
+
+
+</script>
+
+</head>
+<body>
+
+<script language="JavaScript">
+ function days_between(date1, date2) {
+
+    // The number of milliseconds in one day
+    var ONE_DAY = 1000 * 60 * 60 * 24
+
+    // Convert both dates to milliseconds
+    var date1_ms = date1.getTime()
+    var date2_ms = date2.getTime()
+
+    // Calculate the difference in milliseconds
+    var difference_ms = Math.abs(date1_ms - date2_ms)
+    
+    // Convert back to days and return
+    return Math.round(difference_ms/ONE_DAY)
+
+}
+
+  function formatDate(date){
+
+    var hours = date.getHours();
+    var hourStr = hours;
+    if(hours < 10) 
+          hourStr = "0" + hours;
+        
+    return date.getFullYear() + "-" + (date.getMonth()+1) + "-" + date.getDate() + "-" + hourStr
+  }
+
+
+  //set the files to a table e.g. doneFiles
+  //call using setFiles('doneFiles', doneFiles)
+  function setFiles(){
+
+   jQuery('#files').append('<tbody>');
+
+
+    addTables(readingFiles);
+    addTables(readyFiles);
+    addTables(parkedFiles);
+    addTables(doneFiles);
+
+    jQuery('#files').append('</tbody>');  
+  }
+
+  function addTables(files){
+   jQuery.each(files, function(i, file){
+
+      var fileDate = new Date(file.fileDate);
+      var modTime = new Date(file.lastModificationTime);
+      var sentDate = new Date(file.sentDate);
+
+      var status = file.status;
+
+      var days = days_between(modTime, sentDate);
+      if( days  > 0){
+        status = status + " LATE"
+      }
+
+
+      jQuery('#files').append("<tr><td>" + formatDate(fileDate) +
+            "</td><td>" + formatDate(modTime) +  
+            "</td><td>" + formatDate(sentDate) +  
+            "</td><td>" + file.logType +  
+        "</td><td>" + file.path + 
+        "</td><td>" + status + 
+        "</td><td>" + file.filePointer + 
+        "</td><td>" + file.fileSize  +
+        "</td><td>" + ((file.filePointer/file.fileSize) * 100) + "%" +
+        "</td><td>" + days +
+        "</td></tr>"
+      )
+
+   });
+
+  }
+
+$(document).ready(function()
+{
+    //set counters
+    jQuery('#counters').append('<thead><tr><th>READY</th><th>READING</th><th>DONE</th><th>PARKED</th></tr></thead><tbody><tr><td>' + readyFiles.length + 
+            '</td><td>' + readingFiles.length + 
+                        '</td><td>' + doneFiles.length +
+                        '</td><td>' + parkedFiles.length + '</td></tr></tbody>');
+
+    setFiles();
+
+  //sort on first and second column in descending order
+  jQuery("#files").tablesorter({sortList: [[0,1], [1,1]]} );
+
+  });
+  
+</script>
+
+<table id="counters" >
+
+</table>
+
+<table id="files" class="tablesorter">
+ <thead> 
+<tr> 
+    <th>File Date</th> 
+    <th>LastModTime</th> 
+    <th>Sent Date</th> 
+    <th>Log Type</th> 
+    <th>Path</th> 
+    <th>Status</th> 
+    <th>Pointer</th> 
+    <th>Size</th> 
+    <th>% Sent</th> 
+    <th>Sent Days Diff</th> 
+</tr> 
+</thead> 
+</table>
+  
+
+</body>
+</html>

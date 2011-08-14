@@ -39,8 +39,6 @@ public interface CollectorProperties {
 		ORPHANED_LOG_CHECK_FREQUENCY("orphaned.check.frequency",  1200000L), //20 minutes
 		ORPHANED_FILE_LOWER_MODE("orphaned.filelowermod", 3600000L), //1 hour
 		
-		COORDINATION_LOCK_PORT ("coordination.lock.port", 5420),
-		COORDINATION_UNLOCK_PORT ("coordination.unlock.port", 5430),
 		COORDINATION_HOST ("coordination.host", "localhost"),
 		COLLECTOR_PORT ("collector.port", 8210),
 		COLLECTOR_MON_PORT ("collector.mon.port", 8080),
@@ -67,7 +65,7 @@ public interface CollectorProperties {
 		
 		COLLECTOR_CONNECTION_READ_TIMEOUT("collector.read.timeout", 10000L),
 		COLLECTOR_CONNECTION_WRITE_TIMEOUT("collector.write.timeout", 10000L);
-		
+			
 		
 		String name;
 		Object defaultValue;
@@ -86,7 +84,11 @@ public interface CollectorProperties {
 	enum WEB{
 		
 		VELOCITY_TEMPLATE_DIR("velocity.template.dir", "/opt/streams-collector/web/templates"),
-		VELOCITY_LOG_FILE("velocity.log.dir", "/opt/streams-collector/logs/streams-collector.log");
+		VELOCITY_LOG_FILE("velocity.log.dir", "/opt/streams-collector/logs/streams-collector.log"),
+		//These are threads that the ui components can use to make parallel requests to other clients
+		//e.g. to multiple agents
+		UI_AUX_THREADS("ui.aux.threads", 10);
+		
 		
 		String name;
 		Object defaultValue;

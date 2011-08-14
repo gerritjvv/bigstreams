@@ -1,6 +1,7 @@
 <html>
 <head>
 <title>Agents Status</title>
+<LINK href="/static/main.css" rel="stylesheet" type="text/css">
 </head>
 <body>
 

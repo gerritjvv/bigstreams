@@ -20,7 +20,7 @@ public class RestClientDI {
 
 		org.restlet.Client client = new org.restlet.Client(context,
 				org.restlet.data.Protocol.HTTP);
-
+		
 		return client;
 	}
 

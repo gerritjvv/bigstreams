@@ -2,10 +2,12 @@ package org.streams.collector.di.impl;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 import javax.inject.Inject;
 
@@ -18,6 +20,7 @@ import org.restlet.Component;
 import org.restlet.Request;
 import org.restlet.Response;
 import org.restlet.Restlet;
+import org.restlet.resource.Directory;
 import org.restlet.resource.Finder;
 import org.restlet.resource.ServerResource;
 import org.restlet.routing.Router;
@@ -31,8 +34,8 @@ import org.streams.collector.cli.startup.check.impl.CodecCheck;
 import org.streams.collector.cli.startup.check.impl.ConfigCheck;
 import org.streams.collector.cli.startup.check.impl.PingCheck;
 import org.streams.collector.conf.CollectorProperties;
-import org.streams.collector.coordination.impl.CoordinationAddresses;
 import org.streams.collector.mon.CollectorStatus;
+import org.streams.collector.mon.impl.AgentStatusResource;
 import org.streams.collector.mon.impl.AgentsStatusResource;
 import org.streams.collector.mon.impl.CollectorConfigResource;
 import org.streams.collector.mon.impl.CollectorStatusResource;
@@ -64,7 +67,6 @@ import org.streams.commons.group.Group;
 import org.streams.commons.group.GroupHeartbeatService;
 import org.streams.commons.group.GroupKeeper;
 import org.streams.commons.io.Protocol;
-import org.streams.commons.io.net.impl.RandomDistAddressSelector;
 import org.streams.commons.metrics.CounterMetric;
 import org.streams.commons.metrics.impl.MetricChannel;
 import org.streams.commons.metrics.impl.MetricsAppService;
@@ -356,53 +358,6 @@ public class CollectorDI {
 		return new CoordinationServiceClientImpl(new ZLock(connection), zstore);
 	}
 
-	/**
-	 * Configure and start the CoordinationAddresses with the lock and unlock
-	 * addresses
-	 * 
-	 * @return
-	 */
-	@Bean
-	public CoordinationAddresses coordinationAddresses() {
-
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-				.getBean(org.apache.commons.configuration.Configuration.class);
-
-		int lockport = configuration.getInt(
-				CollectorProperties.WRITER.COORDINATION_LOCK_PORT.toString(),
-				(Integer) CollectorProperties.WRITER.COORDINATION_LOCK_PORT
-						.getDefaultValue());
-
-		int unlockport = configuration.getInt(
-				CollectorProperties.WRITER.COORDINATION_UNLOCK_PORT.toString(),
-				(Integer) CollectorProperties.WRITER.COORDINATION_UNLOCK_PORT
-						.getDefaultValue());
-
-		String[] hostArr = configuration
-				.getStringArray(CollectorProperties.WRITER.COORDINATION_HOST
-						.toString());
-
-		if (hostArr == null || hostArr.length < 1) {
-			hostArr = new String[] { CollectorProperties.WRITER.COORDINATION_HOST
-					.getDefaultValue().toString() };
-		}
-
-		InetSocketAddress[] lockAddresses = new InetSocketAddress[hostArr.length];
-		for (int i = 0; i < hostArr.length; i++) {
-			lockAddresses[i] = new InetSocketAddress(hostArr[i], lockport);
-		}
-
-		InetSocketAddress[] unLockAddresses = new InetSocketAddress[hostArr.length];
-		for (int i = 0; i < hostArr.length; i++) {
-			unLockAddresses[i] = new InetSocketAddress(hostArr[i], unlockport);
-		}
-
-		LOG.info("Using coordination addresses: " + Arrays.asList(hostArr));
-
-		return new CoordinationAddresses(new RandomDistAddressSelector(
-				lockAddresses), new RandomDistAddressSelector(unLockAddresses));
-	}
-
 	@Bean
 	public LogFileNameExtractor logFileNameExtractor() throws Exception {
 
@@ -456,7 +411,7 @@ public class CollectorDI {
 
 		return component;
 	}
-
+	
 	/**
 	 * Configures a restlet component
 	 * 
@@ -472,7 +427,7 @@ public class CollectorDI {
 		// we must initialise velocity before hand.
 		// a cleaner solution for this must be found in the future.
 
-		String templateDir = configuration.getString(
+		final String templateDir = configuration.getString(
 				CollectorProperties.WEB.VELOCITY_TEMPLATE_DIR.toString(),
 				(String) CollectorProperties.WEB.VELOCITY_TEMPLATE_DIR
 						.getDefaultValue());
@@ -491,7 +446,7 @@ public class CollectorDI {
 		LOG.info("Using display log file : " + logFile);
 
 		Component component = new Component();
-
+		 
 		int port = configuration.getInt(
 				CollectorProperties.WRITER.COLLECTOR_MON_PORT.toString(),
 				(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
@@ -500,8 +455,17 @@ public class CollectorDI {
 		LOG.info("Using collector monitoring port: " + port);
 
 		component.getServers().add(org.restlet.data.Protocol.HTTP, port);
-		component.getDefaultHost().attach(restApplication());
+     	component.getClients().add(org.restlet.data.Protocol.FILE);  
 
+		component.getDefaultHost().attach("/view", restApplication());
+		component.getDefaultHost().attach("/static", new Application(component.getContext()) {  
+		     @Override  
+		     public Restlet createRoot() {  
+		         return new Directory(getContext(), "file://" + new File(templateDir).getAbsolutePath());  
+		     }  
+		 });  
+		 
+		
 		return component;
 	}
 
@@ -515,6 +479,7 @@ public class CollectorDI {
 	public Application restApplication() {
 
 		final Router router = new Router();
+		
 		attachFinder(router, "/collector/status",
 				CollectorStatusResource.class, Template.MODE_STARTS_WITH);
 
@@ -529,6 +494,12 @@ public class CollectorDI {
 
 		attachFinder(router, "/agents/status", AgentsStatusResource.class,
 				Template.MODE_STARTS_WITH);
+
+		attachFinder(router, "/agent/files", AgentStatusResource.class,
+				Template.MODE_STARTS_WITH);
+		attachFinder(router, "/agent/files?{query}", AgentStatusResource.class,
+				Template.MODE_STARTS_WITH);
+
 
 		Application app = new Application() {
 
@@ -592,8 +563,57 @@ public class CollectorDI {
 	}
 
 	@Bean
+	public AgentStatusResource agentStatusResource() {
+		return new AgentStatusResource(uiAuxService(),
+				beanFactory.getBean(org.restlet.Client.class));
+	}
+
+	@Bean
 	public AgentsStatusResource agentsStatusResource() {
 		return new AgentsStatusResource(beanFactory.getBean(GroupKeeper.class));
+	}
+
+	static ExecutorService auxThreadService;
+
+	/**
+	 * All ui aux threads are created as daemon threads. Meaning that once the
+	 * application stops these threads are killed automatically.
+	 * 
+	 * @return
+	 */
+	@Bean
+	public synchronized ExecutorService uiAuxService() {
+		if (auxThreadService == null) {
+			org.apache.commons.configuration.Configuration configuration = beanFactory
+					.getBean(org.apache.commons.configuration.Configuration.class);
+
+			int threads = configuration.getInt(
+					CollectorProperties.WEB.UI_AUX_THREADS.toString(),
+					(Integer) CollectorProperties.WEB.UI_AUX_THREADS
+							.getDefaultValue());
+
+			LOG.info("Using Aux UI Threads: " + threads);
+
+			auxThreadService = Executors.newFixedThreadPool(threads,
+					new ThreadFactory() {
+
+						@Override
+						public Thread newThread(Runnable r) {
+							Thread th = new Thread(r);
+							try {
+								th.setDaemon(true);
+								th.setName("UI-AUX"
+										+ System.currentTimeMillis());
+								th.setPriority(Thread.MIN_PRIORITY);
+							} catch (Throwable t) {
+								LOG.warn(t.toString(), t);
+							}
+							return th;
+						}
+					});
+		}
+
+		return auxThreadService;
 	}
 
 	/**
@@ -619,5 +639,7 @@ public class CollectorDI {
 
 		router.attach(pathTemplate, finder, matchingMode);
 	}
+
+	
 
 }
