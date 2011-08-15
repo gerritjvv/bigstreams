@@ -7,6 +7,8 @@ package org.streams.commons.metrics;
  */
 public interface CounterMetric extends Metric{
 
+	int getValue();
+	
 	/**
 	 * Will increment the counter using an integer.<br/>
 	 * Which internal representation is used depends on the metric implementation.

@@ -43,6 +43,14 @@ public class IntegerCounterPerSecondMetric implements CounterMetric{
 		this.status = status;
 	}
 	
+	/**
+	 * 
+	 */
+	@Override
+	public int getValue(){
+		return counter.get();
+	}
+	
 	@Override
 	public void close() {
 	}
