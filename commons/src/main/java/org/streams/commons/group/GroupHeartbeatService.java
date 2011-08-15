@@ -2,6 +2,7 @@ package org.streams.commons.group;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.List;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -36,11 +37,20 @@ public class GroupHeartbeatService implements ApplicationService {
 	Status status;
 	
 	long lastStatusChange = 0L;
+
+	ExtrasBuilder extrasBuilder;
 	
 	public GroupHeartbeatService(GroupKeeper groupKeeper, Group.GroupStatus.Type type,
 			Status status, int port,
 			long initialDelay,
-			long frequency, long timeout) throws UnknownHostException {
+			long frequency, long timeout) throws UnknownHostException{
+		this(groupKeeper, type, status, port, initialDelay, frequency, timeout, null);
+	}
+	
+	public GroupHeartbeatService(GroupKeeper groupKeeper, Group.GroupStatus.Type type,
+			Status status, int port,
+			long initialDelay,
+			long frequency, long timeout, ExtrasBuilder extrasBuilder) throws UnknownHostException {
 
 		this.groupKeeper = groupKeeper;
 		this.type = type;
@@ -49,7 +59,8 @@ public class GroupHeartbeatService implements ApplicationService {
 		this.initialDelay = initialDelay;
 		this.frequency = frequency;
 		this.timeout = timeout;
-
+		this.extrasBuilder = extrasBuilder;
+		
 		InetAddress localMachine = null;
 		try {
 			localMachine = InetAddress.getLocalHost();
@@ -95,15 +106,24 @@ public class GroupHeartbeatService implements ApplicationService {
 						status.setStatus(STATUS.OK, "Working");
 					}
 					
-					GroupStatus groupStatus = GroupStatus.newBuilder()
+					List<GroupStatus.ExtraField> extrasList = null;
+					if(extrasBuilder != null){
+						extrasList = extrasBuilder.build();
+					}
+					
+					 GroupStatus.Builder groupStatusBuilder = GroupStatus.newBuilder()
 									.setStatus(gstat)
 									.setMsg(msg)
 									.setLastUpdate(System.currentTimeMillis())
 									.setType(type)
 									.setHost(hostName)
-									.setPort(port)
-									.build();
+									.setPort(port);
+					 if(extrasList != null){
+						groupStatusBuilder.addAllExtraField(extrasList);
+					 }
 					
+					 GroupStatus groupStatus = groupStatusBuilder.build();
+					 
 					groupKeeper.updateStatus(groupStatus);
 					LOG.info("Heartbeat -- " + status.getStatus());
 				}catch(Throwable t){

@@ -56,17 +56,21 @@ public class ZLockIntegrationTest {
 
 		List<Future<Boolean>> futures = new ArrayList<Future<Boolean>>(10);
 
+		final String testTempName = System.currentTimeMillis() + ".lock";
+		
 		for (int i = 0; i < 10; i++) {
 			futures.add(service.submit(new Callable<Boolean>() {
 				public Boolean call() throws Exception {
 					// we expect this lock to complete and release
-					return new ZLock(new ZConnection("localhost:3001", 500L)).withLock("a",
+					return new ZLock(new ZConnection("localhost:3001", 20000L)).withLock(testTempName,
 							new Callable<Boolean>() {
 
 								@Override
 								public Boolean call() throws Exception {
+									if(shutdown.getCount() != 0){
 									lockHeld.incrementAndGet();
 									lockHeldLatch.countDown();
+									}
 									shutdown.await();
 									return true;
 								}
@@ -77,8 +81,9 @@ public class ZLockIntegrationTest {
 			}));
 		}
 
+		boolean lockFound = lockHeldLatch.await(10, TimeUnit.SECONDS);
 		// wait for atleast 1 thread to get lock
-		assertTrue(lockHeldLatch.await(30, TimeUnit.SECONDS));
+		assertTrue(lockFound);
 
 		Thread.sleep(500L);
 		
@@ -99,8 +104,9 @@ public class ZLockIntegrationTest {
 	@Test
 	public void testLock() throws Exception {
 
+		final String testTempName = System.currentTimeMillis() + ".lock";
 		// we expect this lock to complete and release
-		new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
+		new ZLock(new ZConnection("localhost:2181", 1000L)).withLock("a",
 				new Callable<Boolean>() {
 
 					@Override

@@ -50,8 +50,10 @@ public class ZLock {
 	 */
 	private final synchronized void init(ZooKeeper zk) throws KeeperException,
 			InterruptedException {
-		ZPathUtil.mkdirs(zk, baseDir);
-		init.set(true);
+		if(!init.get()){
+			ZPathUtil.mkdirs(zk, baseDir);
+			init.set(true);
+		}
 
 	}
 
@@ -73,7 +75,7 @@ public class ZLock {
 			init(zk);
 		}
 
-		if (!lockId.startsWith("/")) {
+		if (lockId.startsWith("/")) {
 			lockId = baseDir + lockId.substring(1, lockId.length());
 		} else {
 			lockId = baseDir + lockId;
@@ -85,12 +87,13 @@ public class ZLock {
 
 		boolean locked = false;
 		try {
+			System.out.println("----------- 2");
 			locked = writeLock.lock();
-
+			System.out.println("----------- 3");
 			if (locked)
 				return c.call();
 			else {
-
+				System.out.println("----------- 4");
 				// if no lock go into retry logic
 				int retries = 10;
 				int retryCount = 0;
