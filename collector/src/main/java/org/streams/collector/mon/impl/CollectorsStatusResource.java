@@ -21,6 +21,7 @@ import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.streams.commons.group.Group.GroupStatus;
 import org.streams.commons.group.GroupKeeper;
+import org.streams.commons.group.Group.GroupStatus.ExtraField;
 import org.streams.commons.group.GroupKeeper.GROUPS;
 
 /**
@@ -76,6 +77,12 @@ public class CollectorsStatusResource extends ServerResource {
 							(System.currentTimeMillis()- stat.getLastUpdate())/ 3600000F
 							);
 					map.put("lastUpdateDate", dateFormat.format(new Date(stat.getLastUpdate())));
+					
+					List<ExtraField> extraList = stat.getExtraFieldList();
+					if(extraList != null){
+						for(ExtraField extraField : extraList)
+							map.put(extraField.getKey(), extraField.getValue());
+					}
 					
 					propertyColl.add(map);
 				}

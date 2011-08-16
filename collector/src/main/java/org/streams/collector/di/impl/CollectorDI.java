@@ -16,6 +16,7 @@ import org.apache.velocity.runtime.RuntimeConstants;
 import org.apache.velocity.runtime.RuntimeSingleton;
 import org.apache.zookeeper.KeeperException;
 import org.restlet.Application;
+import org.restlet.Client;
 import org.restlet.Component;
 import org.restlet.Request;
 import org.restlet.Response;
@@ -41,6 +42,8 @@ import org.streams.collector.mon.impl.CollectorConfigResource;
 import org.streams.collector.mon.impl.CollectorStatusResource;
 import org.streams.collector.mon.impl.CollectorsStatusResource;
 import org.streams.collector.mon.impl.PingOKResource;
+import org.streams.collector.mon.impl.StatusExtrasBuilder;
+import org.streams.collector.mon.impl.StatusUpdaterThread;
 import org.streams.collector.server.CollectorServer;
 import org.streams.collector.server.impl.CollectorServerImpl;
 import org.streams.collector.server.impl.IpFilterHandler;
@@ -109,7 +112,8 @@ public class CollectorDI {
 				beanFactory.getBean(CollectorServerService.class), beanFactory
 						.getBean(GroupHeartbeatService.class), beanFactory
 						.getBean(MetricsAppService.class), beanFactory
-						.getBean(OrphanedFilesCheckService.class));
+						.getBean(OrphanedFilesCheckService.class),
+						beanFactory.getBean(StatusUpdaterThread.class));
 
 		// beanFactory
 		// .getBean(ZStoreExpireCheckService.class));
@@ -119,6 +123,44 @@ public class CollectorDI {
 
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				postStartupList);
+	}
+
+	@Bean
+	public StatusUpdaterThread statusUpdaterThread(){
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+		.getBean(org.apache.commons.configuration.Configuration.class);
+
+		String baseDir = configuration.getString(
+		CollectorProperties.WRITER.BASE_DIR.toString(),
+		CollectorProperties.WRITER.BASE_DIR.getDefaultValue()
+				.toString());
+
+
+		long frequency = configuration.getLong(
+				CollectorProperties.WEB.UI_STATUS_UPDATE.toString(),
+				(Long)CollectorProperties.WEB.UI_STATUS_UPDATE.getDefaultValue());
+
+		return new StatusUpdaterThread(baseDir, frequency, beanFactory.getBean(CollectorStatus.class));
+	}
+	
+	@Bean
+	public StatusExtrasBuilder getStatusExtrasBuilder() {
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		String baseDir = configuration.getString(
+				CollectorProperties.WRITER.BASE_DIR.toString(),
+				CollectorProperties.WRITER.BASE_DIR.getDefaultValue()
+						.toString());
+
+		return new StatusExtrasBuilder(
+				beanFactory.getBean(CollectorStatus.class), baseDir,
+				(CounterMetric) beanFactory
+						.getBean("connectionsReceivedMetric"),
+				(CounterMetric) beanFactory
+						.getBean("connectionsProcessedMetric"),
+				(CounterMetric) beanFactory.getBean("kilobytesWrttenMetric"),
+				(CounterMetric) beanFactory.getBean("errorsMetric"));
 	}
 
 	@Bean
@@ -236,7 +278,8 @@ public class CollectorDI {
 				beanFactory.getBean(GroupKeeper.class),
 				Group.GroupStatus.Type.COLLECTOR,
 				beanFactory.getBean(CollectorStatus.class), port, initialDelay,
-				checkFrequency, 10000L);
+				checkFrequency, 10000L,
+				beanFactory.getBean(StatusExtrasBuilder.class));
 
 		return service;
 	}
@@ -411,7 +454,7 @@ public class CollectorDI {
 
 		return component;
 	}
-	
+
 	/**
 	 * Configures a restlet component
 	 * 
@@ -446,7 +489,7 @@ public class CollectorDI {
 		LOG.info("Using display log file : " + logFile);
 
 		Component component = new Component();
-		 
+
 		int port = configuration.getInt(
 				CollectorProperties.WRITER.COLLECTOR_MON_PORT.toString(),
 				(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
@@ -455,17 +498,20 @@ public class CollectorDI {
 		LOG.info("Using collector monitoring port: " + port);
 
 		component.getServers().add(org.restlet.data.Protocol.HTTP, port);
-     	component.getClients().add(org.restlet.data.Protocol.FILE);  
+		component.getClients().add(org.restlet.data.Protocol.FILE);
+
+		Application staticApp = new Application(component.getContext()) {
+			@Override
+			public Restlet createRoot() {
+				return new Directory(getContext(), "file://"
+						+ new File(templateDir).getAbsolutePath());
+			}
+		};
 
 		component.getDefaultHost().attach("/view", restApplication());
-		component.getDefaultHost().attach("/static", new Application(component.getContext()) {  
-		     @Override  
-		     public Restlet createRoot() {  
-		         return new Directory(getContext(), "file://" + new File(templateDir).getAbsolutePath());  
-		     }  
-		 });  
-		 
-		
+		component.getDefaultHost().attach("/static", staticApp);
+		component.getDefaultHost().attach("/images", staticApp);
+
 		return component;
 	}
 
@@ -479,7 +525,7 @@ public class CollectorDI {
 	public Application restApplication() {
 
 		final Router router = new Router();
-		
+
 		attachFinder(router, "/collector/status",
 				CollectorStatusResource.class, Template.MODE_STARTS_WITH);
 
@@ -499,7 +545,6 @@ public class CollectorDI {
 				Template.MODE_STARTS_WITH);
 		attachFinder(router, "/agent/files?{query}", AgentStatusResource.class,
 				Template.MODE_STARTS_WITH);
-
 
 		Application app = new Application() {
 
@@ -552,8 +597,17 @@ public class CollectorDI {
 
 	@Bean
 	public CollectorStatusResource collectorStatusResource() {
-		return new CollectorStatusResource(
-				beanFactory.getBean(CollectorStatus.class));
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+		.getBean(org.apache.commons.configuration.Configuration.class);
+
+		int port = configuration.getInt(
+				CollectorProperties.WRITER.COLLECTOR_MON_PORT.toString(),
+				(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
+						.getDefaultValue());
+
+		
+		return new CollectorStatusResource(port,
+				beanFactory.getBean(CollectorStatus.class), beanFactory.getBean(Client.class));
 	}
 
 	@Bean
@@ -639,7 +693,5 @@ public class CollectorDI {
 
 		router.attach(pathTemplate, finder, matchingMode);
 	}
-
-	
 
 }

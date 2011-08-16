@@ -2,18 +2,35 @@
 <head>
 <title>Collectors Status</title>
 <LINK href="/static/main.css" rel="stylesheet" type="text/css">
+<script src="/static/jquery-1.6.2.min.js"></script>
+<script src="/static/jquery.tablesorter.js"></script>
+<style>
+   th.header { 
+    cursor: pointer; 
+   } 
+</style>
 </head>
 <body>
 
+<table>
+<tr>
+<td><a href="/view/collectors/status">Collectors</a></td>
+<td><a href="/view/agents/status">Agents</a></td>
+</tr>
+</table>
+<p/>
 <b>Collectors</b> : $collectors.size()
 
-<table border="1">
+<table class="tablesorter">
+<thead><tr><th>Host</th><th>Port</th><th>Status</th><th>Message</th><th>Last Update</th><th>Connections p/s</th>
+ <th>Connectionrs Pocessed p/s</th><th>Errors p/s</th><th>Free Space KB</th><th>Version</th></tr></thead>
+ <tbody>
 ##Look through each map that defines the properties for each collector.
 ## host, port, status, msg, lastUpdate, lastUpdateDate
 
 #foreach( $collector in $collectors) 
  <tr>
-   <td>$collector.host<td/>
+   <td><a href="/view/collector/status?collector=$collector.host&port=$collector.port"> $collector.host</a></td>
    <td>$collector.port</td>
    <td>$collector.status</td>
    <td>$collector.msg</td>
@@ -26,11 +43,27 @@
          <td bgcolor="red">
       #end
          $collector.lastUpdateDate
-   </td>     
       
+   </td>     
+   <td>
+     $collector.connectionsReceived
+   </td>
+   <td>
+     $collector.connectionsProcessed
+   </td>
+   <td>
+     $collector.errors
+   </td>
+   <td>
+     $collector.freeDiskSpaceKb
+   </td>
+   <td>
+     $collector.version
+   </td>
  </tr> 
 #end
  
+ </tbody>
 </table>
 
 </body>

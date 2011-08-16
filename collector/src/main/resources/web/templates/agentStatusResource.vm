@@ -9,7 +9,7 @@
    } 
 </style>
  
- <script src="/static/jquery-1.6.2.min.js"></script>
+<script src="/static/jquery-1.6.2.min.js"></script>
 <script src="/static/jquery.tablesorter.js"></script>
 
 <script language="JavaScript">
@@ -18,7 +18,9 @@
  var readyFiles = JSON.parse('$READY');
  var readingFiles = JSON.parse('$READING');
  var parkedFiles = JSON.parse('$PARKED');
-
+ var readErrorFiles = JSON.parse('$READ_ERROR');
+ var deletedFiles = JSON.parse('$DELETED');
+ var agentStatus = JSON.parse('$agentStatus');
 
 </script>
 
@@ -26,10 +28,10 @@
 <body>
 
 <script language="JavaScript">
- function days_between(date1, date2) {
+ function hours_between(date1, date2) {
 
     // The number of milliseconds in one day
-    var ONE_DAY = 1000 * 60 * 60 * 24
+    var ONE_HOUR = 1000 * 60 * 60
 
     // Convert both dates to milliseconds
     var date1_ms = date1.getTime()
@@ -39,7 +41,7 @@
     var difference_ms = Math.abs(date1_ms - date2_ms)
     
     // Convert back to days and return
-    return Math.round(difference_ms/ONE_DAY)
+    return Math.round(difference_ms/ONE_HOUR)
 
 }
 
@@ -65,7 +67,9 @@
     addTables(readyFiles);
     addTables(parkedFiles);
     addTables(doneFiles);
-
+    addTables(readErrorFiles);
+    addTables(deletedFiles);
+    
     jQuery('#files').append('</tbody>');  
   }
 
@@ -78,8 +82,8 @@
 
       var status = file.status;
 
-      var days = days_between(modTime, sentDate);
-      if( days  > 0){
+      var hours = hours_between(modTime, sentDate);
+      if(  hours  >= 1){
         status = status + " LATE"
       }
 
@@ -93,33 +97,59 @@
         "</td><td>" + file.filePointer + 
         "</td><td>" + file.fileSize  +
         "</td><td>" + ((file.filePointer/file.fileSize) * 100) + "%" +
-        "</td><td>" + days +
+        "</td><td>" + hours +
         "</td></tr>"
       )
 
    });
 
   }
+  
+  function setAgentStatus(){
+    var str = '<tr><td>Status</td><td>' + agentStatus.status + '</td></tr><tr><td>Message</td><td>' + agentStatus.statusMessage + '</td></tr>';
+    str = str + '<tr><td>Free Space KB</td><td>' + agentStatus.freeDiskSpaceKb + '</td></tr>';
+    str = str + '<tr><td>Version</td><td>' + agentStatus.version + '</td></tr>';
+   
+    jQuery('#agentStatus').append(str);
+  }
 
-$(document).ready(function()
+jQuery(document).ready(function()
 {
+    //set agent status information
+    
     //set counters
-    jQuery('#counters').append('<thead><tr><th>READY</th><th>READING</th><th>DONE</th><th>PARKED</th></tr></thead><tbody><tr><td>' + readyFiles.length + 
+    jQuery('#counters').append('<thead><tr><th>READY</th><th>READING</th><th>DONE</th><th>PARKED</th><th>LATE</th></tr></thead><tbody><tr><td>' + readyFiles.length + 
             '</td><td>' + readingFiles.length + 
                         '</td><td>' + doneFiles.length +
-                        '</td><td>' + parkedFiles.length + '</td></tr></tbody>');
+                        '</td><td>' + parkedFiles.length + '</td><td>' + agentStatus.lateFiles + '</td></tr></tbody>');
 
-    setFiles();
+ 
+   setAgentStatus();
 
-  //sort on first and second column in descending order
-  jQuery("#files").tablesorter({sortList: [[0,1], [1,1]]} );
+   setFiles();
+
+    //sort on first and second column in descending order
+   jQuery("#files").tablesorter({sortList: [[0,1], [1,1]]} );
 
   });
   
 </script>
 
-<table id="counters" >
+<table>
+<tr>
+<td><a href="/view/collectors/status">Collectors</a></td>
+<td><a href="/view/agents/status">Agents</a></td>
+</tr>
+</table>
+<p/>
 
+<table id="agentStatus" style="width:50%">
+
+</table>
+
+<p/>
+
+<table id="counters" >
 </table>
 
 <table id="files" class="tablesorter">
@@ -134,7 +164,7 @@ $(document).ready(function()
     <th>Pointer</th> 
     <th>Size</th> 
     <th>% Sent</th> 
-    <th>Sent Days Diff</th> 
+    <th>Sent Hours Diff</th> 
 </tr> 
 </thead> 
 </table>

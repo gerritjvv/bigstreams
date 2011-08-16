@@ -22,6 +22,7 @@ import org.restlet.representation.StringRepresentation;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 import org.streams.commons.group.Group.GroupStatus;
+import org.streams.commons.group.Group.GroupStatus.ExtraField;
 import org.streams.commons.group.GroupKeeper;
 
 /**
@@ -70,6 +71,12 @@ public class AgentsStatusResource extends ServerResource {
 					map.put("status", stat.getStatus());
 					map.put("msg", stat.getMsg());
 					map.put("lastUpdate", stat.getLastUpdate());
+					
+					List<ExtraField> extraList = stat.getExtraFieldList();
+					if(extraList != null){
+						for(ExtraField extraField : extraList)
+							map.put(extraField.getKey(), extraField.getValue());
+					}
 					
 					map.put("lastUpdateDiffHours",
 							(System.currentTimeMillis()- stat.getLastUpdate())/ 3600000F

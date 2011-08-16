@@ -2,18 +2,47 @@
 <head>
 <title>Agents Status</title>
 <LINK href="/static/main.css" rel="stylesheet" type="text/css">
+<style>
+   th.header { 
+    cursor: pointer; 
+   } 
+</style>
+ 
+<script src="/static/jquery-1.6.2.min.js"></script>
+<script src="/static/jquery.tablesorter.js"></script>
 </head>
 <body>
 
+
+<script language="JavaScript">
+ jQuery(document).ready(function()
+  {
+  
+     jQuery("#agents").tablesorter({sortList: [[0,0], [1,0]]} );
+
+  });
+
+</script>
+<table>
+<tr>
+<td><a href="/view/collectors/status">Collectors</a></td>
+<td><a href="/view/agents/status">Agents</a></td>
+</tr>
+</table>
+<p/>
 <b>Agents</b> : $agents.size()
 
-<table border="1">
+<table id="agents" class="tablesorter">
+ <thead><tr><th>Host</th><th>Port</th><th>Status</th><th>Msg</th><th>Last Update</th><th>Late Files</th><th>New Files</th><th>Parked Files</th><th>Done Files</th><th>Free Space KB</th><th>Version</th></tr></thead>
+ <tbody>
 ##Look through each map that defines the properties for each collector.
 ## host, port, status, msg, lastUpdate, lastUpdateDate
 
 #foreach( $agent in $agents) 
+
+ #set($agentStatUrl = "/view/agent/files?agent=$agent.host&port=$agent.port"); 
  <tr>
-   <td>$agent.host<td/>
+   <td><a href="$agentStatUrl">$agent.host</a></td>
    <td>$agent.port</td>
    <td>$agent.status</td>
    <td>$agent.msg</td>
@@ -28,10 +57,16 @@
          $agent.lastUpdateDate
       
    </td>     
-      
+   <td>$agent.lateFiles</td>
+   <td>$agent.readyFiles</td>
+   <td>$agent.parkedFiles</td>
+   <td>$agent.doneFiles</td>
+   <td>$agent.freeDiskSpaceKb</td>
+   <td>$agent.version</td>      
+   
  </tr> 
 #end
- 
+ </tbody>
 </table>
 
 </body>

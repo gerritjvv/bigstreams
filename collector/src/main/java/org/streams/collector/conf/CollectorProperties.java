@@ -8,6 +8,8 @@ import org.streams.collector.write.impl.DateHourFileNameExtractor;
 public interface CollectorProperties {
 
 	enum WRITER{
+		VERSION("collector.version", "UNKOWN"),
+		
 		LOG_NAME_EXTRACTOR("writer.logname.extractor", DateHourFileNameExtractor.class.getCanonicalName()),
 		LOG_NAME_KEYS("writer.logname.keys", "logType"),
 		BASE_DIR("writer.basedir", "/var/log/streams"),
@@ -28,7 +30,7 @@ public interface CollectorProperties {
 		COORDINATION_GROUP("coordination.group", "default"),
 		BLOCKED_IPS("blocked.ips", ""),
 		
-		HEARTBEAT_FREQUENCY("heartbeat.frequency", 300000L),
+		HEARTBEAT_FREQUENCY("heartbeat.frequency", 1000L),
 		
 		ZOOTIMEOUT("zoo.timeout", 80000L),
 
@@ -87,8 +89,8 @@ public interface CollectorProperties {
 		VELOCITY_LOG_FILE("velocity.log.dir", "/opt/streams-collector/logs/streams-collector.log"),
 		//These are threads that the ui components can use to make parallel requests to other clients
 		//e.g. to multiple agents
-		UI_AUX_THREADS("ui.aux.threads", 10);
-		
+		UI_AUX_THREADS("ui.aux.threads", 10),
+		UI_STATUS_UPDATE("ui.status.update", 1000L);
 		
 		String name;
 		Object defaultValue;

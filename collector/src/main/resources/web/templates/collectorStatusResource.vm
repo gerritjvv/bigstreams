@@ -2,12 +2,51 @@
 <head>
 <title>Collectors Status</title>
 <LINK href="/static/main.css" rel="stylesheet" type="text/css">
+<style>
+   th.header { 
+    cursor: pointer; 
+   } 
+</style>
+ 
+<script src="/static/jquery-1.6.2.min.js"></script>
+<script src="/static/jquery.tablesorter.js"></script>
+<script language="JavaScript">
+
+jQuery(document).ready(function()
+{
+
+ var collectorStatus = JSON.parse('$collectorStatus');
+
+ 
+ var str = '<tr><th>Host:</th><td>$collectorHost</td></tr>';
+ str = str + '<tr><th>Port:</th><td>$collectorPort</td></tr>';
+ str = str + '<tr><th>Status:</th><td>' + collectorStatus.status + '</td></tr>';
+ str = str + '<tr><th>Message:</th><td>' + collectorStatus.msg + '</td></tr>';
+ str = str + '<tr><th>Version:</th><td>' + collectorStatus.version + '</td></tr>';
+ str = str + '<tr><th>Connections Received p/s:</th><td>' + collectorStatus.counterMap.ConnectionsPerSecond + '</td></tr>';
+ str = str + '<tr><th>Connections Processed p/s:</th><td>' + collectorStatus.counterMap.ConnectionsProcessedPerSecond + '</td></tr>';
+ str = str + '<tr><th>File KB written p/s:</th><td>' + collectorStatus.counterMap.FileKiloBytesWrittenPerSecond + '</td></tr>';
+ str = str + '<tr><th>Errors p/s:</th><td>' + collectorStatus.counterMap.ErrorsPerSecond + '</td></tr>';
+ str = str + '<tr><th>Write directory free disk space KB:</th><td>' + collectorStatus.freeDiskSpaceKb + '</td></tr>';
+ 
+ jQuery('#status').append(str);
+
+ 
+});
+ 
+</script>
+
 </head>
 <body>
-
 <table>
-<tr><td><b>Collector status</b>: </td><td> $status.getStatus()</td></tr>
-<tr><td><b>Message</b>: </td><td> $status.getMsg()</td></tr>
+<tr>
+<td><a href="/view/collectors/status">Collectors</a></td>
+<td><a href="/view/agents/status">Agents</a></td>
+</tr>
+</table>
+<p/>
+
+<table id="status">
 </table>
 
 </body>

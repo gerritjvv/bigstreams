@@ -48,4 +48,12 @@ public interface CollectorStatus extends Status{
 	
 	public int getCounter(String name);
 
+	public String getVersion();
+	void setVersion(String version);
+	
+
+	public long getFreeDiskSpaceKb();
+
+	public void setFreeDiskSpaceKb(long freeDiskSpaceKb);
+	
 }

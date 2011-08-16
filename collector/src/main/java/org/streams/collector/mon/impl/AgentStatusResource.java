@@ -2,14 +2,7 @@ package org.streams.collector.mon.impl;
 
 import java.io.IOException;
 import java.io.StringWriter;
-import java.net.URLDecoder;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.log4j.Logger;
 import org.apache.velocity.VelocityContext;
@@ -20,10 +13,8 @@ import org.apache.velocity.exception.ResourceNotFoundException;
 import org.restlet.Client;
 import org.restlet.Response;
 import org.restlet.data.MediaType;
-import org.restlet.data.Method;
 import org.restlet.representation.Representation;
 import org.restlet.representation.StringRepresentation;
-import org.restlet.resource.ClientResource;
 import org.restlet.resource.Get;
 import org.restlet.resource.ServerResource;
 
@@ -36,7 +27,6 @@ public class AgentStatusResource extends ServerResource {
 
 	private static final Logger LOG = Logger.getLogger(AgentStatusResource.class);
 
-	private static final String[] STATUSPARAMS = new String[]{"READY", "DONE", "PARKED", "READING"};
 	
 	ExecutorService executor;
 	Client client;
@@ -48,7 +38,6 @@ public class AgentStatusResource extends ServerResource {
 		this.client = client;
 	}
 
-	@SuppressWarnings("rawtypes")
 	@Get("html")
 	public Representation getAgentStatusHtml() throws ResourceNotFoundException, ParseErrorException, MethodInvocationException, IOException, Exception{
 		
@@ -61,30 +50,35 @@ public class AgentStatusResource extends ServerResource {
 			throw new RuntimeException("Specify the parameters agent and port e.g. ?agent=localhost&post=8085");
 		}
 		
-		agentHostParam = URLDecoder.decode(agentHostParam, "UTF-8");
-		agentHostParam = (agentHostParam.equalsIgnoreCase("this")) ? "localhost" + ":" + port : agentHostParam + ":" + port;
 		
-		System.out.println("------------ host: " + agentHostParam);
 		try{
 		//work arround for browsers that do not send local host properly.
-		final String agentHost = agentHostParam;
+		final String agentHost = agentHostParam + ":" + port;
 		
 		LOG.info("using agetHost: " + agentHost);
 			
 		final VelocityContext ctx = new VelocityContext();
 		
 		
-		Response resp = client.get("http://localhost:8085/files/list/DONE");
+		String doneText = getFiles("http://" + agentHost + "/files/list/DONE");
+		String readyText = getFiles("http://" + agentHost + "/files/list/READY");
+		String parkedText = getFiles("http://" + agentHost + "/files/list/PARKED");
+		String readingText = getFiles("http://" + agentHost + "/files/list/READING");
+		String readErrorText = getFiles("http://" + agentHost + "/files/list/READ_ERROR");
+		String deletedText = getFiles("http://" + agentHost + "/files/list/DELETED");
 		
-		ctx.put("DONE",resp.getEntity().getText());
-		ctx.put("PARKED", "[]");
-		ctx.put("READY", "[]");
-		ctx.put("READING", "[]");
-//		String statusString = callAgentStatus(agentHost);
-//		System.out.println("------- status " + statusString);
-//		ctx.put("agentStatus", statusString);
+		
+		String agentStatus = getFiles("http://" + agentHost + "/agent/status");
+		
+		ctx.put("DONE", doneText);
+		ctx.put("PARKED", parkedText);
+		ctx.put("READY", readyText);
+		ctx.put("READING", readingText);
+		ctx.put("DELETED", deletedText);
+		ctx.put("READ_ERROR", readErrorText);
+		ctx.put("agentStatus", agentStatus);
 		ctx.put("agentHost", agentHost);
-		
+		 
 		StringWriter writer = new StringWriter();
 		Velocity.getTemplate("agentStatusResource.vm").merge(ctx, writer);
 		
@@ -92,52 +86,21 @@ public class AgentStatusResource extends ServerResource {
 		}catch(Throwable t){
 			t.printStackTrace();
 			System.out.println(getQuery().getFirstValue("agent"));
-			return new StringRepresentation("Could not find values for " + getQuery().getFirstValue("agent"));
+			return new StringRepresentation("Could not find values for " + getQuery().getFirstValue("agent") + " : " + t.toString());
 		}
 	}
 
-	private String callAgentStatus(String agentHost) {
-		System.out.println("Call agent status: " + "http://" + agentHost + "/agent/status");
-		try{
-		return doRestCall("http://" + agentHost + "/agent/status");
-		}catch(Throwable t){
-			LOG.error(t.toString(), t);
-			return "ERROR";
-		}
-	}
-
-	protected String callAgentFilesJson(String agentHost, String statusParam) {
-		return doRestCall("http://" + agentHost + "/files/list/" + statusParam);
-	}
-	
-	
-	protected String doRestCall(String url) {
-		String val = null;
+	private String getFiles(String url) {
 		
-		System.out.println("----- REST CALL FOR: " + url);
-		ClientResource resource = new ClientResource(url);
-		resource.setRetryOnError(true);
-		resource.setReference("/files/list/DONE");
-		resource.setRetryAttempts(5);
-		resource.setMethod(Method.GET);
-		try{
-			Representation resp = resource.get(MediaType.APPLICATION_JSON);
-			
-			if(resource.getStatus().isSuccess()){
-				try {
-					val = resp.getText();
-				} catch (IOException e) {
-					LOG.error(e.toString(), e);
-					val = e.toString();
-				}
-			}else{
-				val = "Error: " + resource.getStatus().getDescription();
-				System.out.println("----- error " + val);
-			}
-		}catch(Throwable t){
-		 t.printStackTrace();
+		Response resp = client.get(url);
+		
+		if(resp.getStatus().isSuccess()){
+		
+			return resp.getEntityAsText();
+		}else{
+			throw new RuntimeException("Error: " + resp.getStatus().getDescription());
 		}
-		return val;
 		
 	}
+	
 }

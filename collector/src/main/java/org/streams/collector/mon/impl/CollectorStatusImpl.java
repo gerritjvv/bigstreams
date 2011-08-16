@@ -4,6 +4,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import org.streams.collector.conf.CollectorProperties;
 import org.streams.collector.mon.CollectorStatus;
 
 /**
@@ -15,9 +16,19 @@ public class CollectorStatusImpl implements CollectorStatus {
 	STATUS status = STATUS.OK;
 	String msg = "Working";
     long statusTimestamp = System.currentTimeMillis();
+    volatile long freeDiskSpaceKb = 0L;
+    String version = "UKNOWN";
     
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
+	public CollectorStatusImpl(){
+		version = System.getenv(CollectorProperties.WRITER.VERSION.toString());
+		if(version == null)
+			System.getProperty(CollectorProperties.WRITER.VERSION.toString());
+		
+		version = CollectorProperties.WRITER.VERSION.getDefaultValue().toString();
+	}
+	
 	public int getCounter(String name) {
 		return getSetCounter(name).get();
 	}
@@ -103,5 +114,21 @@ public class CollectorStatusImpl implements CollectorStatus {
 	
 	public long getStatusTimestamp(){
 		return statusTimestamp;
+	}
+
+	public String getVersion() {
+		return version;
+	}
+
+	public void setVersion(String version) {
+		this.version = version;
+	}
+
+	public long getFreeDiskSpaceKb() {
+		return freeDiskSpaceKb;
+	}
+
+	public void setFreeDiskSpaceKb(long freeDiskSpaceKb) {
+		this.freeDiskSpaceKb = freeDiskSpaceKb;
 	}
 }
