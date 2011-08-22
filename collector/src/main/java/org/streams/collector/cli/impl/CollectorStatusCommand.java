@@ -75,7 +75,7 @@ public class CollectorStatusCommand implements CommandLineProcessor {
 		LOG.info("Connecting client to " + clientPort);
 
 		ClientResource clientResource = new ClientResource("http://localhost:"
-				+ clientPort + "/collector/status");
+				+ clientPort + "/view/collector/status");
 
 		StringWriter writer = new StringWriter();
 

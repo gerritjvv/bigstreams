@@ -14,7 +14,7 @@ STREAMS_HOME=$STREAMS_BIN_HOME/../
 export STREAMS_CONF_DIR=$STREAMS_HOME/conf
 
 #source environment variables
-. $STREAMS_CONF_DIR/streams-env.sh
+[ -f $STREAMS_CONF_DIR/streams-env.sh ] && . $STREAMS_CONF_DIR/streams-env.sh
 
 
 # some Java parameters

@@ -1,6 +1,5 @@
 package org.streams.collector.di.impl;
 
-import org.restlet.Context;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,14 +10,10 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class RestClientDI {
 
-	@Bean(initMethod = "start", destroyMethod = "stop")
+	@Bean
 	public org.restlet.Client restletClient() {
 
-		Context context = new Context();
-		context.getAttributes().put("maxTotalConnections", 100);
-		context.getAttributes().put("maxConnectionsPerHost", 100);
-
-		org.restlet.Client client = new org.restlet.Client(context,
+		org.restlet.Client client = new org.restlet.Client(
 				org.restlet.data.Protocol.HTTP);
 		
 		return client;

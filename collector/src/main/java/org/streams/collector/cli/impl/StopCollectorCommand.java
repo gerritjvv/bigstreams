@@ -48,7 +48,7 @@ public class StopCollectorCommand implements CommandLineProcessor {
 						.getDefaultValue());
 
 		ClientResource clientResource = new ClientResource("http://localhost:"
-				+ clientPort + "/collector/shutdown");
+				+ clientPort + "/view/collector/shutdown");
 
 		PrintWriter writer = new PrintWriter(out);
 		try {

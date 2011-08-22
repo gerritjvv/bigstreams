@@ -10,6 +10,10 @@ public interface CollectorProperties {
 	enum WRITER{
 		VERSION("collector.version", "UNKOWN"),
 		
+		DISK_FULL_KB_ACTIVATION("disfull.freespacekb.activiation", 1024L),
+		DISK_FULL_ACTION("diskfull.action", "ALERT"),
+		DISK_FULL_FREQUENCY("diskfull.check.frequency", 10000L),
+		
 		LOG_NAME_EXTRACTOR("writer.logname.extractor", DateHourFileNameExtractor.class.getCanonicalName()),
 		LOG_NAME_KEYS("writer.logname.keys", "logType"),
 		BASE_DIR("writer.basedir", "/var/log/streams"),

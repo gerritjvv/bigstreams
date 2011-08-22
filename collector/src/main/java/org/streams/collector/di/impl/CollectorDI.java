@@ -31,10 +31,14 @@ import org.springframework.beans.factory.BeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
+import org.streams.collector.actions.CollectorAction;
+import org.streams.collector.actions.impl.AlertAction;
+import org.streams.collector.actions.impl.DieAction;
 import org.streams.collector.cli.startup.check.impl.CodecCheck;
 import org.streams.collector.cli.startup.check.impl.ConfigCheck;
 import org.streams.collector.cli.startup.check.impl.PingCheck;
 import org.streams.collector.conf.CollectorProperties;
+import org.streams.collector.conf.DiskSpaceFullActionConf;
 import org.streams.collector.mon.CollectorStatus;
 import org.streams.collector.mon.impl.AgentStatusResource;
 import org.streams.collector.mon.impl.AgentsStatusResource;
@@ -55,6 +59,7 @@ import org.streams.collector.write.LogRollover;
 import org.streams.collector.write.LogRolloverCheck;
 import org.streams.collector.write.OrphanedFilesCheck;
 import org.streams.collector.write.impl.DateHourFileNameExtractor;
+import org.streams.collector.write.impl.DiskSpaceCheckService;
 import org.streams.collector.write.impl.OrphanedFilesCheckImpl;
 import org.streams.commons.app.AppLifeCycleManager;
 import org.streams.commons.app.ApplicationService;
@@ -113,7 +118,8 @@ public class CollectorDI {
 						.getBean(GroupHeartbeatService.class), beanFactory
 						.getBean(MetricsAppService.class), beanFactory
 						.getBean(OrphanedFilesCheckService.class),
-						beanFactory.getBean(StatusUpdaterThread.class));
+						beanFactory.getBean(StatusUpdaterThread.class),
+						beanFactory.getBean(DiskSpaceCheckService.class));
 
 		// beanFactory
 		// .getBean(ZStoreExpireCheckService.class));
@@ -125,6 +131,39 @@ public class CollectorDI {
 				postStartupList);
 	}
 
+	@Bean
+	public DiskSpaceCheckService diskSpaceCheckService(){
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+		.getBean(org.apache.commons.configuration.Configuration.class);
+
+		
+		long initialDelay = 1000;
+		long frequency = configuration.getLong(
+				CollectorProperties.WRITER.DISK_FULL_FREQUENCY.toString(),
+				(Long)CollectorProperties.WRITER.DISK_FULL_FREQUENCY.getDefaultValue());
+		
+		long diskFullKBActivation = configuration.getLong(
+				CollectorProperties.WRITER.DISK_FULL_KB_ACTIVATION.toString(),
+				(Long)CollectorProperties.WRITER.DISK_FULL_KB_ACTIVATION.getDefaultValue());
+		
+		//BASE_DIR
+		String path = configuration.getString(
+				CollectorProperties.WRITER.BASE_DIR.toString(),
+				CollectorProperties.WRITER.BASE_DIR.getDefaultValue().toString());
+		
+		
+		CollectorAction action = null;
+		DiskSpaceFullActionConf actionConf = new DiskSpaceFullActionConf(configuration);
+		if(actionConf.getDiskAction().equals(DiskSpaceFullActionConf.ACTION.DIE)){
+			action = new DieAction();
+		}else{
+			action = new AlertAction(beanFactory.getBean(CollectorStatus.class));
+		}
+		 
+
+		return new DiskSpaceCheckService(initialDelay, frequency, path, diskFullKBActivation, action);
+	}
+	
 	@Bean
 	public StatusUpdaterThread statusUpdaterThread(){
 		org.apache.commons.configuration.Configuration configuration = beanFactory
