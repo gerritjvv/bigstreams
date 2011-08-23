@@ -64,6 +64,9 @@ import org.streams.agent.mon.impl.FileTrackingStatusCountResource;
 import org.streams.agent.mon.impl.FileTrackingStatusPathResource;
 import org.streams.agent.mon.impl.FileTrackingStatusResource;
 import org.streams.agent.mon.status.AgentStatus;
+import org.streams.agent.mon.status.impl.LateFileCalculator;
+import org.streams.agent.mon.status.impl.StatusExtrasBuilder;
+import org.streams.agent.mon.status.impl.StatusUpdaterThread;
 import org.streams.agent.send.ClientConnectionFactory;
 import org.streams.agent.send.ClientResourceFactory;
 import org.streams.agent.send.FileSendTask;
@@ -171,12 +174,40 @@ public class AgentDI {
 				beanFactory.getBean(FilesSendService.class),
 				beanFactory.getBean(MetricsAppService.class),
 				beanFactory.getBean(FileLogActionManager.class),
-				beanFactory.getBean(GroupHeartbeatService.class));
-
+				beanFactory.getBean(GroupHeartbeatService.class),
+			    beanFactory.getBean(StatusUpdaterThread.class));
+		
 		return new AppLifeCycleManagerImpl(preStartupCheckList, serviceList,
 				null);
 	}
 
+	@Bean
+	public StatusUpdaterThread getStatusUpdaterThread(){
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+		.getBean(org.apache.commons.configuration.Configuration.class);
+
+		long frequency = configuration.getLong(AgentProperties.AGENT_STATUS_UPDATE, 1000L);
+		
+		return new StatusUpdaterThread(beanFactory.getBean(FileTrackerMemory.class),
+				beanFactory.getBean(LateFileCalculator.class), frequency, beanFactory.getBean(AgentStatus.class));
+	}
+	
+	@Bean
+	public StatusExtrasBuilder statusExtraBuilder()  {
+		return new StatusExtrasBuilder(beanFactory.getBean(AgentStatus.class));
+	}
+
+	@Bean
+	public LateFileCalculator lateFileCalculator()  {
+
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
+		int hours = configuration.getInt(AgentProperties.FILE_LATE_DIFF, 2);
+		
+		return new LateFileCalculator(hours, beanFactory.getBean(FileTrackerMemory.class));
+	}
+	
 	@Bean
 	public GroupKeeper groupKeeper() throws KeeperException,
 			InterruptedException, IOException, ConfigurationException {
@@ -242,7 +273,7 @@ public class AgentDI {
 		GroupHeartbeatService service = new GroupHeartbeatService(
 				beanFactory.getBean(GroupKeeper.class),
 				Group.GroupStatus.Type.AGENT, status, port, initialDelay,
-				checkFrequency, 10000L);
+				checkFrequency, 10000L, beanFactory.getBean(StatusExtrasBuilder.class));
 
 		return service;
 	}

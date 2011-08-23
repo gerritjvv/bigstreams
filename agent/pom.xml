@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>agent</artifactId>
-	<version>0.2.2</version>
+	<version>0.2.3</version>
 	<name>agent</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -135,6 +135,18 @@
 	<build>
 		<plugins>
 
+ <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-pmd-plugin</artifactId>
+        <version>2.5</version>
+        <configuration>
+          <linkXref>true</linkXref>
+          <sourceEncoding>utf-8</sourceEncoding>
+          <minimumTokens>100</minimumTokens>
+          <targetJdk>1.6</targetJdk>
+        </configuration>
+      </plugin>
+
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
@@ -197,7 +209,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>4</release>
+					<release>10</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>

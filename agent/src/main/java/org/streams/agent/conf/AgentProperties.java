@@ -65,8 +65,23 @@ public interface AgentProperties {
 	static final String LOG_MANAGE_ACTION_THREADS = "log.manage.action.threads";
 	/**
 	 * Configures the file codec mappings
-	 * must have formt extension:codec;extension:codec
+	 * must have format extension:codec;extension:codec
 	 */
 	static final String FILE_CODEC_MAPPING = "file.codecs";
+	
+	/**
+	 * See LateFileCalculator, for how this property is used
+	 */
+	static final String FILE_LATE_DIFF = "file.late.diff";
+	
+	/**
+	 * Must be set as an environment variable.
+	 */
+	static final String AGENT_VERSION = "agent.version";
+	
+	/**
+	 * frequency in milliseconds with which the agent status is updated with file information
+	 */
+	static final String AGENT_STATUS_UPDATE = "agent.status.update";
 	
 }

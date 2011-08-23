@@ -41,4 +41,33 @@ public interface AgentStatus extends Status{
 	
 	public int getCounter(String name);
 	
+	
+	public long getDoneFiles();
+
+	public void setDoneFiles(long doneFiles);
+
+	public long getParkedFiles();
+
+	public void setParkedFiles(long parkedFiles);
+
+	public long getReadyFiles();
+
+	public void setReadyFiles(long readyFiles);
+
+	public long getReadingFiles();
+
+	public void setReadingFiles(long readingFiles);
+
+	public long getLateFiles();
+
+	public void setLateFiles(long lateFiles);
+
+	public String getVersion();
+
+	public void setVersion(String version);
+	
+	public void setFreeDiskSpaceKb(long diskspace);
+	
+	public long getFreeDiskSpaceKb();
+	
 }

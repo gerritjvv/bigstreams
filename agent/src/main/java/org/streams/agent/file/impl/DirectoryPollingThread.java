@@ -146,6 +146,7 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 						status.setStatus(FileTrackingStatus.STATUS.CHANGED);
 					}
 
+					
 					status.setFileSize(file.length());
 					status.setLastModificationTime(file.lastModified());
 

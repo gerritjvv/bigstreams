@@ -107,7 +107,7 @@ public class FileTrackingStatusResource extends ServerResource {
 	 */
 	private Collection<FileTrackingStatus> getByStatus() {
 		String statusName = (String) getRequestAttributes().get("status");
-
+        
 		FileTrackingStatus.STATUS status = null;
 
 		// ---------- Parse status
@@ -139,14 +139,7 @@ public class FileTrackingStatusResource extends ServerResource {
 			Range range = ranges.get(0);
 			from = (int) range.getIndex();
 			max = (int) range.getSize();
-		} else {
-			// if not range get at least the last 1000 items
-			int count = (int) memory.getFileCount(status);
-			if (count > max) {
-				from = count - max;
-			}
-		}
-
+		} 
 		// create json array object
 
 		return memory.getFiles(status, from, max);

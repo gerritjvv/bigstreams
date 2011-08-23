@@ -142,6 +142,7 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 				query.setParameter("status", status.toString().toUpperCase());
 				statusEntityList = query.setFirstResult(from)
 						.setMaxResults(maxResults).getResultList();
+				
 			}
 
 			if (statusEntityList == null || statusEntityList.size() < 1) {

@@ -20,6 +20,12 @@
 PATH=/usr/bin:/sbin:/bin:/usr/sbin
 export PATH
 
+OK_STAT=0
+DEAD_STAT=1
+UNKOWN_STAT=4
+
+mkdir -p /var/lock/subsys
+
 [ -f /etc/sysconfig/streams-agent ] && . /etc/sysconfig/streams-agent
 lockfile=${LOCKFILE-/var/lock/subsys/streams-agent}
 streamsd=${STREAMSD-/opt/streams-agent/bin/streams.sh}
@@ -28,15 +34,15 @@ REGEX="org.streams.agent.main.Agent -start agent"
 RETVAL=0
 
 # Source function library.
-. /etc/rc.d/init.d/functions
+FUNCTIONS="/etc/rc.d/init.d/functions"
+[ -f $FUNCTIONS ] && . $FUNCTIONS && ISDAEMON=$(grep "daemon()" /etc/rc.d/init.d/functions  | wc -l)
 
-if [ -f /etc/profile.d/java.sh ]; then
- . /etc/profile.d/java.sh
-fi
+JAVASH="/etc/profile.d/java.sh"
+[ -f $JAVASH ] && . $JAVASH
 
-if [ -f /opt/streams-agent/conf/streams-env.sh ]; then
- . /opt/streams-agent/conf/streams-env.sh
-fi
+ENV_FILE="/opt/streams-agent/conf/streams-env.sh"
+[ -f $ENV_FILE ] && . $ENV_FILE
+
 
 if [ -z "$JAVA_HOME" ]; then
 
@@ -48,37 +54,72 @@ fi
 
 start() {
 
-   pid=`pgrep -f "$REGEX"`
-
-   if [ -n "$pid" ]; then
+   touch $lockfile
+   
+   status
+   RETVAL=$?
+      
+   if [ $RETVAL = $OK_STAT ]; then
     echo "The Streams agent is already running"
-    RETVAL=2
+    RETVAL=$OK_STAT
    else
 
     echo -n $"Starting streams agent: "
-        daemon $streamsd -start agent &> /dev/null &
-    RETVAL=$?
-    echo
-        [ $RETVAL = 0 ] && touch ${lockfile}
+
+    if type -p start-stop-daemon ; then
+        nohup $streamsd -start agent &> /dev/null&    
+    elif [ "$ISDAEMON" -eq "1" ]; then
+        daemon $streamsd -start agent &> /dev/null& 
+    elif type -p daemon ; then
+        daemon  -X "$streamsd -start agent"
+    else 
+        nohup $streamsd -start agent &> /dev/null&
+    fi
+         
+
+    counter=0
+    while [ $counter -lt 5 ]
+    do
+        status
+        RETVAL=$?
+        sleep 1s
+        counter=$(( counter + 1 ))
+    done
 
    fi
 
+   [ $RETVAL = $OK_STAT ] && echo " OK"
+   [ $RETVAL = $DEAD_STAT ] && echo " FAILED"
+   
    return $RETVAL
 
 }
 
 stop() {
 
-    pid=`pgrep -f "$REGEX"`
-    if [ -n "$pid" ]; then
-      echo -n $"Stopping streams: "
-        $streamsd -stop agent
-      RETVAL=$?
-      echo
-       [ $RETVAL = 0 ] && rm -f ${lockfile} ${pidfile}
+    status
+    RETVAL=$?
+
+    if [ $RETVAL = $OK_STAT ]; then
+      echo -n "Stopping streams: "
+      $streamsd -stop agent
+
+      counter=0
+      while [ $counter -lt 5 ]
+      do
+        status
+        RETVAL=$?
+        sleep 1s
+        counter=$(( counter + 1 ))
+
+        [ $counter -gt 3 ] && [ $RETVAL = $OK_STAT ] && kill 
+      done
+
+       [ $RETVAL = $DEAD_STAT ] && rm -f ${lockfile} && echo "OK"
+
     else
        echo "No Streams agent instance is running" 
-       RETVAL=2
+       RETVAL=$DEAD_STAT
     fi
 
     return $RETVAL
@@ -90,39 +131,53 @@ restart() {
     start
 }
 
+kill() {
+
+  pid=`pgrep -f "$REGEX"`
+  if [ -n "$pid" ]; then
+    kill -6 $pid
+  fi 
+
+}
+
 status() {
 
    pid=`pgrep -f "$REGEX"`
    if [ -n "$pid" ]; then
-      echo "Streams agent is running"
-      echo "$pid"
-      RETVAL=1
+       RETVAL=$OK_STAT
    else
-       echo "Streams agent instance is stopped" 
-       RETVAL=2
+       RETVAL=$DEAD_STAT
    fi
 
-   return $RETVAL
+
+  return $RETVAL
 }
 
 case "$1" in
   start)
     start
+    exit $?
     ;;
   stop)
     stop
+    exit $?
     ;;
   restart)
     stop
     start
+    exit $?
     ;;
   status)
-        status
+    status
+    RETVAL=$?
+    [ $RETVAL = $OK_STAT ] && echo "Running"
+    [ $RETVAL = $DEAD_STAT ] && echo "Stopped"
     ;;
   *)
     echo $"Usage: $0 {start|stop|status|restart}"
-    exit 1
+    exit $DEAD_STAT
 esac
 
-exit $RETVAL
+exit $OK_STAT
+
 

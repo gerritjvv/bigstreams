@@ -13,16 +13,25 @@ import org.streams.agent.mon.status.AgentStatus;
  */
 public class AgentStatusImpl implements AgentStatus {
 
-	volatile  STATUS status = STATUS.OK;
-	volatile  String msg = "Working";
-    volatile long statusTimestamp = System.currentTimeMillis();
-    
+	volatile STATUS status = STATUS.OK;
+	volatile String msg = "Working";
+	volatile long statusTimestamp = System.currentTimeMillis();
+
+	volatile long doneFiles = 0;
+	volatile long parkedFiles = 0;
+	volatile long readyFiles = 0;
+	volatile long readingFiles = 0;
+	volatile long lateFiles = 0;
+	volatile long freeDiskSpaceKb = 0L;
+
+	String version = "UNKOWN";
+
 	Map<String, AtomicInteger> counterMap = new ConcurrentHashMap<String, AtomicInteger>();
 
 	FILE_LOG_MANAGE_STATUS logManageStatus = FILE_LOG_MANAGE_STATUS.OK;
-	
+
 	volatile String logManageMsg = "Working";
-	
+
 	public int getCounter(String name) {
 		return getSetCounter(name).get();
 	}
@@ -78,6 +87,7 @@ public class AgentStatusImpl implements AgentStatus {
 
 	/**
 	 * Gets the FileActionManager message
+	 * 
 	 * @return FILE_LOG_MANAGE_STATUS
 	 */
 	public FILE_LOG_MANAGE_STATUS getLogManageStatus() {
@@ -86,16 +96,19 @@ public class AgentStatusImpl implements AgentStatus {
 
 	/**
 	 * Sets the FileActionManager message and status
+	 * 
 	 * @param logManageStatus
 	 * @param logManageMsg
 	 */
-	public void setLogManageStatus(FILE_LOG_MANAGE_STATUS logManageStatus, String logManageMsg) {
+	public void setLogManageStatus(FILE_LOG_MANAGE_STATUS logManageStatus,
+			String logManageMsg) {
 		this.logManageStatus = logManageStatus;
 		this.logManageMsg = logManageMsg;
 	}
 
 	/**
 	 * Gets the FileActionManager message
+	 * 
 	 * @return String
 	 */
 	public String getLogManageMsg() {
@@ -111,5 +124,60 @@ public class AgentStatusImpl implements AgentStatus {
 		return statusTimestamp;
 	}
 
+	public long getDoneFiles() {
+		return doneFiles;
+	}
+
+	public void setDoneFiles(long doneFiles) {
+		this.doneFiles = doneFiles;
+	}
+
+	public long getParkedFiles() {
+		return parkedFiles;
+	}
+
+	public void setParkedFiles(long parkedFiles) {
+		this.parkedFiles = parkedFiles;
+	}
+
+	public long getReadyFiles() {
+		return readyFiles;
+	}
+
+	public void setReadyFiles(long readyFiles) {
+		this.readyFiles = readyFiles;
+	}
+
+	public long getReadingFiles() {
+		return readingFiles;
+	}
+
+	public void setReadingFiles(long readingFiles) {
+		this.readingFiles = readingFiles;
+	}
+
+	public long getLateFiles() {
+		return lateFiles;
+	}
+
+	public void setLateFiles(long lateFiles) {
+		this.lateFiles = lateFiles;
+	}
+
+	public String getVersion() {
+		return version;
+	}
+
+	public void setVersion(String version) {
+		this.version = version;
+	}
+
+	public long getFreeDiskSpaceKb() {
+		return freeDiskSpaceKb;
+	}
+
+	public void setFreeDiskSpaceKb(long freeDiskSpaceKb) {
+		this.freeDiskSpaceKb = freeDiskSpaceKb;
+	}
 
 }
