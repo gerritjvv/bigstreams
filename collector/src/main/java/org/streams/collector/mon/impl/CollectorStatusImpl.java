@@ -24,9 +24,10 @@ public class CollectorStatusImpl implements CollectorStatus {
 	public CollectorStatusImpl(){
 		version = System.getenv(CollectorProperties.WRITER.VERSION.toString());
 		if(version == null)
-			System.getProperty(CollectorProperties.WRITER.VERSION.toString());
+			version = System.getProperty(CollectorProperties.WRITER.VERSION.toString());
 		
-		version = CollectorProperties.WRITER.VERSION.getDefaultValue().toString();
+        if(version == null)
+        	version = CollectorProperties.WRITER.VERSION.getDefaultValue().toString();
 	}
 	
 	public int getCounter(String name) {

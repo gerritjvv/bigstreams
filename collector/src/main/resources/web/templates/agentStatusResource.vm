@@ -46,13 +46,17 @@
 }
 
   function formatDate(date){
-
-    var hours = date.getHours();
-    var hourStr = hours;
-    if(hours < 10) 
-          hourStr = "0" + hours;
-        
-    return date.getFullYear() + "-" + (date.getMonth()+1) + "-" + date.getDate() + "-" + hourStr
+    if(date.getTime() == 0){
+        return "NA"
+    }else{
+        var hours = date.getHours();
+        var hourStr = hours;
+        if(hours < 10) 
+              hourStr = "0" + hours;
+            
+        return date.getFullYear() + "-" + (date.getMonth()+1) + "-" + date.getDate() + "-" + hourStr
+    }
+    
   }
 
 
@@ -80,6 +84,7 @@
       var modTime = new Date(file.lastModificationTime);
       var sentDate = new Date(file.sentDate);
 
+      
       var status = file.status;
 
       var hours = hours_between(modTime, sentDate);
@@ -87,7 +92,11 @@
         status = status + " LATE"
       }
 
-
+      var percent = "NA"
+      if(file.fileSize <= file.filePointer){
+         percent = file.filePointer/file.fileSize * 100
+      }
+      
       jQuery('#files').append("<tr><td>" + formatDate(fileDate) +
             "</td><td>" + formatDate(modTime) +  
             "</td><td>" + formatDate(sentDate) +  
@@ -96,7 +105,7 @@
         "</td><td>" + status + 
         "</td><td>" + file.filePointer + 
         "</td><td>" + file.fileSize  +
-        "</td><td>" + ((file.filePointer/file.fileSize) * 100) + "%" +
+        "</td><td>" + percent + "%" +
         "</td><td>" + hours +
         "</td></tr>"
       )

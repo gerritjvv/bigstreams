@@ -43,6 +43,11 @@
 			<version>${zookeeper.version}</version>
 		</dependency>
 		<dependency>
+            <groupId>org.apache.zookeeper</groupId>
+            <artifactId>recipes-lock</artifactId>
+            <version>0.1.1</version>
+        </dependency>
+		<dependency>
 			<groupId>org.apache.hadoop</groupId>
 			<artifactId>hadoop-core</artifactId>
 			<version>${hadoop.version}</version>
@@ -185,13 +190,13 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>8</release>
+					<release>10</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
 						<provide>streams-collector</provide>
 					</provides>
-					<needarch>i386-32</needarch>
+					<needarch>x86_64</needarch>
 					<requires>
 					</requires>
 					<changelogFile>src/changelog</changelogFile>
