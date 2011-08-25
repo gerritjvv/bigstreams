@@ -173,6 +173,7 @@ case "$1" in
     RETVAL=$?
     [ $RETVAL = $OK_STAT ] && echo "Running"
     [ $RETVAL = $DEAD_STAT ] && echo "Stopped"
+    exit $RETVAL
     ;;
   *)
     echo $"Usage: $0 {start|stop|status|restart}"

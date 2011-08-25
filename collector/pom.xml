@@ -15,7 +15,6 @@
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
 		<hadoop.version>0.20.2</hadoop.version>
-		<slf4j-simple.version>1.4.2</slf4j-simple.version>
 		<restlet.version>2.0-M7</restlet.version>
 		<netty.version>3.2.4.Final</netty.version>
 		<zookeeper.version>3.3.3</zookeeper.version>
@@ -67,13 +66,6 @@
 			<artifactId>netty</artifactId>
 			<version>${netty.version}</version>
 		</dependency>
-
-		<dependency>
-			<groupId>org.slf4j</groupId>
-			<artifactId>slf4j-simple</artifactId>
-			<version>${slf4j-simple.version}</version>
-		</dependency>
-
 		<dependency>
 			<groupId>org.restlet.jse</groupId>
 			<artifactId>org.restlet</artifactId>
@@ -190,7 +182,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>10</release>
+					<release>12</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
