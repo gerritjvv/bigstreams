@@ -11,6 +11,7 @@ import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
+import org.streams.commons.util.ConsistentHashBuckets;
 
 import com.google.protobuf.AbstractMessage.Builder;
 import com.google.protobuf.Message;
@@ -24,10 +25,16 @@ public class ZStore {
 
 	private static final Logger LOG = Logger.getLogger(ZStore.class);
 
+	/**
+	 * Buckets caculation is class wide
+	 */
+	private static final ConsistentHashBuckets buckets = new ConsistentHashBuckets();
+	
 	private final AtomicBoolean init = new AtomicBoolean(false);
 
 	final ZConnection connection;
 	final String path;
+	
 
 	public ZStore(String path, ZConnection connection) {
 		this.connection = connection;
@@ -60,48 +67,55 @@ public class ZStore {
 
 		final long expireMilliseconds = seconds * 1000;
 		System.out.println("path: " + path);
+		
 		zk.getChildren(path, false, new AsyncCallback.ChildrenCallback() {
 
 			@Override
 			public void processResult(int rc, String path, Object ctx,
-					List<String> children) {
+					List<String> buckets) {
 				ZooKeeper zk1;
 				try {
 					zk1 = connection.get();
 
-					for (String child : children) {
-						String childPath = path + "/" + child;
-
-						Stat stat = zk1.exists(childPath, false);
-
-						if (stat != null) {
-							if ((System.currentTimeMillis() - stat.getMtime()) > expireMilliseconds) {
-								LOG.info("Deleting: path with mtime: "
-										+ new Date(stat.getMtime()));
-
-								zk1.delete(childPath, stat.getVersion(),
-										new AsyncCallback.VoidCallback() {
-
-											@Override
-											public void processResult(int rc,
-													String path, Object ctx) {
-												LOG.info("Deleted " + path);
-											}
-										}, null);
+					for(String bucket : buckets){
+						List<String> children = zk1.getChildren(path + "/" + bucket, false);
+						
+						for (String child : children) {
+							
+						     String childPath = path + "/" + bucket + "/" + child;
+							
+							
+							Stat stat = zk1.exists(childPath, false);
+							
+							if (stat != null) {
+								if ((System.currentTimeMillis() - stat.getMtime()) > expireMilliseconds) {
+									LOG.info("Deleting: path with mtime: "
+											+ new Date(stat.getMtime()));
+	
+									zk1.delete(childPath, stat.getVersion(),
+											new AsyncCallback.VoidCallback() {
+	
+												@Override
+												public void processResult(int rc,
+														String path, Object ctx) {
+													LOG.info("Deleted " + path);
+												}
+											}, null);
+								}
 							}
+	
 						}
-
+	
 					}
-
-				} catch (KeeperException e) {
-					LOG.error(e);
-				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					return;
-				} catch (IOException e) {
-					LOG.error(e);
-				}
-
+					} catch (KeeperException e) {
+						LOG.error(e);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					} catch (IOException e) {
+						LOG.error(e);
+					}
+				
 			}
 		}, new Integer(seconds));
 	}
@@ -133,9 +147,19 @@ public class ZStore {
 			init(zk);
 		}
 
-		String keyPath = path + "/" + key;
+		String keyPath = path + "/" + calcBucket(key) + "/" + key;
 		return ZPathUtil.get(zk, keyPath);
 
+	}
+
+	/**
+	 * Creating buckets help spread the values over many sub folders, adding to efficiency in zookeeper.
+	 * i.e. zookeeper does not deal well with thousands of children to a folder.
+	 * @param key
+	 * @return
+	 */
+	private static final Integer calcBucket(String key) {
+		return buckets.getBucket(key);
 	}
 
 	/**
@@ -159,14 +183,17 @@ public class ZStore {
 			init(zk);
 		}
 
-		String keyPath = path + "/" + key;
+		String baseDir = path + "/" + calcBucket(key);
+		String keyPath = baseDir + "/" + key;
+		ZPathUtil.mkdirs(zk, baseDir);
+		
 		return ZPathUtil.store(zk, keyPath, data, CreateMode.PERSISTENT);
 
 	}
 
 	public void sync(String key) throws IOException, InterruptedException,
 			KeeperException {
-		String keyPath = path + "/" + key;
+		String keyPath = path + "/" + calcBucket(key) + "/" + key;
 
 		ZooKeeper zk = connection.get();
 		zk.sync(keyPath, null, null);
