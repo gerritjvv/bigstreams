@@ -119,10 +119,10 @@ public class CollectorDI {
 						.getBean(MetricsAppService.class), beanFactory
 						.getBean(OrphanedFilesCheckService.class),
 						beanFactory.getBean(StatusUpdaterThread.class),
-						beanFactory.getBean(DiskSpaceCheckService.class));
+						beanFactory.getBean(DiskSpaceCheckService.class),
+						 beanFactory
+						 .getBean(ZStoreExpireCheckService.class));
 
-		// beanFactory
-		// .getBean(ZStoreExpireCheckService.class));
 
 		List<? extends StartupCheck> postStartupList = Arrays
 				.asList(beanFactory.getBean(PingCheck.class));

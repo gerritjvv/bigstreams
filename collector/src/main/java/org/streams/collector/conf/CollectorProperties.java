@@ -40,7 +40,7 @@ public interface CollectorProperties {
 
 		ZSTORE_TIMEOUT_DELAY("zstore.timeout.delay", 10000L),
 		ZSTORE_TIMEOUT_CHECK("zstore.timeout.check",  86400L), //1 days
-		ZSTORE_DATA_TIMEOUT("zstore.timeout.seconds", 2592000), // 30 days
+		ZSTORE_DATA_TIMEOUT("zstore.timeout.seconds", 5184000), // 60 days
 		
 		ORPHANED_LOG_CHECK_FREQUENCY("orphaned.check.frequency",  1200000L), //20 minutes
 		ORPHANED_FILE_LOWER_MODE("orphaned.filelowermod", 3600000L), //1 hour
