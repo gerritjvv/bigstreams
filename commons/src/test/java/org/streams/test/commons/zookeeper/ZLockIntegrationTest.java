@@ -106,7 +106,7 @@ public class ZLockIntegrationTest {
 
 		final String testTempName = System.currentTimeMillis() + ".lock";
 		// we expect this lock to complete and release
-		new ZLock(new ZConnection("localhost:2181", 1000L)).withLock("a",
+		new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
 				new Callable<Boolean>() {
 
 					@Override

@@ -1,6 +1,7 @@
 package org.streams.commons.zookeeper;
 
 import java.io.IOException;
+import java.util.Date;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -49,33 +50,35 @@ public class ZStore {
 
 	}
 
-	public synchronized void removeExpired(int seconds) throws IOException,
-			InterruptedException, KeeperException {
+	public synchronized void removeExpired(final int seconds)
+			throws IOException, InterruptedException, KeeperException {
 
 		ZooKeeper zk = connection.get();
 		if (!init.get()) {
 			init(zk);
 		}
 
+		final long expireMilliseconds = seconds * 1000;
+		System.out.println("path: " + path);
 		zk.getChildren(path, false, new AsyncCallback.ChildrenCallback() {
 
 			@Override
 			public void processResult(int rc, String path, Object ctx,
 					List<String> children) {
-
 				ZooKeeper zk1;
 				try {
 					zk1 = connection.get();
-					long timeoutMilliseconds = ((Integer) ctx) * 1000;
 
 					for (String child : children) {
-
 						String childPath = path + "/" + child;
 
 						Stat stat = zk1.exists(childPath, false);
 
 						if (stat != null) {
-							if ((System.currentTimeMillis() - stat.getMtime()) > timeoutMilliseconds) {
+							if ((System.currentTimeMillis() - stat.getMtime()) > expireMilliseconds) {
+								LOG.info("Deleting: path with mtime: "
+										+ new Date(stat.getMtime()));
+
 								zk1.delete(childPath, stat.getVersion(),
 										new AsyncCallback.VoidCallback() {
 
@@ -100,7 +103,7 @@ public class ZStore {
 				}
 
 			}
-		}, seconds);
+		}, new Integer(seconds));
 	}
 
 	/**
@@ -132,7 +135,7 @@ public class ZStore {
 
 		String keyPath = path + "/" + key;
 		return ZPathUtil.get(zk, keyPath);
-		
+
 	}
 
 	/**
