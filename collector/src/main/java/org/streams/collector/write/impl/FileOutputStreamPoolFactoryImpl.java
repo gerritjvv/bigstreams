@@ -27,6 +27,10 @@ public class FileOutputStreamPoolFactoryImpl implements
 
 	}
 
+	public void shutdown() throws IOException{
+		pool.shutdown();
+	}
+	
 	/**
 	 * Gets a FileOutputStreamPool from an array whose index is calculated based
 	 * on the key.

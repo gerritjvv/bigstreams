@@ -52,5 +52,5 @@ CLASSPATH="$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH"
 
 
 
-exec "$JAVA" -Xss128k -XX:MaxDirectMemorySize=1024M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+DisableExplicitGC $JAVA_HEAP $JAVA_OPTS -Djava.library.path="$STREAMS_HOME/lib/native/Linux-amd64-64/" -classpath "$CLASSPATH" -Dcollector.version=0.2.3 $CLASS "$@"
+exec "$JAVA" -Xss128k -XX:MaxDirectMemorySize=1024M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+DisableExplicitGC $JAVA_HEAP $JAVA_OPTS -Djava.library.path="$STREAMS_HOME/lib/native/Linux-amd64-64/" -classpath "$CLASSPATH" -Dcollector.version=0.2.4 $CLASS "$@"
 

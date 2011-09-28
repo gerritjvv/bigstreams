@@ -32,5 +32,10 @@ public interface FileOutputStreamPool {
 	void closeAll() throws IOException;
 
 	void close(String key) throws IOException;
-
+	
+	/**
+	 * The concept of shutdown will cause closeAll to be called, but also no allow any more calls to open methods.
+	 * @throws IOException
+	 */
+	void shutdown() throws IOException;
 }

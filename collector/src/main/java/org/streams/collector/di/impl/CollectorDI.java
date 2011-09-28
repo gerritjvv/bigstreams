@@ -84,6 +84,7 @@ import org.streams.commons.zookeeper.ZLock;
 import org.streams.commons.zookeeper.ZStore;
 import org.streams.commons.zookeeper.ZStoreExpireCheckService;
 import org.streams.coordination.cli.startup.service.impl.CollectorServerService;
+import org.streams.coordination.cli.startup.service.impl.FileCloseService;
 import org.streams.coordination.cli.startup.service.impl.OrphanedFilesCheckService;
 
 @Configuration
@@ -115,14 +116,13 @@ public class CollectorDI {
 						.getBean("restletPingComponent")), new RestletService(
 						(Component) beanFactory.getBean("restletComponent")),
 				beanFactory.getBean(CollectorServerService.class), beanFactory
+						.getBean(FileCloseService.class), beanFactory
 						.getBean(GroupHeartbeatService.class), beanFactory
 						.getBean(MetricsAppService.class), beanFactory
-						.getBean(OrphanedFilesCheckService.class),
-						beanFactory.getBean(StatusUpdaterThread.class),
-						beanFactory.getBean(DiskSpaceCheckService.class),
-						 beanFactory
-						 .getBean(ZStoreExpireCheckService.class));
-
+						.getBean(OrphanedFilesCheckService.class), beanFactory
+						.getBean(StatusUpdaterThread.class), beanFactory
+						.getBean(DiskSpaceCheckService.class), beanFactory
+						.getBean(ZStoreExpireCheckService.class));
 
 		List<? extends StartupCheck> postStartupList = Arrays
 				.asList(beanFactory.getBean(PingCheck.class));
@@ -132,56 +132,66 @@ public class CollectorDI {
 	}
 
 	@Bean
-	public DiskSpaceCheckService diskSpaceCheckService(){
-		org.apache.commons.configuration.Configuration configuration = beanFactory
-		.getBean(org.apache.commons.configuration.Configuration.class);
+	public FileCloseService fileCloseService() {
+		return new FileCloseService(
+				beanFactory.getBean(FileOutputStreamPoolFactory.class));
+	}
 
-		
+	@Bean
+	public DiskSpaceCheckService diskSpaceCheckService() {
+		org.apache.commons.configuration.Configuration configuration = beanFactory
+				.getBean(org.apache.commons.configuration.Configuration.class);
+
 		long initialDelay = 1000;
 		long frequency = configuration.getLong(
 				CollectorProperties.WRITER.DISK_FULL_FREQUENCY.toString(),
-				(Long)CollectorProperties.WRITER.DISK_FULL_FREQUENCY.getDefaultValue());
-		
+				(Long) CollectorProperties.WRITER.DISK_FULL_FREQUENCY
+						.getDefaultValue());
+
 		long diskFullKBActivation = configuration.getLong(
 				CollectorProperties.WRITER.DISK_FULL_KB_ACTIVATION.toString(),
-				(Long)CollectorProperties.WRITER.DISK_FULL_KB_ACTIVATION.getDefaultValue());
-		
-		//BASE_DIR
+				(Long) CollectorProperties.WRITER.DISK_FULL_KB_ACTIVATION
+						.getDefaultValue());
+
+		// BASE_DIR
 		String path = configuration.getString(
 				CollectorProperties.WRITER.BASE_DIR.toString(),
-				CollectorProperties.WRITER.BASE_DIR.getDefaultValue().toString());
-		
-		
+				CollectorProperties.WRITER.BASE_DIR.getDefaultValue()
+						.toString());
+
 		CollectorAction action = null;
-		DiskSpaceFullActionConf actionConf = new DiskSpaceFullActionConf(configuration);
-		if(actionConf.getDiskAction().equals(DiskSpaceFullActionConf.ACTION.DIE)){
+		DiskSpaceFullActionConf actionConf = new DiskSpaceFullActionConf(
+				configuration);
+		if (actionConf.getDiskAction().equals(
+				DiskSpaceFullActionConf.ACTION.DIE)) {
 			action = new DieAction();
-		}else{
+		} else {
 			action = new AlertAction(beanFactory.getBean(CollectorStatus.class));
 		}
-		 
 
-		return new DiskSpaceCheckService(initialDelay, frequency, path, diskFullKBActivation, action);
+		return new DiskSpaceCheckService(initialDelay, frequency, path,
+				diskFullKBActivation, action);
 	}
-	
+
 	@Bean
-	public StatusUpdaterThread statusUpdaterThread(){
+	public StatusUpdaterThread statusUpdaterThread() {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
-		.getBean(org.apache.commons.configuration.Configuration.class);
+				.getBean(org.apache.commons.configuration.Configuration.class);
 
 		String baseDir = configuration.getString(
-		CollectorProperties.WRITER.BASE_DIR.toString(),
-		CollectorProperties.WRITER.BASE_DIR.getDefaultValue()
-				.toString());
-
+				CollectorProperties.WRITER.BASE_DIR.toString(),
+				CollectorProperties.WRITER.BASE_DIR.getDefaultValue()
+						.toString());
 
 		long frequency = configuration.getLong(
 				CollectorProperties.WEB.UI_STATUS_UPDATE.toString(),
-				(Long)CollectorProperties.WEB.UI_STATUS_UPDATE.getDefaultValue());
+				(Long) CollectorProperties.WEB.UI_STATUS_UPDATE
+						.getDefaultValue());
 
-		return new StatusUpdaterThread(baseDir, frequency, beanFactory.getBean(CollectorStatus.class));
+		return new StatusUpdaterThread(baseDir, frequency,
+				beanFactory.getBean(CollectorStatus.class));
 	}
-	
+
 	@Bean
 	public StatusExtrasBuilder getStatusExtrasBuilder() {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
@@ -637,16 +647,16 @@ public class CollectorDI {
 	@Bean
 	public CollectorStatusResource collectorStatusResource() {
 		org.apache.commons.configuration.Configuration configuration = beanFactory
-		.getBean(org.apache.commons.configuration.Configuration.class);
+				.getBean(org.apache.commons.configuration.Configuration.class);
 
 		int port = configuration.getInt(
 				CollectorProperties.WRITER.COLLECTOR_MON_PORT.toString(),
 				(Integer) CollectorProperties.WRITER.COLLECTOR_MON_PORT
 						.getDefaultValue());
 
-		
 		return new CollectorStatusResource(port,
-				beanFactory.getBean(CollectorStatus.class), beanFactory.getBean(Client.class));
+				beanFactory.getBean(CollectorStatus.class),
+				beanFactory.getBean(Client.class));
 	}
 
 	@Bean

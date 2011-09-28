@@ -209,7 +209,7 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 											+ syncFilePointer
 											+ " syncid: "
 											+ pointer.getTimeStamp());
-
+									
 									ChannelBuffer buffer = ChannelBuffers
 											.dynamicBuffer();
 									buffer.writeInt(NetworkCodes.CODE.SYNC_CONFLICT

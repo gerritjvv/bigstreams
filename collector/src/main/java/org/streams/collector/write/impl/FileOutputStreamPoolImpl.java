@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListSet;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.commons.io.FileUtils;
@@ -47,6 +48,8 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	private static final Logger LOG = Logger
 			.getLogger(FileOutputStreamPoolImpl.class);
 
+	final AtomicBoolean isShutdown = new AtomicBoolean(false);
+	
 	/**
 	 * Used to lock individual operations on a key
 	 */
@@ -114,6 +117,14 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		this.compressionPoolFactory = compressionPoolFactory;
 	}
 
+	public void shutdown() throws IOException{
+	
+		if(!isShutdown.getAndSet(true)){
+			closeAll();
+		}
+		
+	}
+	
 	/**
 	 * If a file is open return true.
 	 * @param file
@@ -141,6 +152,10 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			CompressionCodec compressionCodec, File file, boolean append)
 			throws IOException {
 
+		if(isShutdown.get()){
+			throw new IllegalStateException("The collector has been shutdown, no more file writing is allowed");
+		}
+		
 		// if interrupted the exception will be thrown and nothing will be done
 		// this lock is kept until the file has been released.
 		// note that no rollover will be done if this lock is not released
@@ -485,8 +500,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		try {
 			keyLock.acquireLock(key);
 		} catch (InterruptedException e) {
-			Thread.currentThread().interrupt();
-			return;
+			//even if interrupted the close file method should always close, the file.
 		}
 
 		try {

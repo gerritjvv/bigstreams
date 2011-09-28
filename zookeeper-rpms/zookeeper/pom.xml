@@ -40,7 +40,7 @@
                     <provides>
                         <provide>zookeeper</provide>
                     </provides>
-                    <needarch>x86_64</needarch>
+                    <needarch>i386-32</needarch>
                     <requires>
                     </requires>
                     <changelogFile>src/changelog</changelogFile>

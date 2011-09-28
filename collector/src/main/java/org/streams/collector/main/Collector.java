@@ -21,7 +21,7 @@ public class Collector {
 				e.printStackTrace();
 				Runtime.getRuntime().exit(-1);
 				try {
-					Thread.sleep(1000);
+					Thread.sleep(5000);
 				} catch (Throwable iexcp) {
 					;// ignore
 				}

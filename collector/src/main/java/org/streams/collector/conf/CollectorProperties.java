@@ -39,7 +39,7 @@ public interface CollectorProperties {
 		ZOOTIMEOUT("zoo.timeout", 80000L),
 
 		ZSTORE_TIMEOUT_DELAY("zstore.timeout.delay", 10000L),
-		ZSTORE_TIMEOUT_CHECK("zstore.timeout.check",  86400L), //1 days
+		ZSTORE_TIMEOUT_CHECK("zstore.timeout.check",  86400000L), //1 days
 		ZSTORE_DATA_TIMEOUT("zstore.timeout.seconds", 5184000), // 60 days
 		
 		ORPHANED_LOG_CHECK_FREQUENCY("orphaned.check.frequency",  1200000L), //20 minutes

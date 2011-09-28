@@ -31,10 +31,30 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 	ZLock zlock;
     ZStore zstore;
 	
+    volatile boolean isAgentSync;
+    
 	public CoordinationServiceClientImpl(ZLock zlock, ZStore zstore) {
 		super();
 		this.zlock = zlock;
 		this.zstore = zstore;
+		isAgentSync = !(System.getenv("agent.sync") == null || System.getProperty("agent.sync") == null);
+		if(isAgentSync){
+			LOG.info("Agent is is on");
+			
+			new Thread(){
+				public void run(){
+					try {
+						//15 minutes
+						Thread.sleep(900000);
+					} catch (InterruptedException e) {
+						Thread.currentThread().interrupt();
+						return;
+					}
+					LOG.info("Turning agent sync off");
+					isAgentSync = false;
+				}
+			}.start();
+		}
 	}
 
 	@Override
@@ -56,6 +76,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		final String lockId = fileStatus.getAgentName() + fileStatus.getLogType()
 				+ fileStatus.getFileName().replace('/', '_');
 
+		
 		return zlock.withLock(lockId, new Callable<T>() {
 
 			@Override
@@ -89,8 +110,37 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 							});
 
 				} else {
-					return coordinationServiceListener.syncConflict(fileStatus,
+					if(isAgentSync){
+						// we call the inSync method, and PostWriteAction, the
+						// listener should write out
+						// the client data and then call the PostWriteAction
+						LOG.info("Collector is adjusting file pointer to agent " + fileStatus.getAgentName() + 
+								" file pointer " + fileStatus.getFilePointer() + " for file " + fileStatus.getFileName());
+						
+						return coordinationServiceListener.inSync(fileStatus, pointer,
+								new PostWriteAction() {
+
+									@Override
+									public void run(int bytesWritten)
+											throws Exception {
+										pointer.setFilePointer(fileStatus.getFilePointer());
+										pointer.incFilePointer(bytesWritten);
+										pointer.setLinePointer(fileStatus
+												.getLinePointer());
+
+										// save pointer -- on exception the output
+										// streams is rolled back.
+										// -- ensures that pointer save and file
+										// output is atomic.
+										saveSyncPointer(lockId, pointer, fileStatus);
+									}
+
+								});
+
+					}else{
+						return coordinationServiceListener.syncConflict(fileStatus,
 							pointer);
+					}
 				}
 
 			}

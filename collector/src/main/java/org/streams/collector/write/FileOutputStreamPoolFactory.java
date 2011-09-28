@@ -11,6 +11,8 @@ public interface FileOutputStreamPoolFactory {
 
 	FileOutputStreamPool getPoolForKey(String key);
 	
+	void shutdown() throws IOException;
+	
 	void closeAll();
 	
 	void checkFilesForRollover(LogRolloverCheck rolloverCheck)

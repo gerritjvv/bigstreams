@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector</artifactId>
-	<version>0.2.3</version>
+	<version>0.2.4</version>
 	<name>collector</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -182,7 +182,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Streams Log Import</distribution>
-					<release>13</release>
+					<release>1</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
