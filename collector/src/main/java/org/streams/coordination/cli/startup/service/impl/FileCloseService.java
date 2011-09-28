@@ -1,18 +1,20 @@
 package org.streams.coordination.cli.startup.service.impl;
 
-import org.streams.collector.server.CollectorServer;
+import java.io.IOException;
+
+import org.apache.log4j.Logger;
 import org.streams.collector.write.FileOutputStreamPoolFactory;
 import org.streams.commons.app.ApplicationService;
-
 
 /**
  * 
  * Application service that closes all of the files opened for file writing.
  * 
  */
-public class FileCloseService implements ApplicationService{
+public class FileCloseService implements ApplicationService {
 
-	
+	private static final Logger LOG = Logger.getLogger(FileCloseService.class);
+
 	FileOutputStreamPoolFactory fileOutputStreamPoolFactory;
 
 	public FileCloseService(
@@ -23,13 +25,16 @@ public class FileCloseService implements ApplicationService{
 
 	@Override
 	public void start() throws Exception {
-		
+
 	}
 
 	@Override
 	public void shutdown() {
-		fileOutputStreamPoolFactory.shutdown();
+		try {
+			fileOutputStreamPoolFactory.shutdown();
+		} catch (IOException e) {
+			LOG.error(e);
+		}
 	}
-	
 
 }
