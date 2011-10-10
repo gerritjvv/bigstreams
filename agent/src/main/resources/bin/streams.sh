@@ -49,5 +49,5 @@ CLASS="org.streams.agent.main.Agent"
 
 CLASSPATH="$STREAMS_CONF_DIR:$STREAMS_CONF_DIR/META-INF:$CLASSPATH"
 
-exec "$JAVA" -XX:+DisableExplicitGC $JAVA_HEAP $JAVA_OPTS -classpath "$CLASSPATH" -Dagent.version=0.2.3 $CLASS "$@"
+exec "$JAVA" -XX:+DisableExplicitGC $JAVA_HEAP $JAVA_OPTS -classpath "$CLASSPATH" -Dagent.version=0.2.4 $CLASS "$@"
 

@@ -95,8 +95,10 @@ public class FilesToSendQueueImpl implements FilesToSendQueue {
 				queue.addAll(changedList);
 
 			// ask for ready files
+			//get files in ASC order by file date. 
+			//this ensures that older files are sent first.
 			Collection<FileTrackingStatus> readyList = trackerMemory
-					.getFiles(FileTrackingStatus.STATUS.READY);
+					.getFiles(FileTrackingStatus.STATUS.READY, FileTrackerMemory.ORDER.ASC);
 
 			if (readyList != null) {
 				for (FileTrackingStatus readyFile : readyList) {

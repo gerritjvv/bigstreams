@@ -58,6 +58,10 @@ public class MapTrackerMemory extends AbstractFileTrackerMemory implements
 
 	}
 
+	public Collection<FileTrackingStatus> getFiles(STATUS status, ORDER order) {
+		return getFileSet(status);
+	}
+	
 	public Collection<FileTrackingStatus> getFiles(STATUS status) {
 		return getFileSet(status);
 	}

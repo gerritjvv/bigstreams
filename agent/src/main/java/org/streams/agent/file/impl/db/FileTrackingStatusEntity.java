@@ -29,8 +29,11 @@ import org.streams.agent.file.FileTrackingStatus;
 @Table(name = "file_tracking_status", uniqueConstraints = { @UniqueConstraint(columnNames = { "path" }) })
 @NamedQueries(value = {
 		@NamedQuery(name = "fileTrackingStatus.byStatusReady", query = "from FileTrackingStatusEntity f where f.status='READY' ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileTrackingStatus.byStatusReadyOrderAsc", query = "from FileTrackingStatusEntity f where f.status='READY' ORDER BY f.fileDate ASC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileTrackingStatus.byStatus", query = "from FileTrackingStatusEntity f where f.status=:status ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileTrackingStatus.byStatusOrderAsc", query = "from FileTrackingStatusEntity f where f.status=:status ORDER BY f.fileDate ASC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileTrackingStatus.list", query = "from FileTrackingStatusEntity f ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
+		@NamedQuery(name = "fileTrackingStatus.listOrderAsc", query = "from FileTrackingStatusEntity f ORDER BY f.fileDate ASC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileTrackingStatus.byPathUpdate", query = "from FileTrackingStatusEntity f where f.path=:path ORDER BY f.fileDate DESC"),
 		@NamedQuery(name = "fileTrackingStatus.byPath", query = "from FileTrackingStatusEntity f where f.path=:path ORDER BY f.fileDate DESC", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),
 		@NamedQuery(name = "fileTrackingStatus.countByStatus", query = "select COUNT(*) as count from FileTrackingStatusEntity f WHERE f.status=:status", hints = { @QueryHint(name = "org.hibernate.readOnly", value = "true") }),

@@ -107,14 +107,29 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 
 		return getFiles(status, 0, DEFAULT_MAX_RESULTS);
 	}
+	
+	@Override
+	public Collection<FileTrackingStatus> getFiles(STATUS status, ORDER order) {
+
+		return getFiles(status, 0, DEFAULT_MAX_RESULTS);
+	}
+	
 
 	/**
 	 * Retrieves the FileTrackingStatus from the configured JPA EntityManager.
 	 */
-	@SuppressWarnings("unchecked")
 	@Override
 	public Collection<FileTrackingStatus> getFiles(STATUS status, int from,
-			int maxResults) {
+			int maxResults){
+		return getFiles(status, from, maxResults, ORDER.DESC);
+	}
+			
+	/**
+	 * Retrieves the FileTrackingStatus from the configured JPA EntityManager.
+	 */
+	@SuppressWarnings("unchecked")
+	public Collection<FileTrackingStatus> getFiles(STATUS status, int from,
+			int maxResults, ORDER order) {
 
 		Collection<FileTrackingStatus> statusColl = null;
 
@@ -128,17 +143,17 @@ public class DBFileTrackerMemoryImpl extends AbstractFileTrackerMemory implement
 
 			if (status == null) {
 				statusEntityList = entityManager
-						.createNamedQuery("fileTrackingStatus.list")
+						.createNamedQuery((order.equals(ORDER.ASC)? "fileTrackingStatus.listOrderAsc" : "fileTrackingStatus.listOrder"))
 						.setFirstResult(from).setMaxResults(maxResults)
 						.getResultList();
 			} else if (status.equals(FileTrackingStatus.STATUS.READY)) {
 				statusEntityList = entityManager
-						.createNamedQuery("fileTrackingStatus.byStatusReady")
+						.createNamedQuery((order.equals(ORDER.ASC)? "fileTrackingStatus.byStatusReadyOrderAsc" : "fileTrackingStatus.byStatusReady"))
 						.setFirstResult(from).setMaxResults(maxResults)
 						.getResultList();
 			} else {
 				Query query = entityManager
-						.createNamedQuery("fileTrackingStatus.byStatus");
+						.createNamedQuery((order.equals(ORDER.ASC)? "fileTrackingStatus.byStatusOrderAsc" : "fileTrackingStatus.byStatus"));
 				query.setParameter("status", status.toString().toUpperCase());
 				statusEntityList = query.setFirstResult(from)
 						.setMaxResults(maxResults).getResultList();
