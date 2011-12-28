@@ -4,7 +4,7 @@
 
   <groupId>org.apache.zookeeper</groupId>
   <artifactId>zookeeper</artifactId>
-  <version>3.3.3</version>
+  <version>3.4.1</version>
   <packaging>jar</packaging>
 
   <name>zookeeper</name>
@@ -40,7 +40,7 @@
                     <provides>
                         <provide>zookeeper</provide>
                     </provides>
-                    <needarch>i386-32</needarch>
+                    <needarch>x86_64</needarch>
                     <requires>
                     </requires>
                     <changelogFile>src/changelog</changelogFile>
