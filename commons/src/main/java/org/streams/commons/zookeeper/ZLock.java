@@ -57,6 +57,46 @@ public class ZLock {
 
 	}
 
+	public boolean lock(String lockId) throws Exception{
+		ZooKeeper zk = connection.get();
+
+		if (!init.get()) {
+			init(zk);
+		}
+
+		if (lockId.startsWith("/")) {
+			lockId = baseDir + lockId.substring(1, lockId.length());
+		} else {
+			lockId = baseDir + lockId;
+		}
+
+		// KeptLock lock = new KeptLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+		WriteLock writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+		writeLock.setRetryDelay(100);
+		
+		return writeLock.lock();
+	}
+
+	public void unlock(String lockId) throws Exception{
+		ZooKeeper zk = connection.get();
+
+		if (!init.get()) {
+			init(zk);
+		}
+
+		if (lockId.startsWith("/")) {
+			lockId = baseDir + lockId.substring(1, lockId.length());
+		} else {
+			lockId = baseDir + lockId;
+		}
+
+		// KeptLock lock = new KeptLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+		WriteLock writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+		writeLock.setRetryDelay(100);
+		
+		writeLock.unlock();
+	}
+	
 	/**
 	 * Run the callable only if the lock can be obtained.
 	 * 
@@ -87,13 +127,13 @@ public class ZLock {
 
 		boolean locked = false;
 		try {
-			System.out.println("----------- 2");
+			
 			locked = writeLock.lock();
-			System.out.println("----------- 3");
+			
 			if (locked)
 				return c.call();
 			else {
-				System.out.println("----------- 4");
+				
 				// if no lock go into retry logic
 				int retries = 10;
 				int retryCount = 0;
