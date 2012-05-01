@@ -5,10 +5,16 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
+import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.recipes.lock.WriteLock;
+import org.streams.commons.util.ConsistentHashBuckets;
+
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 
 /**
  * 
@@ -24,11 +30,19 @@ public class ZLock {
 
 	private final AtomicBoolean init = new AtomicBoolean(false);
 
+	static final Cache<String, String> cache = CacheBuilder.newBuilder()
+			.maximumSize(1000).build();
+
+	/**
+	 * Buckets calculation is class wide
+	 */
+	private static final ConsistentHashBuckets buckets = new ConsistentHashBuckets();
+
 	public ZLock(ZConnection connection) {
 		super();
 		this.connection = connection;
 		this.baseDir = "/locks/";
-		
+
 	}
 
 	public ZLock(ZConnection connection, String baseDir, long lockTimeout) {
@@ -36,7 +50,7 @@ public class ZLock {
 		this.connection = connection;
 		if (!baseDir.endsWith("/"))
 			this.baseDir = baseDir + "/";
-		else{
+		else {
 			this.baseDir = baseDir;
 		}
 	}
@@ -50,53 +64,89 @@ public class ZLock {
 	 */
 	private final synchronized void init(ZooKeeper zk) throws KeeperException,
 			InterruptedException {
-		if(!init.get()){
+		if (!init.get()) {
 			ZPathUtil.mkdirs(zk, baseDir);
 			init.set(true);
 		}
 
 	}
 
-	public boolean lock(String lockId) throws Exception{
+	public boolean lock(String lockId) throws Exception {
 		ZooKeeper zk = connection.get();
 
 		if (!init.get()) {
 			init(zk);
 		}
 
-		if (lockId.startsWith("/")) {
-			lockId = baseDir + lockId.substring(1, lockId.length());
-		} else {
-			lockId = baseDir + lockId;
-		}
-
 		// KeptLock lock = new KeptLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
-		WriteLock writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+		WriteLock writeLock = new WriteLock(zk, calcLockPath(zk, lockId),
+				Ids.OPEN_ACL_UNSAFE);
 		writeLock.setRetryDelay(100);
-		
+
 		return writeLock.lock();
 	}
 
-	public void unlock(String lockId) throws Exception{
+	private final String calcLockPath(ZooKeeper zk, String lockId)
+			throws KeeperException, InterruptedException {
+		String zkLockId;
+
+		if (lockId.startsWith("/")) {
+			zkLockId = lockId.substring(1, lockId.length());
+		} else {
+			zkLockId = lockId;
+		}
+
+		final Integer bucket = calcBucket(zkLockId);
+
+		final String prefix = baseDir + bucket;
+
+		// Use global cache to ensure the path is only created once
+		if (cache.getIfPresent(prefix) == null) {
+			ZPathUtil.mkdirs(zk, prefix);
+			cache.put(prefix, prefix);
+		}
+
+		// check to see if
+		final String path = prefix + "/" + zkLockId;
+
+		// ensure path exists
+		try {
+			Stat stat = new Stat();
+			zk.getData(path, false, stat);
+		} catch (KeeperException.NoNodeException noNode) {
+			zk.create(path, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+		}
+
+		return path;
+	}
+
+	/**
+	 * Creating buckets help spread the values over many sub folders, adding to
+	 * efficiency in zookeeper. i.e. zookeeper does not deal well with thousands
+	 * of children to a folder.
+	 * 
+	 * @param key
+	 * @return
+	 */
+	private static final Integer calcBucket(String key) {
+		return buckets.getBucket(key);
+	}
+
+	public void unlock(String lockId) throws Exception {
 		ZooKeeper zk = connection.get();
 
 		if (!init.get()) {
 			init(zk);
 		}
 
-		if (lockId.startsWith("/")) {
-			lockId = baseDir + lockId.substring(1, lockId.length());
-		} else {
-			lockId = baseDir + lockId;
-		}
-
 		// KeptLock lock = new KeptLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
-		WriteLock writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+		WriteLock writeLock = new WriteLock(zk, calcLockPath(zk, lockId),
+				Ids.OPEN_ACL_UNSAFE);
 		writeLock.setRetryDelay(100);
-		
+
 		writeLock.unlock();
 	}
-	
+
 	/**
 	 * Run the callable only if the lock can be obtained.
 	 * 
@@ -115,32 +165,32 @@ public class ZLock {
 			init(zk);
 		}
 
-		if (lockId.startsWith("/")) {
-			lockId = baseDir + lockId.substring(1, lockId.length());
-		} else {
-			lockId = baseDir + lockId;
-		}
-
+		final String lockPath = calcLockPath(zk, lockId);
 		// KeptLock lock = new KeptLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
-		WriteLock writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+		WriteLock writeLock = new WriteLock(zk, lockPath, Ids.OPEN_ACL_UNSAFE);
 		writeLock.setRetryDelay(100);
 
 		boolean locked = false;
 		try {
-			
+
 			locked = writeLock.lock();
-			
+
 			if (locked)
 				return c.call();
 			else {
-				
+
 				// if no lock go into retry logic
 				int retries = 10;
 				int retryCount = 0;
 
 				while (!locked && retryCount++ < retries) {
 					zk = connection.get();
-					writeLock = new WriteLock(zk, lockId, Ids.OPEN_ACL_UNSAFE);
+
+					// close previous lock instance
+					if (writeLock != null)
+						writeLock.close();
+
+					writeLock = new WriteLock(zk, lockPath, Ids.OPEN_ACL_UNSAFE);
 					writeLock.setRetryDelay(100);
 
 					LOG.info("LOCK Retry " + retryCount + " of " + retries);
@@ -151,10 +201,10 @@ public class ZLock {
 				if (locked) {
 					return c.call();
 				} else {
-					LOG.info("Unable to attain lock for " + lockId);
+					LOG.info("Unable to attain lock for " + lockPath);
 				}
 
-				throw new TimeoutException("Unable to attain lock " + lockId
+				throw new TimeoutException("Unable to attain lock " + lockPath
 						+ " using zookeeper ");
 			}
 		} finally {
@@ -165,6 +215,13 @@ public class ZLock {
 					// ignore or eat it
 					LOG.error(iexp, iexp);
 				}
+				try {
+					writeLock.close();
+				} catch (Throwable iexp) {
+					// ignore or eat it
+					LOG.error(iexp, iexp);
+				}
+
 			}
 		}
 
