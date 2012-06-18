@@ -3,6 +3,8 @@ package org.streams.agent.file.impl.db;
 import java.io.Serializable;
 import java.util.Date;
 
+import org.streams.agent.file.FileTrackingStatus;
+
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
@@ -13,9 +15,7 @@ import javax.persistence.NamedQuery;
 import javax.persistence.QueryHint;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
-
-import org.streams.agent.file.FileTrackingStatus;
-
+import javax.persistence.*;
 
 /**
  * A separate entity class is used to store the actual FileTrackingStatus, this
@@ -45,8 +45,12 @@ public class FileTrackingStatusEntity implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 1L;
-
+	
+	@GeneratedValue(strategy = GenerationType.IDENTITY)
+	@Column(name = "id", unique = true, nullable = false)
+	@Basic(fetch = FetchType.EAGER)
 	Long id;
+	
 	long lastModificationTime = 0L;
 	long fileSize = 0L;
 
