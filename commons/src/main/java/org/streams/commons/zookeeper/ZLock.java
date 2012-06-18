@@ -5,11 +5,9 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooDefs.Ids;
 import org.apache.zookeeper.ZooKeeper;
-import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.recipes.lock.WriteLock;
 import org.streams.commons.util.ConsistentHashBuckets;
 
@@ -107,17 +105,8 @@ public class ZLock {
 		}
 
 		// check to see if
-		final String path = prefix + "/" + zkLockId;
+		return prefix + "/" + zkLockId;
 
-		// ensure path exists
-		try {
-			Stat stat = new Stat();
-			zk.getData(path, false, stat);
-		} catch (KeeperException.NoNodeException noNode) {
-			zk.create(path, null, Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
-		}
-
-		return path;
 	}
 
 	/**
