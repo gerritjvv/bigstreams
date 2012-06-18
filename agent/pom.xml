@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>agent</artifactId>
-	<version>0.2.4</version>
+	<version>0.2.5</version>
 	<name>agent</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
