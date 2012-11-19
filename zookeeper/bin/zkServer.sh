@@ -103,7 +103,7 @@ start)
       fi
     fi
     nohup $JAVA "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.root.logger=${ZOO_LOG4J_PROP}" \
-    -cp "$CLASSPATH" $JVMFLAGS $ZOOMAIN "$ZOOCFG" > "$_ZOO_DAEMON_OUT" 2>&1 < /dev/null &
+    -cp "$CLASSPATH" $JVMFLAGS $ZOOMAIN "$ZOOCFG" > "$_ZOO_DAEMON_OUT" 2>&1 >> /opt/zookeeper/logs/zookeeper.log &
     if [ $? -eq 0 ]
     then
       if /bin/echo -n $! > "$ZOOPIDFILE"
