@@ -24,7 +24,7 @@
 
     <property environment="env"/>
     
-    <property name="version" value="3.4.1" />
+    <property name="version" value="3.4.5" />
     <property name="final.name" value="${name}-${version}"/>
     <property name="revision.dir" value="${basedir}/.revision" />
     <property name="revision.properties" value="revision.properties" />
@@ -83,7 +83,7 @@
     <property name="docs.dir" value="${basedir}/docs"/>
     <property name="docs.src" value="${basedir}/src/docs"/>
     <property name="javadoc.link.java"
-              value="http://java.sun.com/javase/6/docs/api/" />
+              value="http://docs.oracle.com/javase/6/docs/api/" />
     <property name="javadoc.packages" value="org.apache.*" />
 
     <property name="dist.dir" value="${build.dir}/${final.name}"/>
@@ -391,7 +391,7 @@
       <property name="c.build" value="${build.dir}/c/build"/>
       <exec dir="${build.dir}/c" executable="make" failonerror="true">
         <arg value="install"/>
-        <env key="LD_LIBRARY_PATH" value="${c.build}"/>
+        <env key="LD_LIBRARY_PATH" value="${env.LD_LIBRARY_PATH};${c.build}"/>
         <env key="PATH" path="${env.PATH};${c.src.dir};"/>
         <env key="CALLER" value="ANT"/>
         <env key="base_dir" value="${basedir}"/>
@@ -469,6 +469,7 @@
           <include name="org/apache/zookeeper/ZooDefs.java"/>
           <include name="org/apache/zookeeper/ZooKeeper.java"/>
           <include name="org/apache/zookeeper/server/LogFormatter.java"/>
+          <include name="org/apache/zookeeper/server/SnapshotFormatter.java"/>
           <include name="org/apache/zookeeper/server/PurgeTxnLog.java"/>
           <exclude name="org/apache/zookeeper/server/quorum/QuorumPacket"/>
     	</fileset>
@@ -992,7 +993,7 @@
           </replacetokens>
         </filterchain>
       </copy>
-      <rpm specFile="zookeeper.spec" command="-ba" topDir="${package.buildroot}" cleanBuildDir="true" failOnError="true"
+      <rpm specFile="zookeeper.spec" command="-ba --buildroot=${package.buildroot}/BUILD" topDir="${package.buildroot}" cleanBuildDir="true" failOnError="true"
 />
       <copy todir="${build.dir}/" flatten="true">
         <fileset dir="${package.buildroot}/RPMS">
@@ -1256,7 +1257,7 @@
             if="cppunit"
 		description="to run cppunit test cases">
         <exec dir="${test.cppunit.dir}" executable="make" failonerror="true">
-		<env key="LD_LIBRARY_PATH" value="${cppunit.lib}"/>
+		<env key="LD_LIBRARY_PATH" value="${env.LD_LIBRARY_PATH};${cppunit.lib}"/>
 		<env key="PATH" path="${env.PATH};${c.src.dir};"/>
                 <env key="CALLER" value="ANT"/>
                 <env key="CLOVER_HOME" value="${clover.home}"/>

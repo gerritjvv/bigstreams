@@ -560,6 +560,7 @@ public class NettyServerCnxn extends ServerCnxn {
 
             print("packets_received", stats.getPacketsReceived());
             print("packets_sent", stats.getPacketsSent());
+            print("num_alive_connections", stats.getNumAliveClientConnections());
 
             print("outstanding_requests", stats.getOutstandingRequests());
 
@@ -581,9 +582,9 @@ public class NettyServerCnxn extends ServerCnxn {
             if(stats.getServerState().equals("leader")) {
                 Leader leader = ((LeaderZooKeeperServer)zkServer).getLeader();
 
-                print("followers", leader.learners.size());
-                print("synced_followers", leader.forwardingFollowers.size());
-                print("pending_syncs", leader.pendingSyncs.size());
+                print("followers", leader.getLearners().size());
+                print("synced_followers", leader.getForwardingFollowers().size());
+                print("pending_syncs", leader.getNumPendingSyncs());
             }
         }
 

@@ -18,7 +18,7 @@ org.apache.zookeeper.ClientCnxn
     <TD COLSPAN=2 BGCOLOR="#EEEEFF" CLASS="NavBarCell1">
     <TABLE summary="Navigation bar" BORDER="0" CELLPADDING="0" CELLSPACING="3">
     <TR ALIGN="center" VALIGN="top">
-      <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="../../api/org/apache/zookeeper/ClientCnxn.html" target="_top"><FONT CLASS="NavBarFont1"><B><tt>zookeeper 3.4.1</tt></B></FONT></A>&nbsp;</TD>
+      <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="../../api/org/apache/zookeeper/ClientCnxn.html" target="_top"><FONT CLASS="NavBarFont1"><B><tt>zookeeper 3.4.5</tt></B></FONT></A>&nbsp;</TD>
       <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="changes-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
       <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="pkg_org.apache.zookeeper.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
       <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>
@@ -102,10 +102,24 @@ Class org.apache.zookeeper.<A HREF="../../api/org/apache/zookeeper/ClientCnxn.ht
 </TR>
 <TR BGCOLOR="#FFFFFF" CLASS="TableRowColor">
   <TD VALIGN="TOP" WIDTH="25%">
+  <A NAME="org.apache.zookeeper.ClientCnxn.enableWrite_added()"></A>
+  <nobr><code>void</code>&nbsp;<A HREF="../../api/org/apache/zookeeper/ClientCnxn.html#enableWrite()" target="_top"><tt>enableWrite</tt></A>()</nobr>
+  </TD>
+  <TD>&nbsp;</TD>
+</TR>
+<TR BGCOLOR="#FFFFFF" CLASS="TableRowColor">
+  <TD VALIGN="TOP" WIDTH="25%">
   <A NAME="org.apache.zookeeper.ClientCnxn.getDisableAutoResetWatch_added()"></A>
   <nobr><code>boolean</code>&nbsp;<A HREF="../../api/org/apache/zookeeper/ClientCnxn.html#getDisableAutoResetWatch()" target="_top"><tt>getDisableAutoResetWatch</tt></A>()</nobr>
   </TD>
   <TD VALIGN="TOP">tests use this to check on reset of watches </TD>
+</TR>
+<TR BGCOLOR="#FFFFFF" CLASS="TableRowColor">
+  <TD VALIGN="TOP" WIDTH="25%">
+  <A NAME="org.apache.zookeeper.ClientCnxn.getLastZxid_added()"></A>
+  <nobr><code>long</code>&nbsp;<A HREF="../../api/org/apache/zookeeper/ClientCnxn.html#getLastZxid()" target="_top"><tt>getLastZxid</tt></A>()</nobr>
+  </TD>
+  <TD>&nbsp;</TD>
 </TR>
 <TR BGCOLOR="#FFFFFF" CLASS="TableRowColor">
   <TD VALIGN="TOP" WIDTH="25%">
@@ -116,8 +130,15 @@ Class org.apache.zookeeper.<A HREF="../../api/org/apache/zookeeper/ClientCnxn.ht
 </TR>
 <TR BGCOLOR="#FFFFFF" CLASS="TableRowColor">
   <TD VALIGN="TOP" WIDTH="25%">
-  <A NAME="org.apache.zookeeper.ClientCnxn.queuePacket_added(org.apache.zookeeper.proto.RequestHeader, org.apache.zookeeper.proto.ReplyHeader, org.apache.jute.Record, org.apache.jute.Record, org.apache.zookeeper.AsyncCallback)"></A>
-  <nobr><code>void</code>&nbsp;<A HREF="../../api/org/apache/zookeeper/ClientCnxn.html#queuePacket(org.apache.zookeeper.proto.RequestHeader, org.apache.zookeeper.proto.ReplyHeader, org.apache.jute.Record, org.apache.jute.Record, org.apache.zookeeper.AsyncCallback)" target="_top"><tt>queuePacket</tt></A>(<code>RequestHeader,</nobr> ReplyHeader<nobr>,</nobr> Record<nobr>,</nobr> Record<nobr>,</nobr> AsyncCallback<nobr><nobr></code>)</nobr>
+  <A NAME="org.apache.zookeeper.ClientCnxn.getXid_added()"></A>
+  <nobr><code>int</code>&nbsp;<A HREF="../../api/org/apache/zookeeper/ClientCnxn.html#getXid()" target="_top"><tt>getXid</tt></A>()</nobr>
+  </TD>
+  <TD>&nbsp;</TD>
+</TR>
+<TR BGCOLOR="#FFFFFF" CLASS="TableRowColor">
+  <TD VALIGN="TOP" WIDTH="25%">
+  <A NAME="org.apache.zookeeper.ClientCnxn.sendPacket_added(org.apache.jute.Record, org.apache.jute.Record, org.apache.zookeeper.AsyncCallback, int)"></A>
+  <nobr><code>void</code>&nbsp;<A HREF="../../api/org/apache/zookeeper/ClientCnxn.html#sendPacket(org.apache.jute.Record, org.apache.jute.Record, org.apache.zookeeper.AsyncCallback, int)" target="_top"><tt>sendPacket</tt></A>(<code>Record,</nobr> Record<nobr>,</nobr> AsyncCallback<nobr>,</nobr> int<nobr><nobr></code>)</nobr>
   </TD>
   <TD>&nbsp;</TD>
 </TR>
@@ -192,7 +213,7 @@ Change from non-final to final.<br>
     <TD COLSPAN=2 BGCOLOR="#EEEEFF" CLASS="NavBarCell1">
     <TABLE summary="Navigation bar" BORDER="0" CELLPADDING="0" CELLSPACING="3">
     <TR ALIGN="center" VALIGN="top">
-      <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="../../api/org/apache/zookeeper/ClientCnxn.html" target="_top"><FONT CLASS="NavBarFont1"><B><tt>zookeeper 3.4.1</tt></B></FONT></A>&nbsp;</TD>
+      <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="../../api/org/apache/zookeeper/ClientCnxn.html" target="_top"><FONT CLASS="NavBarFont1"><B><tt>zookeeper 3.4.5</tt></B></FONT></A>&nbsp;</TD>
       <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="changes-summary.html"><FONT CLASS="NavBarFont1"><B>Overview</B></FONT></A>&nbsp;</TD>
       <TD BGCOLOR="#EEEEFF" CLASS="NavBarCell1"> <A HREF="pkg_org.apache.zookeeper.html"><FONT CLASS="NavBarFont1"><B>Package</B></FONT></A>&nbsp;</TD>
       <TD BGCOLOR="#FFFFFF" CLASS="NavBarCell1Rev"> &nbsp;<FONT CLASS="NavBarFont1Rev"><B>Class</B></FONT>&nbsp;</TD>

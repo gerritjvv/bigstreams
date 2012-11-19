@@ -51,13 +51,18 @@ import org.apache.zookeeper.server.persistence.FileTxnSnapLog;
 import org.apache.zookeeper.server.quorum.QuorumPeer.QuorumServer;
 import org.apache.zookeeper.server.quorum.flexible.QuorumMaj;
 import org.apache.zookeeper.server.util.ZxidUtils;
+import org.apache.zookeeper.txn.CreateSessionTxn;
 import org.apache.zookeeper.txn.CreateTxn;
 import org.apache.zookeeper.txn.SetDataTxn;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.junit.Assert;
 import org.junit.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class Zab1_0Test {
+    private static final Logger LOG = LoggerFactory.getLogger(Zab1_0Test.class);
+
     private static final class LeadThread extends Thread {
         private final Leader leader;
 
@@ -68,14 +73,35 @@ public class Zab1_0Test {
         public void run() {
             try {
                 leader.lead();
+            } catch (InterruptedException e) {
+                LOG.info("Leader thread interrupted", e);
             } catch (Exception e) {
-                e.printStackTrace();
+                LOG.warn("Unexpected exception in leader thread", e);
             } finally {
                 leader.shutdown("lead ended");
             }
         }
     }
-
+           
+    private static final class MockLeader extends Leader {
+           
+        MockLeader(QuorumPeer qp, LeaderZooKeeperServer zk)
+        throws IOException {
+            super(qp, zk);
+        }
+           
+        /**
+         * This method returns the value of the variable that holds the epoch
+         * to be proposed and that has been proposed, depending on the point
+         * of the execution in which it is called. 
+         * 
+         * @return epoch
+         */
+        public long getCurrentEpochToPropose() {
+            return epoch;
+        }
+    }
+     
    public static final class FollowerMockThread extends Thread {
     	private final Leader leader;
     	private final long followerSid;
@@ -137,13 +163,65 @@ public class Zab1_0Test {
             	Assert.fail("leader timed out in getEpochToPropose");
             }
         } finally {
-            recursiveDelete(tmpDir);
             if (leader != null) {
                 leader.shutdown("end of test");
             }
+            recursiveDelete(tmpDir);
         }
     }
     
+    /**
+     * In this test, the leader sets the last accepted epoch to 5. The call
+     * to getEpochToPropose should set epoch to 6 and wait until another 
+     * follower executes it. If in getEpochToPropose we don't check if
+     * lastAcceptedEpoch == epoch, then the call from the subsequent
+     * follower with lastAcceptedEpoch = 6 doesn't change the value
+     * of epoch, and the test fails. It passes with the fix to predicate.
+     * 
+     * {@link https://issues.apache.org/jira/browse/ZOOKEEPER-1343}
+     * 
+     * 
+     * @throws Exception
+     */
+        
+    @Test
+    public void testLastAcceptedEpoch() throws Exception {    
+        File tmpDir = File.createTempFile("test", "dir");
+        tmpDir.delete();
+        tmpDir.mkdir();
+        Leader leader = null;
+        LeadThread leadThread = null;
+        try {
+            QuorumPeer peer = createQuorumPeer(tmpDir);
+            leader = createMockLeader(tmpDir, peer);
+            peer.leader = leader;
+            peer.setAcceptedEpoch(5);
+            leadThread = new LeadThread(leader); 
+            leadThread.start();
+            
+            while(((MockLeader) leader).getCurrentEpochToPropose() != 6){
+                Thread.sleep(20);
+            }
+                
+            try {
+                long epoch = leader.getEpochToPropose(1, 6);
+                Assert.assertEquals("New proposed epoch is wrong", 7, epoch);  
+            } catch (Exception e){ 
+                Assert.fail("Timed out in getEpochToPropose");
+            }
+            
+        } finally {
+            if (leader != null) {
+                leader.shutdown("end of test");
+            }
+            if (leadThread != null) {
+                leadThread.interrupt();
+                leadThread.join();
+            }
+            recursiveDelete(tmpDir);
+        }
+    }
+        
     @Test
     public void testLeaderInElectingFollowers() throws Exception {    
         File tmpDir = File.createTempFile("test", "dir");
@@ -174,10 +252,10 @@ public class Zab1_0Test {
             Assert.assertTrue(f1.msg + " without waiting for leader", f1.msg == null);            
             Assert.assertTrue(f2.msg + " without waiting for leader", f2.msg == null);
         } finally {
-            recursiveDelete(tmpDir);
             if (leader != null) {
                 leader.shutdown("end of test");
             }
+            recursiveDelete(tmpDir);
         }
     }
 
@@ -212,6 +290,10 @@ public class Zab1_0Test {
         }
         public void closeAll() {
         }
+        @Override
+        public int getNumAliveConnections() {
+            return 0;
+        }
     }
     static Socket[] getSocketPair() throws IOException {
         ServerSocket ss = new ServerSocket();
@@ -231,6 +313,10 @@ public class Zab1_0Test {
     
     static public interface LeaderConversation {
         void converseWithLeader(InputArchive ia, OutputArchive oa, Leader l) throws Exception;
+    }
+    
+    static public interface PopulatedLeaderConversation {
+        void converseWithLeader(InputArchive ia, OutputArchive oa, Leader l, long zxid) throws Exception;
     }
     
     static public interface FollowerConversation {
@@ -268,7 +354,6 @@ public class Zab1_0Test {
 
             conversation.converseWithLeader(ia, oa, leader);
         } finally {
-            recursiveDelete(tmpDir);
             if (leader != null) {
                 leader.shutdown("end of test");
             }
@@ -276,8 +361,79 @@ public class Zab1_0Test {
                 leadThread.interrupt();
                 leadThread.join();
             }
+            recursiveDelete(tmpDir);
         }
     }
+    
+    public void testPopulatedLeaderConversation(PopulatedLeaderConversation conversation, int ops) throws Exception {
+        Socket pair[] = getSocketPair();
+        Socket leaderSocket = pair[0];
+        Socket followerSocket = pair[1];
+        File tmpDir = File.createTempFile("test", "dir");
+        tmpDir.delete();
+        tmpDir.mkdir();
+        LeadThread leadThread = null;
+        Leader leader = null;
+        try {              
+            // Setup a database with two znodes
+            FileTxnSnapLog snapLog = new FileTxnSnapLog(tmpDir, tmpDir);
+            ZKDatabase zkDb = new ZKDatabase(snapLog);
+            
+            Assert.assertTrue(ops >= 1);
+            long zxid = ZxidUtils.makeZxid(1, 0);            
+            for(int i = 1; i <= ops; i++){
+                zxid = ZxidUtils.makeZxid(1, i);
+                String path = "/foo-"+ i;
+                zkDb.processTxn(new TxnHeader(13,1000+i,zxid,30+i,ZooDefs.OpCode.create), 
+                                                new CreateTxn(path, "fpjwasalsohere".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, false, 1));
+                Stat stat = new Stat();
+                Assert.assertEquals("fpjwasalsohere", new String(zkDb.getData(path, stat, null)));
+            }                
+            Assert.assertTrue(zxid > ZxidUtils.makeZxid(1, 0));
+            
+            // Generate snapshot and close files.
+            snapLog.save(zkDb.getDataTree(), zkDb.getSessionWithTimeOuts());
+            snapLog.close();
+            
+            QuorumPeer peer = createQuorumPeer(tmpDir);
+                        
+            leader = createLeader(tmpDir, peer);
+            peer.leader = leader;
+            
+            // Set the last accepted epoch and current epochs to be 1
+            peer.setAcceptedEpoch(1);
+            peer.setCurrentEpoch(1);
+
+            
+            leadThread = new LeadThread(leader);
+            leadThread.start();
+
+            while(leader.cnxAcceptor == null || !leader.cnxAcceptor.isAlive()) {
+                Thread.sleep(20);
+            }
+            
+            LearnerHandler lh = new LearnerHandler(leaderSocket, leader);
+            lh.start();
+            leaderSocket.setSoTimeout(4000);
+
+            InputArchive ia = BinaryInputArchive.getArchive(followerSocket
+                    .getInputStream());
+            OutputArchive oa = BinaryOutputArchive.getArchive(followerSocket
+                    .getOutputStream());
+
+            conversation.converseWithLeader(ia, oa, leader, zxid);
+        } finally {
+            if (leader != null) {
+                leader.shutdown("end of test");
+            }
+            if (leadThread != null) {
+                leadThread.interrupt();
+                leadThread.join();
+            }
+            recursiveDelete(tmpDir);
+        }
+    }
+    
     
     public void testFollowerConversation(FollowerConversation conversation) throws Exception {
         File tmpDir = File.createTempFile("test", "dir");
@@ -300,8 +456,10 @@ public class Zab1_0Test {
                 public void run() {
                     try {
                         followerForThread.followLeader();
-                    } catch(Exception e) {
-                        e.printStackTrace();
+                    } catch (InterruptedException e) {
+                        LOG.info("Follower thread interrupted", e);
+                    } catch (Exception e) {
+                        LOG.warn("Unexpected exception in follower thread", e);
                     }
                 }
             };
@@ -329,6 +487,46 @@ public class Zab1_0Test {
         }
     }
 
+    @Test
+    public void testUnnecessarySnap() throws Exception {
+        testPopulatedLeaderConversation(new PopulatedLeaderConversation() {
+           @Override
+           public void converseWithLeader(InputArchive ia, OutputArchive oa,
+                    Leader l, long zxid) throws Exception {
+               
+               Assert.assertEquals(1, l.self.getAcceptedEpoch());
+               Assert.assertEquals(1, l.self.getCurrentEpoch());
+               
+               /* we test a normal run. everything should work out well. */
+               LearnerInfo li = new LearnerInfo(1, 0x10000);
+               byte liBytes[] = new byte[12];
+               ByteBufferOutputStream.record2ByteBuffer(li,
+                       ByteBuffer.wrap(liBytes));
+               QuorumPacket qp = new QuorumPacket(Leader.FOLLOWERINFO, 1,
+                       liBytes, null);
+               oa.writeRecord(qp, null);
+               
+               readPacketSkippingPing(ia, qp);
+               Assert.assertEquals(Leader.LEADERINFO, qp.getType());
+               Assert.assertEquals(ZxidUtils.makeZxid(2, 0), qp.getZxid());
+               Assert.assertEquals(ByteBuffer.wrap(qp.getData()).getInt(),
+                       0x10000);
+               Assert.assertEquals(2, l.self.getAcceptedEpoch());
+               Assert.assertEquals(1, l.self.getCurrentEpoch());
+               
+               byte epochBytes[] = new byte[4];
+               final ByteBuffer wrappedEpochBytes = ByteBuffer.wrap(epochBytes);
+               wrappedEpochBytes.putInt(1);
+               qp = new QuorumPacket(Leader.ACKEPOCH, zxid, epochBytes, null);
+               oa.writeRecord(qp, null);
+               
+               readPacketSkippingPing(ia, qp);
+               Assert.assertEquals(Leader.DIFF, qp.getType());
+           
+           }
+       }, 2);
+    }
+    
     @Test
     public void testNormalFollowerRun() throws Exception {
         testFollowerConversation(new FollowerConversation() {
@@ -480,6 +678,110 @@ public class Zab1_0Test {
     }
     
     @Test
+    public void testNormalFollowerRunWithDiff() throws Exception {
+        testFollowerConversation(new FollowerConversation() {
+            @Override
+            public void converseWithFollower(InputArchive ia, OutputArchive oa,
+                    Follower f) throws Exception {
+                File tmpDir = File.createTempFile("test", "dir");
+                tmpDir.delete();
+                tmpDir.mkdir();
+                File logDir = f.fzk.getTxnLogFactory().getDataDir().getParentFile();
+                File snapDir = f.fzk.getTxnLogFactory().getSnapDir().getParentFile();
+                try {
+                    Assert.assertEquals(0, f.self.getAcceptedEpoch());
+                    Assert.assertEquals(0, f.self.getCurrentEpoch());
+
+                    // Setup a database with a single /foo node
+                    ZKDatabase zkDb = new ZKDatabase(new FileTxnSnapLog(tmpDir, tmpDir));
+                    final long firstZxid = ZxidUtils.makeZxid(1, 1);
+                    zkDb.processTxn(new TxnHeader(13, 1313, firstZxid, 33, ZooDefs.OpCode.create), new CreateTxn("/foo", "data1".getBytes(), ZooDefs.Ids.OPEN_ACL_UNSAFE, false, 1));
+                    Stat stat = new Stat();
+                    Assert.assertEquals("data1", new String(zkDb.getData("/foo", stat, null)));
+
+                    QuorumPacket qp = new QuorumPacket();
+                    readPacketSkippingPing(ia, qp);
+                    Assert.assertEquals(Leader.FOLLOWERINFO, qp.getType());
+                    Assert.assertEquals(qp.getZxid(), 0);
+                    LearnerInfo learnInfo = new LearnerInfo();
+                    ByteBufferInputStream.byteBuffer2Record(ByteBuffer.wrap(qp.getData()), learnInfo);
+                    Assert.assertEquals(learnInfo.getProtocolVersion(), 0x10000);
+                    Assert.assertEquals(learnInfo.getServerid(), 0);
+                
+                    // We are simulating an established leader, so the epoch is 1
+                    qp.setType(Leader.LEADERINFO);
+                    qp.setZxid(ZxidUtils.makeZxid(1, 0));
+                    byte protoBytes[] = new byte[4];
+                    ByteBuffer.wrap(protoBytes).putInt(0x10000);
+                    qp.setData(protoBytes);
+                    oa.writeRecord(qp, null);
+                
+                    readPacketSkippingPing(ia, qp);
+                    Assert.assertEquals(Leader.ACKEPOCH, qp.getType());
+                    Assert.assertEquals(0, qp.getZxid());
+                    Assert.assertEquals(ZxidUtils.makeZxid(0, 0), ByteBuffer.wrap(qp.getData()).getInt());
+                    Assert.assertEquals(1, f.self.getAcceptedEpoch());
+                    Assert.assertEquals(0, f.self.getCurrentEpoch());
+                    
+                    // Send a diff
+                    qp.setType(Leader.DIFF);
+                    qp.setData(new byte[0]);
+                    qp.setZxid(zkDb.getDataTreeLastProcessedZxid());
+                    oa.writeRecord(qp, null);
+                    final long createSessionZxid = ZxidUtils.makeZxid(1, 2);
+                    proposeNewSession(qp, createSessionZxid, 0x333);
+                    oa.writeRecord(qp, null);
+                    qp.setType(Leader.COMMIT);
+                    qp.setZxid(createSessionZxid);
+                    oa.writeRecord(qp, null);
+                    qp.setType(Leader.NEWLEADER);
+                    qp.setZxid(ZxidUtils.makeZxid(1, 0));
+                    oa.writeRecord(qp, null);
+                    qp.setType(Leader.UPTODATE);
+                    qp.setZxid(0);
+                    oa.writeRecord(qp, null);
+                    
+                    // Read the uptodate ack
+                    readPacketSkippingPing(ia, qp);
+                    Assert.assertEquals(Leader.ACK, qp.getType());
+                    Assert.assertEquals(ZxidUtils.makeZxid(1, 0), qp.getZxid());
+                    
+                  
+                    // Get the ack of the new leader
+                    readPacketSkippingPing(ia, qp);
+                    Assert.assertEquals(Leader.ACK, qp.getType());
+                    Assert.assertEquals(ZxidUtils.makeZxid(1, 0), qp.getZxid());
+                    Assert.assertEquals(1, f.self.getAcceptedEpoch());
+                    Assert.assertEquals(1, f.self.getCurrentEpoch());
+                    
+                    Assert.assertEquals(createSessionZxid, f.fzk.getLastProcessedZxid());
+                    
+                    // Make sure the data was recorded in the filesystem ok
+                    ZKDatabase zkDb2 = new ZKDatabase(new FileTxnSnapLog(logDir, snapDir));
+                    zkDb2.loadDataBase();
+                    LOG.info("zkdb2 sessions:" + zkDb2.getSessions());
+                    Assert.assertNotNull(zkDb2.getSessionWithTimeOuts().get(4L));
+                } finally {
+                    recursiveDelete(tmpDir);
+                }
+                
+            }
+
+            private void proposeNewSession(QuorumPacket qp, long zxid, long sessionId) throws IOException {
+                qp.setType(Leader.PROPOSAL);
+                qp.setZxid(zxid);
+                TxnHeader hdr = new TxnHeader(4, 1414, qp.getZxid(), 55, ZooDefs.OpCode.createSession);
+                CreateSessionTxn cst = new CreateSessionTxn(30000);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                OutputArchive boa = BinaryOutputArchive.getArchive(baos);
+                boa.writeRecord(hdr, null);
+                boa.writeRecord(cst, null);
+                qp.setData(baos.toByteArray());
+            }
+        });
+    }
+    
+    @Test
     public void testNormalRun() throws Exception {
         testLeaderConversation(new LeaderConversation() {
             public void converseWithLeader(InputArchive ia, OutputArchive oa, Leader l)
@@ -508,9 +810,8 @@ public class Zab1_0Test {
                 oa.writeRecord(qp, null);
                 
                 readPacketSkippingPing(ia, qp);
-                Assert.assertEquals(Leader.SNAP, qp.getType());
-                deserializeSnapshot(ia);
-               
+                Assert.assertEquals(Leader.DIFF, qp.getType());
+
                 readPacketSkippingPing(ia, qp);
                 Assert.assertEquals(Leader.NEWLEADER, qp.getType());
                 Assert.assertEquals(ZxidUtils.makeZxid(1, 0), qp.getZxid());
@@ -565,9 +866,7 @@ public class Zab1_0Test {
                 qp = new QuorumPacket(Leader.ACKEPOCH, 0, new byte[4], null);
                 oa.writeRecord(qp, null);
                 readPacketSkippingPing(ia, qp);
-                Assert.assertEquals(Leader.SNAP, qp.getType());
-                deserializeSnapshot(ia);
-
+                Assert.assertEquals(Leader.DIFF, qp.getType());
                 readPacketSkippingPing(ia, qp);
                 Assert.assertEquals(Leader.NEWLEADER, qp.getType());
                 Assert.assertEquals(ZxidUtils.makeZxid(21, 0), qp.getZxid());
@@ -624,15 +923,31 @@ public class Zab1_0Test {
         if (file.isFile()) {
             file.delete();
         } else {
-            for(File c: file.listFiles()) {
-                recursiveDelete(c);
+            // might return null if deleted out from under us...
+            File[] files = file.listFiles();
+            if (files != null) {
+                for(File c: files) {
+                    recursiveDelete(c);
+                }
             }
             file.delete();
         }
     }
 
     private Leader createLeader(File tmpDir, QuorumPeer peer)
-            throws IOException, NoSuchFieldException, IllegalAccessException {
+    throws IOException, NoSuchFieldException, IllegalAccessException{
+        LeaderZooKeeperServer zk = prepareLeader(tmpDir, peer);
+        return new Leader(peer, zk);
+    }
+            
+    private Leader createMockLeader(File tmpDir, QuorumPeer peer)
+    throws IOException, NoSuchFieldException, IllegalAccessException{
+        LeaderZooKeeperServer zk = prepareLeader(tmpDir, peer);
+        return new MockLeader(peer, zk);
+    }
+            
+    private LeaderZooKeeperServer prepareLeader(File tmpDir, QuorumPeer peer)
+    throws IOException, NoSuchFieldException, IllegalAccessException {
         FileTxnSnapLog logFactory = new FileTxnSnapLog(tmpDir, tmpDir);
         peer.setTxnFactory(logFactory);
         Field addrField = peer.getClass().getDeclaredField("myQuorumAddr");
@@ -640,7 +955,7 @@ public class Zab1_0Test {
         addrField.set(peer, new InetSocketAddress(33556));
         ZKDatabase zkDb = new ZKDatabase(logFactory);
         LeaderZooKeeperServer zk = new LeaderZooKeeperServer(logFactory, peer, new ZooKeeperServer.BasicDataTreeBuilder(), zkDb);
-        return new Leader(peer, zk);
+        return zk;
     }
 
     static class ConversableFollower extends Follower {

@@ -66,6 +66,8 @@ PyObject *err_to_exception(int errcode) {
     return OperationTimeoutException;
   case ZBADARGUMENTS:
     return BadArgumentsException;
+  case ZINVALIDSTATE:
+    return InvalidStateException;
   case ZAPIERROR:
     return ApiErrorException;
   case ZNONODE:
@@ -90,7 +92,6 @@ PyObject *err_to_exception(int errcode) {
     return InvalidCallbackException;
   case ZSESSIONMOVED:
     return SessionMovedException;
-      
   case ZOK:
   default:
     return NULL;
@@ -436,7 +437,8 @@ void watcher_dispatch(zhandle_t *zzh, int type, int state,
   if (PyObject_CallObject((PyObject*)callback, arglist) == NULL) {
     PyErr_Print();
   }
-  if (pyw->permanent == 0 && (type != ZOO_SESSION_EVENT || is_unrecoverable(zzh))) {
+  Py_DECREF(arglist);
+  if (pyw->permanent == 0 && (type != ZOO_SESSION_EVENT || state < 0)) {
     free_pywatcher(pyw);
   }
   PyGILState_Release(gstate);
@@ -457,6 +459,7 @@ void void_completion_dispatch(int rc, const void *data)
   PyObject *arglist = Py_BuildValue("(i,i)", pyw->zhandle, rc);
   if (PyObject_CallObject((PyObject*)callback, arglist) == NULL)
     PyErr_Print();
+  Py_DECREF(arglist);
   free_pywatcher(pyw);
   PyGILState_Release(gstate);
 }
@@ -474,9 +477,9 @@ void stat_completion_dispatch(int rc, const struct Stat *stat, const void *data)
   PyObject *pystat = build_stat(stat);
   PyObject *arglist = Py_BuildValue("(i,i,O)", pyw->zhandle,rc, pystat);
   Py_DECREF(pystat);
-
   if (PyObject_CallObject((PyObject*)callback, arglist) == NULL)
     PyErr_Print();
+  Py_DECREF(arglist);
   free_pywatcher(pyw);
   PyGILState_Release(gstate);
 }
@@ -498,6 +501,7 @@ void data_completion_dispatch(int rc, const char *value, int value_len, const st
 
   if (PyObject_CallObject((PyObject*)callback, arglist) == NULL)
     PyErr_Print();
+  Py_DECREF(arglist);
   free_pywatcher(pyw);
   PyGILState_Release(gstate);
 }
@@ -518,6 +522,7 @@ void strings_completion_dispatch(int rc, const struct String_vector *strings, co
       PyObject *arglist = Py_BuildValue("(i,i,O)", pyw->zhandle, rc, pystrings);   
       if (arglist == NULL || PyObject_CallObject((PyObject*)callback, arglist) == NULL)
         PyErr_Print();
+      Py_DECREF(arglist);
     }
   else
     PyErr_Print();
@@ -540,6 +545,7 @@ void string_completion_dispatch(int rc, const char *value, const void *data)
   PyObject *arglist = Py_BuildValue("(i,i,s)", pyw->zhandle,rc, value);
   if (PyObject_CallObject((PyObject*)callback, arglist) == NULL)
     PyErr_Print();
+  Py_DECREF(arglist);
   free_pywatcher(pyw);
   PyGILState_Release(gstate);
 }
@@ -565,6 +571,7 @@ void acl_completion_dispatch(int rc, struct ACL_vector *acl, struct Stat *stat, 
   if (PyObject_CallObject((PyObject*)callback, arglist) == NULL) {
     PyErr_Print();
   }
+  Py_DECREF(arglist);
   free_pywatcher(pyw);
   PyGILState_Release(gstate);
 }

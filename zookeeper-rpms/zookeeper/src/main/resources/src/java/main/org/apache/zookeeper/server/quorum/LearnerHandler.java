@@ -35,8 +35,6 @@ import java.util.concurrent.locks.ReentrantReadWriteLock.ReadLock;
 import org.apache.jute.BinaryInputArchive;
 import org.apache.jute.BinaryOutputArchive;
 import org.apache.jute.Record;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.zookeeper.KeeperException.SessionExpiredException;
 import org.apache.zookeeper.ZooDefs.OpCode;
 import org.apache.zookeeper.server.ByteBufferInputStream;
@@ -47,6 +45,8 @@ import org.apache.zookeeper.server.quorum.QuorumPeer.LearnerType;
 import org.apache.zookeeper.server.util.SerializeUtils;
 import org.apache.zookeeper.server.util.ZxidUtils;
 import org.apache.zookeeper.txn.TxnHeader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * There will be an instance of this class created by the Leader for each
@@ -233,7 +233,6 @@ public class LearnerHandler extends Thread {
     @Override
     public void run() {
         try {            
-            sock.setSoTimeout(leader.self.getTickTime()*leader.self.getInitLimit());
             ia = BinaryInputArchive.getArchive(new BufferedInputStream(sock
                     .getInputStream()));
             bufferedOutput = new BufferedOutputStream(sock.getOutputStream());
@@ -261,8 +260,8 @@ public class LearnerHandler extends Thread {
             	this.sid = leader.followerCounter.getAndDecrement();
             }
 
-            LOG.info("Follower sid: " + this.sid + " : info : "
-                    + leader.self.quorumPeers.get(this.sid));
+            LOG.info("Follower sid: " + sid + " : info : "
+                    + leader.self.quorumPeers.get(sid));
                         
             if (qp.getType() == Leader.OBSERVERINFO) {
                   learnerType = LearnerType.OBSERVER;
@@ -316,16 +315,18 @@ public class LearnerHandler extends Thread {
                 rl.lock();        
                 final long maxCommittedLog = leader.zk.getZKDatabase().getmaxCommittedLog();
                 final long minCommittedLog = leader.zk.getZKDatabase().getminCommittedLog();
-                LOG.info("Synchronizing with Follower sid: " + this.sid
-                        +" maxCommittedLog ="+Long.toHexString(maxCommittedLog)
-                        +" minCommittedLog = "+Long.toHexString(minCommittedLog)
-                        +" peerLastZxid = "+Long.toHexString(peerLastZxid));
+                LOG.info("Synchronizing with Follower sid: " + sid
+                        +" maxCommittedLog=0x"+Long.toHexString(maxCommittedLog)
+                        +" minCommittedLog=0x"+Long.toHexString(minCommittedLog)
+                        +" peerLastZxid=0x"+Long.toHexString(peerLastZxid));
 
                 LinkedList<Proposal> proposals = leader.zk.getZKDatabase().getCommittedLog();
 
                 if (proposals.size() != 0) {
+                    LOG.debug("proposal size is {}", proposals.size());
                     if ((maxCommittedLog >= peerLastZxid)
                             && (minCommittedLog <= peerLastZxid)) {
+                        LOG.debug("Sending proposals to follower");
 
                         // as we look through proposals, this variable keeps track of previous
                         // proposal Id.
@@ -335,6 +336,12 @@ public class LearnerHandler extends Thread {
                         // Before sending the first packet, we have to tell the learner
                         // whether to expect a trunc or a diff
                         boolean firstPacket=true;
+
+                        // If we are here, we can use committedLog to sync with
+                        // follower. Then we only need to decide whether to
+                        // send trunc or not
+                        packetToSend = Leader.DIFF;
+                        zxidToSend = maxCommittedLog;
 
                         for (Proposal propose: proposals) {
                             // skip the proposals the peer already has
@@ -349,18 +356,10 @@ public class LearnerHandler extends Thread {
                                     // Does the peer have some proposals that the leader hasn't seen yet
                                     if (prevProposalZxid < peerLastZxid) {
                                         // send a trunc message before sending the diff
-                                        packetToSend = Leader.TRUNC;
-                                        LOG.info("Sending TRUNC");
+                                        packetToSend = Leader.TRUNC;                                        
                                         zxidToSend = prevProposalZxid;
                                         updates = zxidToSend;
-                                    } 
-                                    else {
-                                        // Just send the diff
-                                        packetToSend = Leader.DIFF;
-                                        LOG.info("Sending diff");
-                                        zxidToSend = maxCommittedLog;        
                                     }
-
                                 }
                                 queuePacket(propose.packet);
                                 QuorumPacket qcommit = new QuorumPacket(Leader.COMMIT, propose.packet.getZxid(),
@@ -369,20 +368,33 @@ public class LearnerHandler extends Thread {
                             }
                         }
                     } else if (peerLastZxid > maxCommittedLog) {
+                        LOG.debug("Sending TRUNC to follower zxidToSend=0x{} updates=0x{}",
+                                Long.toHexString(maxCommittedLog),
+                                Long.toHexString(updates));
+
                         packetToSend = Leader.TRUNC;
                         zxidToSend = maxCommittedLog;
                         updates = zxidToSend;
+                    } else {
+                        LOG.warn("Unhandled proposal scenario");
                     }
+                } else if (peerLastZxid == leader.zk.getZKDatabase().getDataTreeLastProcessedZxid()) {
+                    // The leader may recently take a snapshot, so the committedLog
+                    // is empty. We don't need to send snapshot if the follow
+                    // is already sync with in-memory db.
+                    LOG.debug("committedLog is empty but leader and follower "
+                            + "are in sync, zxid=0x{}",
+                            Long.toHexString(peerLastZxid));
+                    packetToSend = Leader.DIFF;
+                    zxidToSend = peerLastZxid;
                 } else {
                     // just let the state transfer happen
+                    LOG.debug("proposals is empty");
                 }               
 
+                LOG.info("Sending " + Leader.getPacketType(packetToSend));
                 leaderLastZxid = leader.startForwarding(this, updates);
-                if (peerLastZxid == leaderLastZxid) {
-                    // We are in sync so we'll do an empty diff
-                    packetToSend = Leader.DIFF;
-                    zxidToSend = leaderLastZxid;
-                }
+
             } finally {
                 rl.unlock();
             }
@@ -442,6 +454,9 @@ public class LearnerHandler extends Thread {
             }
             leader.processAck(this.sid, qp.getZxid(), sock.getLocalSocketAddress());
             
+            // now that the ack has been processed expect the syncLimit
+            sock.setSoTimeout(leader.self.tickTime * leader.self.syncLimit);
+
             /*
              * Wait until leader starts up
              */
@@ -456,7 +471,6 @@ public class LearnerHandler extends Thread {
             //
             queuedPackets.add(new QuorumPacket(Leader.UPTODATE, -1, null, null));
 
-            
             while (true) {
                 qp = new QuorumPacket();
                 ia.readRecord(qp, "packet");

@@ -20,6 +20,7 @@ package org.apache.zookeeper.server;
 
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -30,21 +31,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import java.nio.ByteBuffer;
-
 import org.apache.jute.Index;
 import org.apache.jute.InputArchive;
 import org.apache.jute.OutputArchive;
 import org.apache.jute.Record;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.KeeperException.Code;
+import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.Quotas;
 import org.apache.zookeeper.StatsTrack;
 import org.apache.zookeeper.WatchedEvent;
 import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.KeeperException.Code;
-import org.apache.zookeeper.KeeperException.NoNodeException;
 import org.apache.zookeeper.Watcher.Event;
 import org.apache.zookeeper.Watcher.Event.EventType;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
@@ -54,20 +51,17 @@ import org.apache.zookeeper.common.PathTrie;
 import org.apache.zookeeper.data.ACL;
 import org.apache.zookeeper.data.Stat;
 import org.apache.zookeeper.data.StatPersisted;
+import org.apache.zookeeper.txn.CheckVersionTxn;
 import org.apache.zookeeper.txn.CreateTxn;
 import org.apache.zookeeper.txn.DeleteTxn;
 import org.apache.zookeeper.txn.ErrorTxn;
+import org.apache.zookeeper.txn.MultiTxn;
 import org.apache.zookeeper.txn.SetACLTxn;
 import org.apache.zookeeper.txn.SetDataTxn;
-import org.apache.zookeeper.txn.CheckVersionTxn;
 import org.apache.zookeeper.txn.Txn;
-import org.apache.zookeeper.txn.MultiTxn;
 import org.apache.zookeeper.txn.TxnHeader;
-
-import org.apache.zookeeper.proto.CreateRequest;
-import org.apache.zookeeper.proto.DeleteRequest;
-import org.apache.zookeeper.proto.SetACLRequest;
-import org.apache.zookeeper.proto.SetDataRequest;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * This class maintains the tree data structure. It doesn't have any networking
@@ -783,7 +777,6 @@ public class DataTree {
     {
         ProcessTxnResult rc = new ProcessTxnResult();
 
-        String debug = "";
         try {
             rc.clientId = header.getClientId();
             rc.cxid = header.getCxid();
@@ -794,7 +787,6 @@ public class DataTree {
             switch (header.getType()) {
                 case OpCode.create:
                     CreateTxn createTxn = (CreateTxn) txn;
-                    debug = "Create transaction for " + createTxn.getPath();
                     rc.path = createTxn.getPath();
                     createNode(
                             createTxn.getPath(),
@@ -806,23 +798,19 @@ public class DataTree {
                     break;
                 case OpCode.delete:
                     DeleteTxn deleteTxn = (DeleteTxn) txn;
-                    debug = "Delete transaction for " + deleteTxn.getPath();
                     rc.path = deleteTxn.getPath();
                     deleteNode(deleteTxn.getPath(), header.getZxid());
                     break;
                 case OpCode.setData:
                     SetDataTxn setDataTxn = (SetDataTxn) txn;
-                    debug = "Set data transaction for "
-                            + setDataTxn.getPath()
-                            + " to new value=" + Arrays.toString(setDataTxn.getData());
+                    rc.path = setDataTxn.getPath();
                     rc.stat = setData(setDataTxn.getPath(), setDataTxn
                             .getData(), setDataTxn.getVersion(), header
                             .getZxid(), header.getTime());
                     break;
                 case OpCode.setACL:
                     SetACLTxn setACLTxn = (SetACLTxn) txn;
-                    debug = "Set ACL transaction for "
-                            + setACLTxn.getPath();
+                    rc.path = setACLTxn.getPath();
                     rc.stat = setACL(setACLTxn.getPath(), setACLTxn.getAcl(),
                             setACLTxn.getVersion());
                     break;
@@ -835,16 +823,11 @@ public class DataTree {
                     break;
                 case OpCode.check:
                     CheckVersionTxn checkTxn = (CheckVersionTxn) txn;
-                    debug = "Check Version transaction for "
-                            + checkTxn.getPath() 
-                            + " and version="
-                            + checkTxn.getVersion();
                     rc.path = checkTxn.getPath();
                     break;
                 case OpCode.multi:
                     MultiTxn multiTxn = (MultiTxn) txn ;
                     List<Txn> txns = multiTxn.getTxns();
-                    debug = "Multi transaction with " + txns.size() + " operations";
                     rc.multiResult = new ArrayList<ProcessTxnResult>();
                     boolean failed = false;
                     for (Txn subtxn : txns) {
@@ -906,10 +889,14 @@ public class DataTree {
                     break;
             }
         } catch (KeeperException e) {
-             LOG.warn("Failed: " + debug, e);
-             rc.err = e.code().intValue();
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Failed: " + header + ":" + txn, e);
+            }
+            rc.err = e.code().intValue();
         } catch (IOException e) {
-            LOG.warn("Failed:" + debug, e);
+            if (LOG.isDebugEnabled()) {
+                LOG.debug("Failed: " + header + ":" + txn, e);
+            }
         }
         /*
          * A snapshot might be in progress while we are modifying the data
@@ -928,7 +915,8 @@ public class DataTree {
         if (rc.zxid > lastProcessedZxid) {
         	lastProcessedZxid = rc.zxid;
         }
-        /**
+
+        /*
          * Snapshots are taken lazily. It can happen that the child
          * znodes of a parent are created after the parent
          * is serialized. Therefore, while replaying logs during restore, a

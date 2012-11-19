@@ -53,7 +53,7 @@ else
   . "$ZOOBINDIR"/zkEnv.sh
 fi
 
-if [ "x$SERVER_JVMFLAGS" ]
+if [ "x$SERVER_JVMFLAGS"  != "x" ]
 then
     JVMFLAGS="$SERVER_JVMFLAGS $JVMFLAGS"
 fi
@@ -91,6 +91,10 @@ else
     mkdir -p $(dirname "$ZOOPIDFILE")
 fi
 
+if [ ! -w "$ZOO_LOG_DIR" ] ; then
+mkdir -p "$ZOO_LOG_DIR"
+fi
+
 _ZOO_DAEMON_OUT="$ZOO_LOG_DIR/zookeeper.out"
 
 case $1 in
@@ -103,7 +107,7 @@ start)
       fi
     fi
     nohup $JAVA "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.root.logger=${ZOO_LOG4J_PROP}" \
-    -cp "$CLASSPATH" $JVMFLAGS $ZOOMAIN "$ZOOCFG" > "$_ZOO_DAEMON_OUT" 2>&1 < /dev/null &
+    -cp "$CLASSPATH" $JVMFLAGS $ZOOMAIN "$ZOOCFG" > "$_ZOO_DAEMON_OUT" 2>&1 >> /opt/zookeeper/logs/zookeeper.log &
     if [ $? -eq 0 ]
     then
       if /bin/echo -n $! > "$ZOOPIDFILE"
@@ -120,7 +124,11 @@ start)
     fi
     ;;
 start-foreground)
-    $JAVA "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.root.logger=${ZOO_LOG4J_PROP}" \
+    ZOO_CMD="exec $JAVA"
+    if [ "${ZOO_NOEXEC}" != "" ]; then
+      ZOO_CMD="$JAVA"
+    fi
+    $ZOO_CMD "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.root.logger=${ZOO_LOG4J_PROP}" \
     -cp "$CLASSPATH" $JVMFLAGS $ZOOMAIN "$ZOOCFG"
     ;;
 print-cmd)
@@ -153,7 +161,10 @@ restart)
     ;;
 status)
     # -q is necessary on some versions of linux where nc returns too quickly, and no stat result is output
-    STAT=`echo stat | nc -q 1 localhost $(grep "^[[:space:]]*clientPort" "$ZOOCFG" | sed -e 's/.*=//') 2> /dev/null| grep Mode`
+    STAT=`$JAVA "-Dzookeeper.log.dir=${ZOO_LOG_DIR}" "-Dzookeeper.root.logger=${ZOO_LOG4J_PROP}" \
+             -cp "$CLASSPATH" $JVMFLAGS org.apache.zookeeper.client.FourLetterWordMain localhost \
+             $(grep "^[[:space:]]*clientPort" "$ZOOCFG" | sed -e 's/.*=//') srvr 2> /dev/null    \
+          | grep Mode`
     if [ "x$STAT" = "x" ]
     then
         echo "Error contacting service. It is probably not running."

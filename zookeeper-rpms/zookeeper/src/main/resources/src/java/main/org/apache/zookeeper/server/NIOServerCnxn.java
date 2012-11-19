@@ -64,7 +64,7 @@ public class NIOServerCnxn extends ServerCnxn {
 
     SocketChannel sock;
 
-    private SelectionKey sk;
+    private final SelectionKey sk;
 
     boolean initialized;
 
@@ -749,6 +749,7 @@ public class NIOServerCnxn extends ServerCnxn {
 
             print("packets_received", stats.getPacketsReceived());
             print("packets_sent", stats.getPacketsSent());
+            print("num_alive_connections", stats.getNumAliveClientConnections());
 
             print("outstanding_requests", stats.getOutstandingRequests());
 
@@ -770,9 +771,9 @@ public class NIOServerCnxn extends ServerCnxn {
             if(stats.getServerState().equals("leader")) {
                 Leader leader = ((LeaderZooKeeperServer)zkServer).getLeader();
 
-                print("followers", leader.learners.size());
-                print("synced_followers", leader.forwardingFollowers.size());
-                print("pending_syncs", leader.pendingSyncs.size());
+                print("followers", leader.getLearners().size());
+                print("synced_followers", leader.getForwardingFollowers().size());
+                print("pending_syncs", leader.getNumPendingSyncs());
             }
         }
 

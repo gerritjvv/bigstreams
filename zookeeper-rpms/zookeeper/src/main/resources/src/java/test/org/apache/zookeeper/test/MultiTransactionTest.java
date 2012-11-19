@@ -17,67 +17,164 @@
 
 package org.apache.zookeeper.test;
 
+import static org.junit.Assert.*;
+
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.*;
-import org.apache.zookeeper.ZooDefs.Ids;
-import org.apache.zookeeper.server.ServerCnxnFactory;
-import org.apache.zookeeper.server.SyncRequestProcessor;
-import org.apache.zookeeper.server.ZooKeeperServer;
+import org.apache.zookeeper.AsyncCallback;
+import org.apache.zookeeper.CreateMode;
+import org.apache.zookeeper.KeeperException;
+import org.apache.zookeeper.Op;
+import org.apache.zookeeper.OpResult;
+import org.apache.zookeeper.Transaction;
+import org.apache.zookeeper.WatchedEvent;
+import org.apache.zookeeper.Watcher;
+import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.OpResult.CheckResult;
+import org.apache.zookeeper.OpResult.CreateResult;
+import org.apache.zookeeper.OpResult.DeleteResult;
 import org.apache.zookeeper.OpResult.ErrorResult;
-import org.junit.After;
+import org.apache.zookeeper.OpResult.SetDataResult;
+import org.apache.zookeeper.ZooDefs.Ids;
+import org.apache.zookeeper.data.Stat;
+import org.apache.zookeeper.server.SyncRequestProcessor;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.List;
-import java.util.ArrayList;
-
-import org.apache.zookeeper.data.Stat;
-
-import static org.apache.zookeeper.test.ClientBase.CONNECTION_TIMEOUT;
-
-public class MultiTransactionTest extends ZKTestCase implements Watcher {
+public class MultiTransactionTest extends ClientBase {
     private static final Logger LOG = Logger.getLogger(MultiTransactionTest.class);
 
-    private static final String HOSTPORT = "127.0.0.1:" + PortAssignment.unique();
-
     private ZooKeeper zk;
-    private ServerCnxnFactory serverFactory;
-
-    @Override
-    public void process(WatchedEvent event) {
-        // ignore
-    }
+    private ZooKeeper zk_chroot;
 
     @Before
-    public void setupZk() throws Exception {
-        File tmpDir = ClientBase.createTmpDir();
-        ClientBase.setupTestEnv();
-        ZooKeeperServer zks = new ZooKeeperServer(tmpDir, tmpDir, 3000);
+    public void setUp() throws Exception {
         SyncRequestProcessor.setSnapCount(150);
-        final int PORT = Integer.parseInt(HOSTPORT.split(":")[1]);
-        serverFactory = ServerCnxnFactory.createFactory(PORT, -1);
-        serverFactory.startup(zks);
-        LOG.info("starting up the zookeeper server .. waiting");
-        Assert.assertTrue("waiting for server being up",
-                ClientBase.waitForServerUp(HOSTPORT, CONNECTION_TIMEOUT));
-        zk = new ZooKeeper(HOSTPORT, CONNECTION_TIMEOUT, this);
+        super.setUp();
+        zk = createClient();
     }
 
-    @After
-    public void shutdownServer() throws Exception {
-        zk.close();
-        serverFactory.shutdown();
+    
+    @Test
+    public void testChRootCreateDelete() throws Exception {
+        // creating the subtree for chRoot clients.
+        String chRoot = createNameSpace();
+        // Creating child using chRoot client.
+        zk_chroot = createClient(this.hostPort + chRoot);
+        Op createChild = Op.create("/myid", new byte[0],
+                Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT);
+        zk_chroot.multi(Arrays.asList(createChild));
+        
+        Assert.assertNotNull("zNode is not created under chroot:" + chRoot, zk
+                .exists(chRoot + "/myid", false));
+        Assert.assertNotNull("zNode is not created under chroot:" + chRoot,
+                zk_chroot.exists("/myid", false));
+        Assert.assertNull("zNode is created directly under '/', ignored configured chroot",
+                zk.exists("/myid", false));
+        
+        // Deleting child using chRoot client.
+        Op deleteChild = Op.delete("/myid", 0);
+        zk_chroot.multi(Arrays.asList(deleteChild));
+        Assert.assertNull("zNode exists under chroot:" + chRoot, zk.exists(
+                chRoot + "/myid", false));
+        Assert.assertNull("zNode exists under chroot:" + chRoot, zk_chroot
+                .exists("/myid", false));
+    }
+
+    @Test
+    public void testChRootSetData() throws Exception {
+        // creating the subtree for chRoot clients.
+        String chRoot = createNameSpace();
+        // setData using chRoot client.
+        zk_chroot = createClient(this.hostPort + chRoot);
+        String[] names = {"/multi0", "/multi1", "/multi2"};
+        List<Op> ops = new ArrayList<Op>();
+
+        for (int i = 0; i < names.length; i++) {
+            ops.add(Op.create(names[i], new byte[0], Ids.OPEN_ACL_UNSAFE,
+                    CreateMode.PERSISTENT));
+            ops.add(Op.setData(names[i], names[i].getBytes(), 0));
+        }
+
+        zk_chroot.multi(ops) ;
+
+        for (int i = 0; i < names.length; i++) {
+            Assert.assertArrayEquals("zNode data not matching", names[i]
+                    .getBytes(), zk_chroot.getData(names[i], false, null));
+        }
+    }
+
+    @Test
+    public void testChRootCheck() throws Exception {
+        // creating the subtree for chRoot clients.
+        String chRoot = createNameSpace();
+        // checking the child version using chRoot client.
+        zk_chroot = createClient(this.hostPort + chRoot);
+        String[] names = {"/multi0", "/multi1", "/multi2"};
+        List<Op> ops = new ArrayList<Op>();
+        for (int i = 0; i < names.length; i++) {
+            zk.create(chRoot + names[i], new byte[0], Ids.OPEN_ACL_UNSAFE,
+                    CreateMode.PERSISTENT);
+        }
+        for (int i = 0; i < names.length; i++) {
+            ops.add(Op.check(names[i], 0));
+        }
+        zk_chroot.multi(ops) ;
+    }
+
+    @Test
+    public void testChRootTransaction() throws Exception {
+        // creating the subtree for chRoot clients.
+        String chRoot = createNameSpace();
+        // checking the child version using chRoot client.
+        zk_chroot = createClient(this.hostPort + chRoot);
+        String childPath = "/myid";
+        Transaction transaction = zk_chroot.transaction();
+        transaction.create(childPath, new byte[0], Ids.OPEN_ACL_UNSAFE,
+                CreateMode.PERSISTENT);
+        transaction.check(childPath, 0);
+        transaction.setData(childPath, childPath.getBytes(), 0);
+        transaction.commit();
+
+        Assert.assertNotNull("zNode is not created under chroot:" + chRoot, zk
+                .exists(chRoot + childPath, false));
+        Assert.assertNotNull("zNode is not created under chroot:" + chRoot,
+                zk_chroot.exists(childPath, false));
+        Assert.assertNull("zNode is created directly under '/', ignored configured chroot",
+                        zk.exists(childPath, false));
+        Assert.assertArrayEquals("zNode data not matching", childPath
+                .getBytes(), zk_chroot.getData(childPath, false, null));
+
+        transaction = zk_chroot.transaction();
+        // Deleting child using chRoot client.
+        transaction.delete(childPath, 1);
+        transaction.commit();
+
+        Assert.assertNull("chroot:" + chRoot + " exists after delete", zk
+                .exists(chRoot + "/myid", false));
+        Assert.assertNull("chroot:" + chRoot + " exists after delete",
+                zk_chroot.exists("/myid", false));
+    }
+
+    private String createNameSpace() throws InterruptedException,
+            KeeperException {
+        // creating the subtree for chRoot clients.
+        String chRoot = "/appsX";
+        Op createChRoot = Op.create(chRoot, new byte[0], Ids.OPEN_ACL_UNSAFE,
+                CreateMode.PERSISTENT);
+        zk.multi(Arrays.asList(createChRoot));
+        return chRoot;
     }
 
     @Test
     public void testCreate() throws Exception {
-        List<OpResult> results = new ArrayList<OpResult>();
-
-        results = zk.multi(Arrays.asList(
+        zk.multi(Arrays.asList(
                 Op.create("/multi0", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT),
                 Op.create("/multi1", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT),
                 Op.create("/multi2", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
@@ -225,6 +322,170 @@ public class MultiTransactionTest extends ZKTestCase implements Watcher {
         }
     }
 
+    /**
+     * Exercise the equals methods of OpResult classes.
+     */
+    @Test
+    public void testOpResultEquals() {
+        opEquals(new CreateResult("/foo"),
+                new CreateResult("/foo"),
+                new CreateResult("nope"));
 
+        opEquals(new CheckResult(),
+                new CheckResult(),
+                null);
+        
+        opEquals(new SetDataResult(new Stat(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)),
+                new SetDataResult(new Stat(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11)),
+                new SetDataResult(new Stat(11, 12, 13, 14, 15, 16, 17, 18, 19, 110, 111)));
+        
+        opEquals(new ErrorResult(1),
+                new ErrorResult(1),
+                new ErrorResult(2));
+        
+        opEquals(new DeleteResult(),
+                new DeleteResult(),
+                null);
 
+        opEquals(new ErrorResult(1),
+                new ErrorResult(1),
+                new ErrorResult(2));
+    }
+
+    private void opEquals(OpResult expected, OpResult value, OpResult near) {
+        assertEquals(value, value);
+        assertFalse(value.equals(new Object()));
+        assertFalse(value.equals(near));
+        assertFalse(value.equals(value instanceof CreateResult ?
+                new ErrorResult(1) : new CreateResult("nope2")));
+        assertTrue(value.equals(expected));
+    }
+
+    @Test
+    public void testWatchesTriggered() throws KeeperException, InterruptedException {
+        HasTriggeredWatcher watcher = new HasTriggeredWatcher();
+        zk.getChildren("/", watcher);
+        zk.multi(Arrays.asList(
+                Op.create("/t", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT),
+                Op.delete("/t", -1)
+        ));
+        assertTrue(watcher.triggered.await(CONNECTION_TIMEOUT, TimeUnit.MILLISECONDS));
+    }
+
+    @Test
+    public void testNoWatchesTriggeredForFailedMultiRequest() throws InterruptedException, KeeperException {
+        HasTriggeredWatcher watcher = new HasTriggeredWatcher();
+        zk.getChildren("/", watcher);
+        try {
+            zk.multi(Arrays.asList(
+                    Op.create("/t", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT),
+                    Op.delete("/nonexisting", -1)
+            ));
+            fail("expected previous multi op to fail!");
+        } catch (KeeperException.NoNodeException e) {
+            // expected
+        }
+        SyncCallback cb = new SyncCallback();
+        zk.sync("/", cb, null);
+
+        // by waiting for the callback we're assured that the event queue is flushed
+        cb.done.await(CONNECTION_TIMEOUT, TimeUnit.MILLISECONDS);
+        assertEquals(1, watcher.triggered.getCount());
+    }
+    
+    @Test
+    public void testTransactionBuilder() throws Exception {
+        List<OpResult> results = zk.transaction()
+                .create("/t1", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
+                .create("/t1/child", new byte[0], Ids.OPEN_ACL_UNSAFE, CreateMode.PERSISTENT)
+                .create("/t2", null, Ids.OPEN_ACL_UNSAFE, CreateMode.EPHEMERAL)
+                .commit();
+        assertEquals(3, results.size());
+        for (OpResult r : results) {
+            CreateResult c = (CreateResult)r;
+            assertTrue(c.getPath().startsWith("/t"));
+            assertNotNull(c.toString());
+        }
+        assertNotNull(zk.exists("/t1", false));
+        assertNotNull(zk.exists("/t1/child", false));
+        assertNotNull(zk.exists("/t2", false));
+        
+        results = zk.transaction()
+                .check("/t1", 0)
+                .check("/t1/child", 0)
+                .check("/t2", 0)
+                .commit();
+        assertEquals(3, results.size());
+        for (OpResult r : results) {
+            CheckResult c = (CheckResult)r;
+            assertNotNull(c.toString());
+        }
+        
+        try {
+            results = zk.transaction()
+                    .check("/t1", 0)
+                    .check("/t1/child", 0)
+                    .check("/t2", 1)
+                    .commit();
+            fail();
+        } catch (KeeperException.BadVersionException e) {
+            // expected
+        }
+        
+        results = zk.transaction()
+                .check("/t1", 0)
+                .setData("/t1", new byte[0], 0)
+                .commit();
+        assertEquals(2, results.size());
+        for (OpResult r : results) {
+            assertNotNull(r.toString());
+        }
+
+        try {
+            results = zk.transaction()
+                    .check("/t1", 1)
+                    .setData("/t1", new byte[0], 2)
+                    .commit();
+            fail();
+        } catch (KeeperException.BadVersionException e) {
+            // expected
+        }
+        
+        results = zk.transaction()
+                .check("/t1", 1)
+                .check("/t1/child", 0)
+                .check("/t2", 0)
+                .commit();
+        assertEquals(3, results.size());
+
+        results = zk.transaction()
+                .delete("/t2", -1)
+                .delete("/t1/child", -1)
+                .commit();
+        assertEquals(2, results.size());
+        for (OpResult r : results) {
+            DeleteResult d = (DeleteResult)r;
+            assertNotNull(d.toString());
+        }
+        assertNotNull(zk.exists("/t1", false));
+        assertNull(zk.exists("/t1/child", false));
+        assertNull(zk.exists("/t2", false));
+    }
+
+    private static class HasTriggeredWatcher implements Watcher {
+        private final CountDownLatch triggered = new CountDownLatch(1);
+
+        @Override
+        public void process(WatchedEvent event) {
+            triggered.countDown();
+        }
+    }
+    private static class SyncCallback implements AsyncCallback.VoidCallback {
+        private final CountDownLatch done = new CountDownLatch(1);
+
+        @Override
+        public void processResult(int rc, String path, Object ctx) {
+            done.countDown();
+        }
+    }
 }

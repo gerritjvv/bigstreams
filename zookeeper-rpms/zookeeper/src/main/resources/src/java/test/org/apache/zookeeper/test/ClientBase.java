@@ -18,14 +18,15 @@
 
 package org.apache.zookeeper.test;
 
-import java.io.BufferedReader;
+import static org.apache.zookeeper.client.FourLetterWordMain.send4LetterWord;
+
+import java.io.BufferedInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
-import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedList;
@@ -38,8 +39,6 @@ import java.util.concurrent.TimeoutException;
 
 import javax.management.MBeanServerConnection;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.PortAssignment;
 import org.apache.zookeeper.TestableZooKeeper;
@@ -48,14 +47,18 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.Watcher.Event.KeeperState;
 import org.apache.zookeeper.ZKTestCase;
 import org.apache.zookeeper.ZooKeeper;
+import org.apache.zookeeper.common.IOUtils;
 import org.apache.zookeeper.server.ServerCnxnFactory;
 import org.apache.zookeeper.server.ServerCnxnFactoryAccessor;
 import org.apache.zookeeper.server.ZKDatabase;
 import org.apache.zookeeper.server.ZooKeeperServer;
 import org.apache.zookeeper.server.persistence.FileTxnLog;
+import org.apache.zookeeper.server.quorum.QuorumPeer;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.sun.management.UnixOperatingSystemMXBean;
 
@@ -87,7 +90,7 @@ public abstract class ClientBase extends ZKTestCase {
         public void process(WatchedEvent event) { /* nada */ }
     }
 
-    protected static class CountdownWatcher implements Watcher {
+    public static class CountdownWatcher implements Watcher {
         // XXX this doesn't need to be volatile! (Should probably be final)
         volatile CountDownLatch clientConnected;
         volatile boolean connected;
@@ -110,10 +113,12 @@ public abstract class ClientBase extends ZKTestCase {
                 notifyAll();
             }
         }
-        synchronized boolean isConnected() {
+        synchronized public boolean isConnected() {
             return connected;
         }
-        synchronized void waitForConnected(long timeout) throws InterruptedException, TimeoutException {
+        synchronized public void waitForConnected(long timeout)
+            throws InterruptedException, TimeoutException
+        {
             long expire = System.currentTimeMillis() + timeout;
             long left = timeout;
             while(!connected && left > 0) {
@@ -125,7 +130,9 @@ public abstract class ClientBase extends ZKTestCase {
 
             }
         }
-        synchronized void waitForDisconnected(long timeout) throws InterruptedException, TimeoutException {
+        synchronized public void waitForDisconnected(long timeout)
+            throws InterruptedException, TimeoutException
+        {
             long expire = System.currentTimeMillis() + timeout;
             long left = timeout;
             while(connected && left > 0) {
@@ -150,6 +157,12 @@ public abstract class ClientBase extends ZKTestCase {
     {
         CountdownWatcher watcher = new CountdownWatcher();
         return createClient(watcher, hp);
+    }
+
+    protected TestableZooKeeper createClient(CountdownWatcher watcher)
+        throws IOException, InterruptedException
+    {
+        return createClient(watcher, hostPort);
     }
 
     private LinkedList<ZooKeeper> allClients;
@@ -213,44 +226,6 @@ public abstract class ClientBase extends ZKTestCase {
         return alist;
     }
 
-    /**
-     * Send the 4letterword
-     * @param host the destination host
-     * @param port the destination port
-     * @param cmd the 4letterword
-     * @return
-     * @throws IOException
-     */
-    public static String send4LetterWord(String host, int port, String cmd)
-        throws IOException
-    {
-        LOG.info("connecting to " + host + " " + port);
-        Socket sock = new Socket(host, port);
-        BufferedReader reader = null;
-        try {
-            OutputStream outstream = sock.getOutputStream();
-            outstream.write(cmd.getBytes());
-            outstream.flush();
-            // this replicates NC - close the output stream before reading
-            sock.shutdownOutput();
-
-            reader =
-                new BufferedReader(
-                        new InputStreamReader(sock.getInputStream()));
-            StringBuilder sb = new StringBuilder();
-            String line;
-            while((line = reader.readLine()) != null) {
-                sb.append(line + "\n");
-            }
-            return sb.toString();
-        } finally {
-            sock.close();
-            if (reader != null) {
-                reader.close();
-            }
-        }
-    }
-
     public static boolean waitForServerUp(String hp, long timeout) {
         long start = System.currentTimeMillis();
         while (true) {
@@ -300,6 +275,23 @@ public abstract class ClientBase extends ZKTestCase {
         return false;
     }
 
+    public static boolean waitForServerState(QuorumPeer qp, int timeout,
+            String serverState) {
+        long start = System.currentTimeMillis();
+        while (true) {
+            try {
+                Thread.sleep(250);
+            } catch (InterruptedException e) {
+                // ignore
+            }
+            if (qp.getServerState().equals(serverState))
+                return true;
+            if (System.currentTimeMillis() > start + timeout) {
+                return false;
+            }
+        }
+    }
+
     static void verifyThreadTerminated(Thread thread, long millis)
         throws InterruptedException
     {
@@ -336,7 +328,7 @@ public abstract class ClientBase extends ZKTestCase {
         return Integer.parseInt(portstr);
     }
 
-    static ServerCnxnFactory createNewServerInstance(File dataDir,
+    public static ServerCnxnFactory createNewServerInstance(File dataDir,
             ServerCnxnFactory factory, String hostPort, int maxCnxns)
         throws IOException, InterruptedException
     {
@@ -585,5 +577,29 @@ public abstract class ClientBase extends ZKTestCase {
                 LOG.info(logmsg, Integer.valueOf(counts[i-1]), Integer.valueOf(counts[i]));
             }
         }
+    }
+
+    public static String readFile(File file) throws IOException {
+        ByteArrayOutputStream os = new ByteArrayOutputStream();
+        BufferedInputStream is = new BufferedInputStream(new FileInputStream(file));
+        try {
+            IOUtils.copyBytes(is, os, 1024, true);
+        } finally {
+            is.close();
+        }
+        return os.toString();
+    }
+
+    public static String join(String separator, Object[] parts) {
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Object part : parts) {
+            if (!first) {
+                sb.append(separator);
+                first = false;
+            }
+            sb.append(part);
+        }
+        return sb.toString();
     }
 }

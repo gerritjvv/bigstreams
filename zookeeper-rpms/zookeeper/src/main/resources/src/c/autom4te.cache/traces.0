@@ -6750,7 +6750,7 @@ esac
 #echo DX_FLAG_ps=$DX_FLAG_ps
 #echo DX_ENV=$DX_ENV
 ])
-m4trace:configure.ac:6: -1- AC_INIT([zookeeper C client], [3.4.1], [zookeeper-user@hadoop.apache.org], [zookeeper])
+m4trace:configure.ac:6: -1- AC_INIT([zookeeper C client], [3.4.5], [user@zookeeper.apache.org], [zookeeper])
 m4trace:configure.ac:6: -1- m4_pattern_forbid([^_?A[CHUM]_])
 m4trace:configure.ac:6: -1- m4_pattern_forbid([_AC_])
 m4trace:configure.ac:6: -1- m4_pattern_forbid([^LIBOBJS$], [do not use LIBOBJS directly, use AC_LIBOBJ (see section `AC_LIBOBJ vs LIBOBJS'])

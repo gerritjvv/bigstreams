@@ -34,7 +34,6 @@ import org.apache.zookeeper.server.Request;
 import org.apache.zookeeper.server.ZooTrace;
 import org.apache.zookeeper.server.persistence.TxnLog.TxnIterator;
 import org.apache.zookeeper.txn.CreateSessionTxn;
-import org.apache.zookeeper.txn.CreateTxn;
 import org.apache.zookeeper.txn.TxnHeader;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,12 +47,12 @@ import org.slf4j.LoggerFactory;
 public class FileTxnSnapLog {
     //the direcotry containing the 
     //the transaction logs
-    File dataDir; 
-    //the directory containing the 
+    private final File dataDir;
+    //the directory containing the
     //the snapshot directory
-    File snapDir;
-    TxnLog txnLog;
-    SnapShot snapLog;
+    private final File snapDir;
+    private TxnLog txnLog;
+    private SnapShot snapLog;
     public final static int VERSION = 2;
     public final static String version = "version-";
     
@@ -77,6 +76,8 @@ public class FileTxnSnapLog {
      * @param snapDir the snapshot directory
      */
     public FileTxnSnapLog(File dataDir, File snapDir) throws IOException {
+        LOG.debug("Opening datadir:{} snapDir:{}", dataDir, snapDir);
+
         this.dataDir = new File(dataDir, version + VERSION);
         this.snapDir = new File(snapDir, version + VERSION);
         if (!this.dataDir.exists()) {
@@ -150,7 +151,7 @@ public class FileTxnSnapLog {
                 processTransaction(hdr,dt,sessions, itr.getTxn());
             } catch(KeeperException.NoNodeException e) {
                throw new IOException("Failed to process transaction type: " +
-                     hdr.getType() + " error: " + e.getMessage());
+                     hdr.getType() + " error: " + e.getMessage(), e);
             }
             listener.onTxnLoaded(hdr, itr.getTxn());
             if (!itr.next()) 
@@ -176,7 +177,7 @@ public class FileTxnSnapLog {
                     ((CreateSessionTxn) txn).getTimeOut());
             if (LOG.isTraceEnabled()) {
                 ZooTrace.logTraceMessage(LOG,ZooTrace.SESSION_TRACE_MASK,
-                        "playLog --- create session in log: "
+                        "playLog --- create session in log: 0x"
                                 + Long.toHexString(hdr.getClientId())
                                 + " with timeout: "
                                 + ((CreateSessionTxn) txn).getTimeOut());
@@ -188,7 +189,7 @@ public class FileTxnSnapLog {
             sessions.remove(hdr.getClientId());
             if (LOG.isTraceEnabled()) {
                 ZooTrace.logTraceMessage(LOG,ZooTrace.SESSION_TRACE_MASK,
-                        "playLog --- close session in log: "
+                        "playLog --- close session in log: 0x"
                                 + Long.toHexString(hdr.getClientId()));
             }
             rc = dt.processTxn(hdr, txn);
@@ -197,20 +198,22 @@ public class FileTxnSnapLog {
             rc = dt.processTxn(hdr, txn);
         }
 
-              
-        if(rc.err !=  Code.OK.intValue()) {          
-            if(rc.err == Code.NONODE.intValue()) {
+        /**
+         * This should never happen. A NONODE can never show up in the 
+         * transaction logs. This is more indicative of a corrupt transaction
+         * log. Refer ZOOKEEPER-1333 for more info.
+         */
+        if (rc.err != Code.OK.intValue()) {          
+            if (hdr.getType() == OpCode.create && rc.err == Code.NONODE.intValue()) {
                 int lastSlash = rc.path.lastIndexOf('/');
                 String parentName = rc.path.substring(0, lastSlash);
-                LOG.error("Failed to set parent cversion for: " +
-                        parentName);
-                  throw new KeeperException.NoNodeException(parentName);
-            }
-            else {
+                LOG.error("Parent {} missing for {}", parentName, rc.path);
+                throw new KeeperException.NoNodeException(parentName);
+            } else {
                 LOG.debug("Ignoring processTxn failure hdr: " + hdr.getType() +
                         " : error: " + rc.err);
             }
-        }      
+        }
     }
     
     /**
@@ -233,10 +236,10 @@ public class FileTxnSnapLog {
             ConcurrentHashMap<Long, Integer> sessionsWithTimeouts)
         throws IOException {
         long lastZxid = dataTree.lastProcessedZxid;
-        LOG.info("Snapshotting: " + Long.toHexString(lastZxid));
-        File snapshot=new File(
-                snapDir, Util.makeSnapshotName(lastZxid));
-        snapLog.serialize(dataTree, sessionsWithTimeouts, snapshot);
+        File snapshotFile = new File(snapDir, Util.makeSnapshotName(lastZxid));
+        LOG.info("Snapshotting: 0x{} to {}", Long.toHexString(lastZxid),
+                snapshotFile);
+        snapLog.serialize(dataTree, sessionsWithTimeouts, snapshotFile);
         
     }
 
@@ -248,8 +251,22 @@ public class FileTxnSnapLog {
      * @throws IOException
      */
     public boolean truncateLog(long zxid) throws IOException {
-        FileTxnLog txnLog = new FileTxnLog(dataDir);
-        return txnLog.truncate(zxid);
+        // close the existing txnLog and snapLog
+        close();
+
+        // truncate it
+        FileTxnLog truncLog = new FileTxnLog(dataDir);
+        boolean truncated = truncLog.truncate(zxid);
+        truncLog.close();
+
+        // re-open the txnLog and snapLog
+        // I'd rather just close/reopen this object itself, however that 
+        // would have a big impact outside ZKDatabase as there are other
+        // objects holding a reference to this object.
+        txnLog = new FileTxnLog(dataDir);
+        snapLog = new FileSnap(snapDir);
+
+        return truncated;
     }
     
     /**
