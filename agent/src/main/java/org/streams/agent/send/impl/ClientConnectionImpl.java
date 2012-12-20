@@ -16,6 +16,7 @@ import org.jboss.netty.buffer.ChannelBufferInputStream;
 import org.jboss.netty.buffer.ChannelBufferOutputStream;
 import org.jboss.netty.buffer.ChannelBuffers;
 import org.jboss.netty.channel.Channel;
+import org.jboss.netty.channel.ChannelFuture;
 import org.jboss.netty.channel.ChannelHandlerContext;
 import org.jboss.netty.channel.ChannelPipeline;
 import org.jboss.netty.channel.ChannelPipelineFactory;
@@ -26,6 +27,8 @@ import org.jboss.netty.channel.MessageEvent;
 import org.jboss.netty.channel.SimpleChannelHandler;
 import org.jboss.netty.channel.WriteCompletionEvent;
 import org.jboss.netty.channel.socket.ClientSocketChannelFactory;
+import org.jboss.netty.handler.timeout.ReadTimeoutHandler;
+import org.jboss.netty.handler.timeout.WriteTimeoutHandler;
 import org.jboss.netty.util.Timer;
 import org.streams.agent.file.FileLinePointer;
 import org.streams.agent.send.ClientConnection;
@@ -114,20 +117,28 @@ public class ClientConnectionImpl implements ClientConnection {
 
 		connectService.submit(new Runnable() {
 			public void run() {
+
+				ChannelFuture channelFuture = null;
+
 				try {
 
 					ClientBootstrap bootstrap = new ClientBootstrap(
 							socketChannelFactory);
 
-					// we set the ReadTimeoutHandler to timeout if no response
-					// is
-					// received
-					// from the server after default 10 seconds
 					bootstrap.setPipelineFactory(new ChannelPipelineFactory() {
 						@Override
 						public ChannelPipeline getPipeline() throws Exception {
 							return Channels.pipeline(
 									new ClientMessageFrameDecoder(),
+									// timeouts added in as a safety measure
+									// this ensures that channels are not kept
+									// open indefinitely due to any
+									// communication mismatch
+									// between the server and the local client
+									new ReadTimeoutHandler(timeoutTimer, 1,
+											TimeUnit.MINUTES),
+									new WriteTimeoutHandler(timeoutTimer, 1,
+											TimeUnit.MINUTES),
 									new ClientChannelHandler(exchanger,
 											new ClientHandlerContext(header,
 													input, fileLineStreamer),
@@ -142,9 +153,22 @@ public class ClientConnectionImpl implements ClientConnection {
 					bootstrap.setOption("soLinger", String.valueOf(30000));
 
 					// Start the connection attempt.
-					bootstrap.connect(inetAddress);
+					channelFuture = bootstrap.connect(inetAddress);
+					
 				} catch (Throwable t) {
+
+					if (channelFuture != null) {
+						
+						//if any connection was made cancel to intent
+						try {
+							channelFuture.cancel();
+						} catch (Throwable t1) {
+							t1.printStackTrace();
+						}
+					}
+
 					LOG.error(t.toString(), t);
+
 				}
 			}
 		});
@@ -363,7 +387,7 @@ public class ClientConnectionImpl implements ClientConnection {
 				Throwable t = e.getCause();
 
 				clientHandlerContext.setErrorCause(t);
-				
+
 				String msg = "Client Error: " + t.toString();
 				LOG.error(msg, t);
 

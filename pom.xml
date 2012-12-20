@@ -167,5 +167,7 @@
 		<module>commons</module>
 		<module>collector</module>
 		<module>collector-coordination</module>
+    <module>kafka-collector</module>
+    <module>streams-log</module>
   </modules>
 </project>

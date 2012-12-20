@@ -86,7 +86,7 @@ public class AgentStatusResource extends ServerResource {
 		}catch(Throwable t){
 			t.printStackTrace();
 			System.out.println(getQuery().getFirstValue("agent"));
-			return new StringRepresentation("Could not find values for " + getQuery().getFirstValue("agent") + " : " + t.toString());
+			return new StringRepresentation("Could not find values for " + getQuery().getFirstValue("agent") + " : " + t.toString() + " Ensure that the agent is reacheable from the collector.");
 		}
 	}
 
