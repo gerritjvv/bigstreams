@@ -18,6 +18,11 @@
 	</properties>
 	<dependencies>
 		<dependency>
+			<groupId>org.simplesql</groupId>
+			<artifactId>wal</artifactId>
+			<version>0.1.0</version>
+		</dependency>
+		<dependency>
 			<groupId>org.streams</groupId>
 			<artifactId>commons</artifactId>
 			<version>0.2.5</version>
@@ -90,6 +95,10 @@
 		<repository>
 			<id>streams-snapshots</id>
 			<url>https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
+		</repository>
+		<repository>
+			<id>releases</id>
+			<url>https://github.com/gerritjvv/SimpleSQL/raw/master/releases</url>
 		</repository>
 	</repositories>
 </project>

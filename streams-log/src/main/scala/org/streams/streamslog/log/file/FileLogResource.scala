@@ -2,14 +2,17 @@ package org.streams.streamslog.log.file
 
 import java.io.File
 import java.io.FileOutputStream
+import java.io.RandomAccessFile
+import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import scala.actors.Actor
 import org.streams.commons.compression.CompressionPool
+import org.streams.commons.compression.CompressionPoolFactory
 import org.streams.commons.compression.impl.CompressionPoolFactoryImpl
 import org.streams.commons.status.Status
 import org.streams.commons.status.Status.STATUS
-import org.streams.commons.compression.CompressionPoolFactory
+import java.nio.channels.FileChannel
 
 /**
  * Manages File Writers for topics, each FileWriter in turn manages its files based on date.<br/>
@@ -98,7 +101,7 @@ class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionP
   }
 
   def write(date: String, msg: Array[Byte]) =
-    openFiles.getOrElseUpdate(date, createFile(date)) ! msg
+    openFiles.getOrElseUpdate(date, createFile(date)) wal msg
 
   def createFile(date: String) =
     new FileObj(new File(baseDir, topic + "." + date + "." + System.currentTimeMillis() + extension + "_"), compressionPool)
@@ -113,13 +116,20 @@ class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionP
  */
 case class FileObj(file: File, compression: CompressionPool) extends Actor {
 
-  val output = compression.create(new FileOutputStream(file), 1000, TimeUnit.MILLISECONDS)
+  val fileOut = new FileOutputStream(file)
+  val output = compression.create(fileOut, 1000, TimeUnit.MILLISECONDS)
   var modTs = System.currentTimeMillis()
 
+  val walLog = new WALLog(new File(file.getAbsolutePath() + "-wal"))
   
   start()
 
   def lastModTime() = modTs
+  
+  def wal(msg:Array[Byte]) = {
+    walLog << msg
+    this ! msg
+  }
   
   def act() {
     loop {
@@ -135,7 +145,7 @@ case class FileObj(file: File, compression: CompressionPool) extends Actor {
     }
   }
 
-  def <<(msg: Array[Byte]) = {
+  def <<(msg: => Array[Byte]) = {
     output.write(msg)
     modTs = System.currentTimeMillis()
   }
@@ -148,9 +158,31 @@ case class FileObj(file: File, compression: CompressionPool) extends Actor {
   def close() = {
     compression.closeAndRelease(output)
     file.renameTo(new File(file.getParentFile(), file.getName().init))
+    walLog.destroy()
   }
 
 }
+
+class WALLog(walFile: File){
+  
+    
+  walFile.createNewFile()
+  val walOut = new RandomAccessFile(walFile, "rw")
+  val walChannel = walOut.getChannel()
+  val wBuf = walChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1073741824);
+
+  def <<(msg: => Array[Byte]) = wBuf.put(msg);
+  
+  
+  
+  def destroy() = {
+    walChannel.close()
+    walOut.close();
+    walFile.delete()
+  }
+  
+}
+
 
 object NonStatus extends Status {
 
