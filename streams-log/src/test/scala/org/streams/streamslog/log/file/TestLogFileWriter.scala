@@ -16,7 +16,7 @@ class TestLogFileWriter extends FlatSpec with ShouldMatchers with CompressionSui
   val baseDir = new File("target/test/testLogFileWriter")
   baseDir.mkdirs()
 
-  val topicConfig = new TopicConfig("test", new DateSizeCheck(100, 100), new GzipCodec(), baseDir)
+  val topicConfig = new TopicConfig("test", NowMessageTimeParser, new DateSizeCheck(100, 100), new GzipCodec(), baseDir)
   
   //class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionPoolFactory) extends Actor {
   val logWriter = withFactory( { factory => new LogFileWriter(topicConfig, factory)})
@@ -44,25 +44,24 @@ class TestLogFileWriter extends FlatSpec with ShouldMatchers with CompressionSui
     
   }
   
-  "LogWriter" should "speedtest" in {
-    println("Hi")
-    
-    val start = System.currentTimeMillis()
-    
-    for(a <- (0 until 25)){
-    for( i <- (0 until 1000)){
-      val d = if(a > 9) a.toString() else "0" + a 
-      logWriter ! ("2012-12-"+ d, "this is a value\n")
-      
-    }
-    logWriter ! 'checkRolls
-    }
-    
-    println("Time: " + (System.currentTimeMillis()-start))
-    logWriter !? 'stop
-    println("Stopped in Time: " + (System.currentTimeMillis()-start))
-    
-  }
+//  "LogWriter" should "speedtest" in {
+//    
+//    val start = System.currentTimeMillis()
+//    
+//    for(a <- (0 until 25)){
+//    for( i <- (0 until 1000)){
+//      val d = if(a > 9) a.toString() else "0" + a 
+//      logWriter ! ("2012-12-"+ d, "this is a value\n")
+//      
+//    }
+//    logWriter ! 'checkRolls
+//    }
+//    
+//    println("Time: " + (System.currentTimeMillis()-start))
+//    logWriter !? 'stop
+//    println("Stopped in Time: " + (System.currentTimeMillis()-start))
+//    
+//  }
   
   
 }
