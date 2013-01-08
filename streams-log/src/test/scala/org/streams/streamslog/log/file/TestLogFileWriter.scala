@@ -48,8 +48,14 @@ class TestLogFileWriter extends FlatSpec with ShouldMatchers with CompressionSui
     println("Hi")
     
     val start = System.currentTimeMillis()
-    for(i <- (0 until 100000)){
-      logWriter ! ("2012-12-01", "this is a value\n")  
+    
+    for(a <- (0 until 25)){
+    for( i <- (0 until 1000)){
+      val d = if(a > 9) a.toString() else "0" + a 
+      logWriter ! ("2012-12-"+ d, "this is a value\n")
+      
+    }
+    logWriter ! 'checkRolls
     }
     
     println("Time: " + (System.currentTimeMillis()-start))

@@ -95,8 +95,8 @@ class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionP
   def checkFilesToRoll() = {
       val rollCheck = topicConfig.rollCheck
 	  for((date, fileObj) <- openFiles; if(rollCheck.shouldRoll(fileObj.lastModTime(), fileObj.size()))){
-	    fileObj ! 'stop
-	    openFiles -= date
+	    fileObj ! 'stop //stop and close
+	    openFiles -= date //remove this file from the open files list
 	  }
   }
 
@@ -163,6 +163,11 @@ case class FileObj(file: File, compression: CompressionPool) extends Actor {
 
 }
 
+/**
+ * Use a Preallocated buffer to write out data using a BufferMap.<br/>
+ * This WAL will not flush to disk thus may loose data, but data is kept in the OS RAM, so 
+ * in case of a crash most of the data will not be lost. This is a performance choice.
+ */
 class WALLog(walFile: File){
   
     
