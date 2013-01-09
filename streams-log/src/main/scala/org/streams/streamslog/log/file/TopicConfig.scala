@@ -1,19 +1,20 @@
 package org.streams.streamslog.log.file
 
 import java.io.File
-
 import scala.io.Source
-
 import org.apache.hadoop.io.compress.CompressionCodec
+import org.apache.hadoop.conf.Configuration
 
 /**
  * Configuration for a Topic to consume from kafka
  */
-case class TopicConfig(topic: String, tsParser: MessageTimeParser[Any], rollCheck: RollCheck, codec: CompressionCodec, baseDir: File, useBase64: Boolean = false,
-  usenewLine: Boolean = false, threads: Int = 2)
+case class TopicConfig(topic: String, tsParser: MessageTimeParser[Any], rollCheck: RollCheck, codec: CompressionCodec, baseDir: File, useBase64: Boolean = true,
+  usenewLine: Boolean = true, threads: Int = 2)
 
 object TopicConfigParser {
 
+  val conf = new Configuration()
+  
   def apply(file: File): Array[TopicConfig] = {
     //filter out comment lines that start with # or //
     Source.fromFile(file).getLines().withFilter({ line => val l = line.trim(); !(l.startsWith("#") || l.startsWith("//")) }).map(apply(_)).toArray
@@ -42,7 +43,13 @@ object TopicConfigParser {
     val compression =
       Thread.currentThread().getContextClassLoader().loadClass(items(3).trim()).newInstance().asInstanceOf[CompressionCodec]
 
-    val (useBase64, threads, usenewLine) = if (items.size == 8) { (items(5).toBoolean, items(6).toInt, items(7).toBoolean) } else { (false, 2, false) }
+    if(compression.isInstanceOf[org.apache.hadoop.conf.Configurable]){
+      //to avoid null pointers in codecs like Gzip
+      compression.asInstanceOf[org.apache.hadoop.conf.Configurable].setConf(conf)
+    }
+    
+    
+    val (useBase64, threads, usenewLine) = if (items.size == 8) { (items(5).toBoolean, items(6).toInt, items(7).toBoolean) } else { (true, 2, true) }
 
     new TopicConfig(topic, tsParser, new DateSizeCheck(rollOverCheckParams(0), rollOverCheckParams(1)), compression, new File(items(4).trim()), useBase64, usenewLine, threads)
 

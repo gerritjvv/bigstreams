@@ -1,5 +1,7 @@
 package org.streams.streamslog.log.file
 
+import org.apache.log4j.Logger
+
 /**
  * That defines if a file should roll
  */
@@ -15,8 +17,13 @@ trait RollCheck {
  */
 class DateSizeCheck(timeSinceUpdate:Long, maxSize:Long) extends RollCheck{
   
+  val logger = Logger.getLogger(classOf[DateSizeCheck])
   
-  override def shouldRoll(lastUpdated:Long, fileSize:Long):Boolean = 
-      (System.currentTimeMillis() - lastUpdated >= timeSinceUpdate) || scala.math.abs(fileSize-maxSize) < 500
+  override def shouldRoll(lastUpdated:Long, fileSize:Long):Boolean = {
+      val tsdiff = System.currentTimeMillis() - lastUpdated 
+      logger.info("DateSizeCheck: " + tsdiff + " >= " + timeSinceUpdate)
+      (tsdiff >= timeSinceUpdate) || scala.math.abs(fileSize-maxSize) < 500
+      
+  }
   
 }
