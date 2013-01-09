@@ -9,7 +9,8 @@ import org.apache.hadoop.io.compress.CompressionCodec
 /**
  * Configuration for a Topic to consume from kafka
  */
-case class TopicConfig(topic:String, tsParser:MessageTimeParser[Any], rollCheck:RollCheck, codec:CompressionCodec, baseDir:File, useBase64:Boolean=false, threads:Int=2)
+case class TopicConfig(topic:String, tsParser:MessageTimeParser[Any], rollCheck:RollCheck, codec:CompressionCodec, baseDir:File, useBase64:Boolean=false, 
+    usenewLine:Boolean=false, threads:Int=2)
 
 
 object TopicConfigParser{
@@ -20,13 +21,13 @@ object TopicConfigParser{
    }
    
    /**
-    * Parse a line of format topic:TSParserClass:timeout,sizeInBytes,compressionCodecClass:basedir:base64,threads
+    * Parse a line of format topic:TSParserClass:timeout,sizeInBytes,compressionCodecClass:basedir:base64,threads,useNewLine
     */
    def apply(line:String) = {
      
      val items = line.split(":")
-     if( !( items.size == 5 || items.size == 7 ))
-        throw new RuntimeException("TopicConfig Format must be topic:TSParser:timeout,sizeinBytes:compression:basedir:useBase64:threads")
+     if( !( items.size == 5 || items.size == 8 ))
+        throw new RuntimeException("TopicConfig Format must be topic:TSParser:timeout,sizeinBytes:compression:basedir:useBase64:threads:useNewLine")
      
      
      val topic = items(0).trim()
@@ -43,9 +44,9 @@ object TopicConfigParser{
      val compression = 
        Thread.currentThread().getContextClassLoader().loadClass(items(3).trim()).newInstance().asInstanceOf[CompressionCodec]
      
-     val (useBase64, threads) = if(items.size == 7){ (items(5).toBoolean, items(6).toInt) }else{ (false, 2)}
+     val (useBase64, threads, usenewLine) = if(items.size == 8){ (items(5).toBoolean, items(6).toInt, items(7).toBoolean) }else{ (false, 2, false)}
      
-     new TopicConfig(topic, tsParser, new DateSizeCheck(rollOverCheckParams(0), rollOverCheckParams(1)), compression, new File(items(4).trim()), useBase64, threads)
+     new TopicConfig(topic, tsParser, new DateSizeCheck(rollOverCheckParams(0), rollOverCheckParams(1)), compression, new File(items(4).trim()), useBase64, usenewLine, threads)
      
    }
    

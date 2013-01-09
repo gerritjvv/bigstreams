@@ -7,7 +7,7 @@ import org.scalatest.matchers.ShouldMatchers
 import org.scalatest.FlatSpec
 import org.streams.commons.compression.impl.CompressionPoolFactoryImpl
 import java.io.File
-
+import org.apache.hadoop.io.compress.GzipCodec
 
 @RunWith(classOf[JUnitRunner])
 class TestFileObj extends FlatSpec with ShouldMatchers with CompressionSuite{
@@ -21,8 +21,8 @@ class TestFileObj extends FlatSpec with ShouldMatchers with CompressionSuite{
   baseDir.mkdirs()
   file.createNewFile()
   
-  
-  val fileObj = withCompressionPool({ pool => new FileObj(file, pool) })
+  val topicConfig = TopicConfigParser("test0:NOW:111,222:" + classOf[GzipCodec].getName() + ":target0")
+  val fileObj = withCompressionPool({ pool => new FileObj(file, pool, topicConfig) })
   
   "FileObj" should "open" in {
      fileObj ! "Hi".getBytes()

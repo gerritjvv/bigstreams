@@ -3,32 +3,48 @@ package org.streams.streamslog.log.file
 import java.io.File
 import java.io.FileOutputStream
 import java.io.RandomAccessFile
+import java.nio.channels.FileChannel
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import scala.actors.Actor
+import org.apache.commons.codec.binary.Base64
 import org.streams.commons.compression.CompressionPool
 import org.streams.commons.compression.CompressionPoolFactory
 import org.streams.commons.compression.impl.CompressionPoolFactoryImpl
 import org.streams.commons.status.Status
 import org.streams.commons.status.Status.STATUS
-import java.nio.channels.FileChannel
+import java.util.concurrent.atomic.AtomicBoolean
+import org.apache.log4j.Logger
 
 /**
  * Manages File Writers for topics, each FileWriter in turn manages its files based on date.<br/>
  * 
  */
-class FileLogResource(topics: Map[String, TopicConfig]) {
+class FileLogResource(topics: Map[String, TopicConfig], compressors:Int=100) {
 
+  //check that all directories do exist
+  for(topic <- topics.values){
+    if(!topic.baseDir.exists()) topic.baseDir.mkdirs()
+    
+    if(!(topic.baseDir.exists() && topic.baseDir.canWrite()))
+      throw new RuntimeException("The directory " + topic.baseDir.getAbsolutePath() + " does not exist or is not writable")
+  }
+  
   val openWriters = scala.collection.mutable.Map[String, LogFileWriter]()
-  val compressionPoolFactory = new CompressionPoolFactoryImpl(100, 100, NonStatus)
+  val compressionPoolFactory = new CompressionPoolFactoryImpl(compressors, compressors, NonStatus)
 
   val execSerivce = Executors.newSingleThreadScheduledExecutor()
 
   execSerivce.scheduleWithFixedDelay(new RollService(), 100L, 2000L, TimeUnit.MILLISECONDS)
 
-  def get(topic: String) =
-    openWriters.getOrElseUpdate(topic, createWriter(topic))
+  def get(topic: String) = {
+    val writer = openWriters.getOrElseUpdate(topic, createWriter(topic))
+    if(writer.criticalError.get())
+       throw new RuntimeException("Critical errors while writing to filesystem") 
+    
+    writer
+  }
 
   def createWriter(topic: String) = {
     new LogFileWriter(topics(topic), compressionPoolFactory)
@@ -57,8 +73,15 @@ class FileLogResource(topics: Map[String, TopicConfig]) {
  * Each file for the topic is itself handled as an Actor wrapped by the FileObj instance.<br/>
  */
 class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionPoolFactory) extends Actor {
-
+  val logger = Logger.getLogger(classOf[LogFileWriter])
+  
   val baseDir = topicConfig.baseDir
+  //ensure that the directory is created
+//  baseDir.mkdirs()
+  
+  if(!(baseDir.exists() && baseDir.canWrite()))
+    throw new RuntimeException(baseDir + " does not exist or is not writable")
+  
   val topic = topicConfig.topic
   val compressionPool = compressionPoolFactory.get(topicConfig.codec)
   val extension = topicConfig.codec.getDefaultExtension()
@@ -67,6 +90,7 @@ class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionP
 
   start
   
+  val criticalError = new AtomicBoolean(false)
   
   def act() {
     loop {
@@ -88,6 +112,12 @@ class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionP
     }
   }
 
+  override def exceptionHandler = {
+      case e => 
+        	criticalError.set(true)
+        	logger.error(e.toString(), e)
+  }
+  
   def flushAll() = {
       for((date, fileObj) <- openFiles) fileObj ! 'flush
       
@@ -100,11 +130,12 @@ class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionP
 	  }
   }
 
+  
   def write(date: String, msg: Array[Byte]) =
     openFiles.getOrElseUpdate(date, createFile(date)) wal msg
 
   def createFile(date: String) =
-    new FileObj(new File(baseDir, topic + "." + date + "." + System.currentTimeMillis() + extension + "_"), compressionPool)
+    new FileObj(new File(baseDir, topic + "." + date + "." + System.currentTimeMillis() + extension + "_"), compressionPool, topicConfig)
 
   def closeAll() =
     for (fileObj <- openFiles.values) fileObj ! 'stop
@@ -114,13 +145,20 @@ class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionP
 /**
  * Handles the complete life cycle of creating a Compression OutputStream and closing releasing the stream from the CompressionPool.
  */
-case class FileObj(file: File, compression: CompressionPool) extends Actor {
+case class FileObj(file: File, compression: CompressionPool, topicConfig:TopicConfig) extends Actor {
 
   val fileOut = new FileOutputStream(file)
   val output = compression.create(fileOut, 1000, TimeUnit.MILLISECONDS)
   var modTs = System.currentTimeMillis()
-
+  
+  
   val walLog = new WALLog(new File(file.getAbsolutePath() + "-wal"))
+  
+  val usenewLine = topicConfig.usenewLine
+  val nArray = Array('\n'.toByte)
+  val useBase64 = topicConfig.useBase64
+  
+  val base64 = new Base64()
   
   start()
 
@@ -146,7 +184,15 @@ case class FileObj(file: File, compression: CompressionPool) extends Actor {
   }
 
   def <<(msg: => Array[Byte]) = {
-    output.write(msg)
+    if(useBase64)
+       output.write(base64.encode(msg))
+    else
+    	output.write(msg)
+    
+    if(usenewLine)
+      output.write(nArray)
+    
+      
     modTs = System.currentTimeMillis()
   }
 

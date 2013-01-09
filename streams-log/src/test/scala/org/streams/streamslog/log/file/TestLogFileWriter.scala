@@ -16,7 +16,7 @@ class TestLogFileWriter extends FlatSpec with ShouldMatchers with CompressionSui
   val baseDir = new File("target/test/testLogFileWriter")
   baseDir.mkdirs()
 
-  val topicConfig = new TopicConfig("test", NowMessageTimeParser, new DateSizeCheck(100, 100), new GzipCodec(), baseDir)
+  val topicConfig = new TopicConfig("test", NowMessageTimeParser, new DateSizeCheck(100, 100), new GzipCodec(), baseDir, false, false, 1)
   
   //class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionPoolFactory) extends Actor {
   val logWriter = withFactory( { factory => new LogFileWriter(topicConfig, factory)})
