@@ -19,6 +19,10 @@ class TestTopicConfig extends FlatSpec with ShouldMatchers{
     file.createNewFile()
     
     val writer = new PrintWriter(file)
+    //write comment #
+    writer.println("#test0:NOW:111,222:" + classOf[GzipCodec].getName() + ":target0")
+    //write comment //
+    writer.println("//test0:NOW:111,222:" + classOf[GzipCodec].getName() + ":target0")
     writer.println("test0:NOW:111,222:" + classOf[GzipCodec].getName() + ":target0")
     writer.println("test1:NOW:111,222:" + classOf[GzipCodec].getName() + ":target1")
     writer.println("test2:NOW:111,222:" + classOf[GzipCodec].getName() + ":target2")
