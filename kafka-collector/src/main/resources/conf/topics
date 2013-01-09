@@ -1,0 +1,1 @@
+test:NOW:10000,268435456:org.apache.hadoop.io.compress.GzipCodec:/data/kafka-collector/logs 

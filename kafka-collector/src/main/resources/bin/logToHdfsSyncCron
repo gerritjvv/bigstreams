@@ -1,0 +1,4 @@
+*/30 * * * *    hadoop      /opt/kafka-collector/bin/logToHdfsSync.sh /data/kafka-collector/logs /data/kafka-collector/sync /data/kafka-collector/error/ /log/raw  gz &> /opt/kafka-collector/logs/logToHdfsSync.log
+
+#Remove files older than 2 days from the sync folder 
+*/30 * * * *    hadoop      find /data/kafka-collector/sync/ -type f -mtime +1 -exec rm -f \{\} \;
