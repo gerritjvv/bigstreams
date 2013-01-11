@@ -19,7 +19,7 @@ class LogFileReplayCheck(logResource: FileLogResource) {
       (topic, date, msg) =>
         logger.warn("Replaying Log for: topic=" + topic + " date=" + date)
         //send synchronously with a 10 second timeout
-        logResource.get(topic) ! (10000L, (date, msg))
+        logResource.get(topic) ! (date, msg)
     }, true)
     
     logger.info("Completed Replay Check")
