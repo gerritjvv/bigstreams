@@ -9,7 +9,8 @@ import org.streams.streamslog.log.file.NowMessageTimeParser
 import org.streams.streamslog.log.file.DateSizeCheck
 import org.apache.hadoop.io.compress.GzipCodec
 
-case class CollectorConfig(topicConfigs: Array[TopicConfig], topicMap: Map[String, TopicConfig], kafkaConfig: ConsumerConfig) {
+case class CollectorConfig(topicConfigs: Array[TopicConfig], topicMap: Map[String, TopicConfig], kafkaConfig: ConsumerConfig,
+    retriesOnError:Int=10, replayWAL:Boolean=true) {
 
   /**
    * We potentially need as many compressors as there are topics plus a cache

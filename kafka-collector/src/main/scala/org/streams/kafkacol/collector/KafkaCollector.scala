@@ -2,7 +2,6 @@ package org.streams.kafkacol.collector
 
 import java.io.File
 import java.lang.Thread.UncaughtExceptionHandler
-
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
@@ -50,13 +49,28 @@ object KafkaCollector{
   }
   
   def runApp(configDir:File) = {
+    
+    def replayLogFiles(collectorConf:CollectorConfig, fileLogResource:FileLogResource) = {
+      
+      if(collectorConf.replayWAL){
+    	  val logReplayCheck = new LogFileReplayCheck(fileLogResource)
+    	  //get a unique set of directories to which the topics are written
+    	  val files = collectorConf.topicConfigs.foldLeft(Set[File]())({ (files, topicConfig) => files + topicConfig.baseDir })
+    	  //for each search for replay files
+    	  for(file <- files)
+    	    logReplayCheck.check(file)
+      }
+    }
+    
     val collectorConf = CollectorConfig(configDir)
     val execService = Executors.newCachedThreadPool()
     val fileLogResource = new FileLogResource(collectorConf.topicMap, collectorConf.compressorCount)
     
     try{
       
-      val kafkaConsumer = new KafkaConsumer(execService, fileLogResource)
+      replayLogFiles(collectorConf, fileLogResource)
+      
+      val kafkaConsumer = new KafkaConsumer(execService, fileLogResource, collectorConf.retriesOnError)
       kafkaConsumer.consume(collectorConf)
       
       Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler(){
