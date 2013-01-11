@@ -31,7 +31,8 @@ object WalReplay {
     val (topic, date) = extractTopicDate(file)
     //replay the log file and send each message to the function f
 	WALLog.replayWalLog(file, true, {msg:Array[Byte]} => f(topic, date, msg) )
-	
+	//delete the original file
+    
   }
 
   
