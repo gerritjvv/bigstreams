@@ -63,9 +63,11 @@ class ReplayWALLog(walFile: File) extends WALLog(walFile, true) {
       readRecord match {
         case Some(msg: Array[Byte]) =>
           f(msg)
+
           wBuf.flip()
           wBuf.compact()
           wBuf.force()
+
           _replay(f, acc + 1, limit)
         case _ => None //ignore
       }

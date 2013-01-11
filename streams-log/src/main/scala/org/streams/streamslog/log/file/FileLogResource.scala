@@ -8,10 +8,8 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-
 import scala.actors.Actor
 import scala.collection.JavaConversions._
-
 import org.apache.commons.codec.binary.Base64
 import org.apache.log4j.Logger
 import org.streams.commons.compression.CompressionPool
@@ -20,6 +18,7 @@ import org.streams.commons.compression.impl.CompressionPoolFactoryImpl
 import org.streams.commons.status.Status
 import org.streams.commons.status.Status.STATUS
 import org.streams.streamslog.jmx.JMXHelpers._
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * Manages File Writers for topics, each FileWriter in turn manages its files based on date.<br/>
@@ -38,7 +37,7 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
       throw new RuntimeException("The directory " + topic.baseDir.getAbsolutePath() + " does not exist or is not writable")
   }
 
-  val openWriters = scala.collection.mutable.Map[String, LogFileWriter]()
+  val openWriters = new ConcurrentHashMap[String, LogFileWriter]()
   val compressionPoolFactory = new CompressionPoolFactoryImpl(compressors, compressors, NonStatus)
 
   val execSerivce = Executors.newScheduledThreadPool(2)
@@ -47,13 +46,14 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
   execSerivce.scheduleWithFixedDelay(new StatusPrintService(statusActor), 10L, 10L, TimeUnit.SECONDS)
 
   def get(topic: String) = {
+    openWriters.synchronized{
+     val writer = if(openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
     
-    val writer = if(openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
-    
-    if (writer.criticalError.get())
+     if (writer.criticalError.get())
       throw new RuntimeException("Critical errors while writing to filesystem")
 
-    writer
+     writer
+    }
   }
 
   def createWriter(topic: String) = {
@@ -62,7 +62,10 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
 
   def close() = {
     execSerivce.shutdownNow()
-    for (writer <- openWriters.values) writer ! 'stop
+    for (writer <- openWriters.values){
+      logger.info("Stopping writer: " + writer)
+      writer !? 'stop
+    }
   }
 
   /**
@@ -72,8 +75,9 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
 
     override def run() = {
       try {
+        val writers =  openWriters.synchronized {openWriters.values().toArray(Array[LogFileWriter]())}
         
-        for (writer <- openWriters.values)
+        for (writer <- writers)
           writer ! 'checkRolls
 
       } catch {
@@ -174,13 +178,16 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
           write(date, msg)
         case 'stop =>
           closeAll()
+          reply('stopped)
           exit('stop)
         case 'checkRolls =>
           checkFilesToRoll()
         case 'flush =>
           flushAll()
+        case 'stopped =>
+          ; //ignore, the file obj responded to the stop command
         case m: Any =>
-          println("Coult no understand: " + m)
+          logger.error("Coult not understand: " + m)
       }
     }
   }
@@ -234,7 +241,7 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
   }
 
   def closeAll() =
-    for (fileObj <- openFiles.values) fileObj ! 'stop
+    for (fileObj <- openFiles.values) fileObj !? 'stop
 
 }
 
@@ -276,6 +283,7 @@ case class FileObj(file: File, compression: CompressionPool, topicConfig: TopicC
           <<(msg)
         case 'stop =>
           close()
+          reply('stopped)
           exit('stop)
         case 'flush =>
           output.flush()
@@ -284,6 +292,8 @@ case class FileObj(file: File, compression: CompressionPool, topicConfig: TopicC
   }
 
   var lines = 1L
+  var linesPos = 0L
+  var lastUpdateTS = System.currentTimeMillis()
   
   def <<(msg: => Array[Byte]) = {
 
@@ -295,8 +305,16 @@ case class FileObj(file: File, compression: CompressionPool, topicConfig: TopicC
     if (usenewLine)
       output.write(FileObjUtil.nArray)
       
-    if(lines % 10000 == 0)
-      logger.info("Have written " + lines + " messages to " + file.getAbsolutePath())
+    if(lines % 100000 == 0){
+      val linesDiff = lines - linesPos
+      linesPos = lines
+      val ts = System.currentTimeMillis()
+      val timeDiff = ts - lastUpdateTS
+      lastUpdateTS = ts
+      
+      logger.info("Have written " + linesDiff + " messages in " + timeDiff + "ms to " + file.getAbsolutePath())
+      
+    }
       
     lines = lines + 1
     
