@@ -1,15 +1,18 @@
 package org.streams.kafkacol.collector
 
 import java.io.File
+import java.lang.Thread.UncaughtExceptionHandler
+
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 
 import scala.collection.JavaConversions.asScalaBuffer
 
 import org.apache.log4j.Logger
+import org.streams.kafkacol.conf.CollectorConfig
 import org.streams.kafkacol.conf.CollectorConfig.apply
 import org.streams.streamslog.log.file.FileLogResource
-import org.streams.kafkacol.conf.CollectorConfig
 
 import joptsimple.OptionParser
 
@@ -42,7 +45,7 @@ object KafkaCollector{
             parser.printHelpOn(System.out)
             System.exit(-1)
     }
-    
+
     System.exit(0)
   }
   
@@ -56,13 +59,38 @@ object KafkaCollector{
       val kafkaConsumer = new KafkaConsumer(execService, fileLogResource)
       kafkaConsumer.consume(collectorConf)
       
+      Thread.setDefaultUncaughtExceptionHandler(new UncaughtExceptionHandler(){
+        val shutdown = new AtomicBoolean(false)
+        override def uncaughtException(t:Thread, e:Throwable):Unit = {
+          e.printStackTrace()
+          
+          if(shutdown.get())
+            return;
+           
+          shutdown.set(true)
+          
+          fileLogResource.close
+          execService.shutdown()
+          kafkaConsumer.criticalError.set(true)
+          
+        }
+      })
+      
+      Runtime.getRuntime().addShutdownHook(new Thread(){
+        override def run() = {
+          fileLogResource.close
+          execService.shutdownNow()
+          logger.info("bye")
+        }
+      })
+      
       logger.info("Consumption started, waiting for shutdown...")
       while(!(Thread.currentThread().isInterrupted() || kafkaConsumer.criticalError.get()))
     	   Thread.sleep(1000L)
       	   
     }catch{
       case e:InterruptedException => logger.info("closing")
-      case e => logger.error(e.toString(), e)
+      case e:Throwable => logger.error(e.toString(), e)
     }finally{
       fileLogResource.close
       execService.shutdown()
@@ -81,4 +109,4 @@ object KafkaCollector{
   def loadCollectorConf(configDir:File) = CollectorConfig(configDir)
   
   
-}
+}	
