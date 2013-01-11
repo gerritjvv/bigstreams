@@ -8,9 +8,10 @@ import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.concurrent.ConcurrentHashMap
-import scala.collection.JavaConversions._
+
 import scala.actors.Actor
+import scala.collection.JavaConversions._
+
 import org.apache.commons.codec.binary.Base64
 import org.apache.log4j.Logger
 import org.streams.commons.compression.CompressionPool
@@ -19,8 +20,7 @@ import org.streams.commons.compression.impl.CompressionPoolFactoryImpl
 import org.streams.commons.status.Status
 import org.streams.commons.status.Status.STATUS
 import org.streams.streamslog.jmx.JMXHelpers._
-import org.streams.streamslog.log.file.StatusActor
-import scala.reflect.BeanProperty
+
 /**
  * Manages File Writers for topics, each FileWriter in turn manages its files based on date.<br/>
  *
@@ -47,7 +47,9 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
   execSerivce.scheduleWithFixedDelay(new StatusPrintService(statusActor), 10L, 10L, TimeUnit.SECONDS)
 
   def get(topic: String) = {
-    val writer = openWriters.getOrElseUpdate(topic, createWriter(topic))
+    
+    val writer = if(openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
+    
     if (writer.criticalError.get())
       throw new RuntimeException("Critical errors while writing to filesystem")
 
@@ -215,11 +217,21 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
     }
   }
 
-  def write(date: String, msg: Array[Byte]) =
-    openFiles.getOrElseUpdate(date, createFile(date)) wal msg
+  def write(date: String, msg: Array[Byte]) ={
+    //tried with existOrUpdate but with mutable maps it seems sometimes fail,
+    //using the imperative steps here works
+    if(openFiles.containsKey(date)){
+    	openFiles(date) wal msg
+    }else{
+      val file = createFile(date)
+      openFiles.put(date, file)
+      file wal msg
+    }
+  }
 
-  def createFile(date: String) =
+  def createFile(date: String) = {
     new FileObj(new File(baseDir, topic + "." + date + "." + System.currentTimeMillis() + extension + "_"), compressionPool, topicConfig, statusActor)
+  }
 
   def closeAll() =
     for (fileObj <- openFiles.values) fileObj ! 'stop
@@ -241,7 +253,7 @@ case class FileObj(file: File, compression: CompressionPool, topicConfig: TopicC
   val output = compression.create(fileOut, 1000, TimeUnit.MILLISECONDS)
   var modTs = System.currentTimeMillis()
 
-  val walLog = new WALLog(new File(file.getAbsolutePath() + "-wal"))
+  val walLog = new WALLog(new File(WALLog.fileName(file.getAbsolutePath())))
 
   val usenewLine = topicConfig.usenewLine
   val useBase64 = topicConfig.useBase64
@@ -303,33 +315,6 @@ case class FileObj(file: File, compression: CompressionPool, topicConfig: TopicC
     compression.closeAndRelease(output)
     file.renameTo(new File(file.getParentFile(), file.getName().init))
     walLog.destroy()
-  }
-
-}
-
-/**
- * Use a Preallocated buffer to write out data using a BufferMap.<br/>
- * This WAL will not flush to disk thus may loose data, but data is kept in the OS RAM, so
- * in case of a crash most of the data will not be lost. This is a performance choice.
- */
-class WALLog(walFile: File) {
-
-  walFile.createNewFile()
-  val walOut = new RandomAccessFile(walFile, "rw")
-  val walChannel = walOut.getChannel()
-  val wBuf = walChannel.map(FileChannel.MapMode.READ_WRITE, 0, 1073741824);
-
-  val base64 = new Base64()
-  
-  def <<(msg: => Array[Byte]) = {
-    wBuf.put(base64.encode(msg));
-    wBuf.put(FileObjUtil.nArray)
-  }
-
-  def destroy() = {
-    walChannel.close()
-    walOut.close();
-    walFile.delete()
   }
 
 }
