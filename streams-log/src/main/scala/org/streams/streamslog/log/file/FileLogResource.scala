@@ -30,6 +30,7 @@ import akka.actor.Terminated
 import akka.actor.AllForOneStrategy
 import akka.actor.SupervisorStrategy._
 import akka.actor.SupervisorStrategy
+import akka.actor.ActorContext
 
 object FileLogResource {
 
@@ -41,7 +42,8 @@ object FileLogResource {
 	  system.shutdown
 	  system.awaitTermination(Duration(20, TimeUnit.SECONDS))
   }
-  
+
+    
   def stopActor(actorRef:ActorRef) = {
     try {
       val stopped: Future[Boolean] = gracefulStop(actorRef, Duration(10, TimeUnit.SECONDS))(system)
@@ -210,20 +212,18 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
       write(date, msg.getBytes())
     case (date: String, msg: Array[Byte]) =>
       write(date, msg)
-    case 'stop =>
-      closeAll()
-      sender ! 'stopped
-      context.stop(self)
     case 'checkRolls =>
       checkFilesToRoll()
     case 'flush =>
       flushAll()
+    case 'logged =>
+       ; //message was logged to the WAL
     case 'stopped =>
       ; //ignore, the file obj responded to the stop command
     case t:Terminated =>
-         logger.error(t.getActor + " terminated")
+         logger.info(t.getActor + " terminated")
     case m: Any =>
-      logger.error("Coult not understand: " + m)
+      logger.warn("Coult not understand: " + m)
    
   }
 
@@ -275,7 +275,7 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
   }
 
   def createFile(date: String) = {
-    val actor = FileObj(new File(baseDir, topic + "." + date + "." + System.currentTimeMillis() + extension + "_"), compressionPool, topicConfig, statusActor)
+    val actor = FileObj(context, new File(baseDir, topic + "." + date + "." + System.currentTimeMillis() + extension + "_"), compressionPool, topicConfig, statusActor)
     context.watch(actor)
     actor
   }
@@ -291,6 +291,9 @@ object FileObjUtil {
 
 object FileObj {
 
+  def apply(context: ActorContext, file: File, compression: CompressionPool, topicConfig: TopicConfig, statusActor: ActorRef) = {
+    context.actorOf(Props(new FileObj(file, compression, topicConfig, statusActor)), file.getName() + System.currentTimeMillis())
+  }
   
   def apply(file: File, compression: CompressionPool, topicConfig: TopicConfig, statusActor: ActorRef) = {
     FileLogResource.system.actorOf(Props(new FileObj(file, compression, topicConfig, statusActor)), file.getName() + System.currentTimeMillis())
