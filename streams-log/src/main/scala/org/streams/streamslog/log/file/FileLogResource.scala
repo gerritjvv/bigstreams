@@ -101,7 +101,7 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
     execSerivce.shutdownNow()
     for (writer <- openWriters.values) {
       logger.info("Stopping writer: " + writer)
-      writer ! 'stop
+      FileLogResource.stopActor(writer)
     }
   }
 
