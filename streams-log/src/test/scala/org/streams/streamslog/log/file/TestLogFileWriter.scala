@@ -8,6 +8,7 @@ import org.scalatest.junit.JUnitRunner
 import org.scalatest.matchers.ShouldMatchers
 import org.apache.commons.io.FilenameUtils
 import org.apache.commons.io.FileUtils
+import akka.actor.ActorRef
 
 @RunWith(classOf[JUnitRunner])
 class TestLogFileWriter extends FlatSpec with ShouldMatchers with CompressionSuite{
@@ -19,7 +20,7 @@ class TestLogFileWriter extends FlatSpec with ShouldMatchers with CompressionSui
   val topicConfig = new TopicConfig("test", NowMessageTimeParser, new DateSizeCheck(100, 100), new GzipCodec(), baseDir, false, false, 1)
   
   //class LogFileWriter(topicConfig:TopicConfig, compressionPoolFactory:CompressionPoolFactory) extends Actor {
-  val logWriter = withFactory( { factory => new LogFileWriter(topicConfig, factory)})
+  val logWriter = withFactory( { factory => LogFileWriter(topicConfig, factory)})
   
   "LogWriter" should "writeTwoFiles" in {
     

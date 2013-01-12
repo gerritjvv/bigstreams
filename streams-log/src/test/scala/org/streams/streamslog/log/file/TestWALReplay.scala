@@ -19,7 +19,7 @@ class TestWALReplay extends FlatSpec with ShouldMatchers with CompressionSuite{
 	  val date = "2013-01-01-01"
 	  val walFile = new File(baseDir, topic + "." + date + ".myfile-wal")
 	  walFile.createNewFile()
-	  val walLog = new WALLog(walFile)
+	  val walLog = new WALLog(walFile, false)
 	 
 	  val len = 10
 	  
