@@ -31,30 +31,32 @@ import akka.actor.AllForOneStrategy
 import akka.actor.SupervisorStrategy._
 import akka.actor.SupervisorStrategy
 import akka.actor.ActorContext
+import org.apache.hadoop.io.compress.CompressionOutputStream
+import akka.actor.ActorInitializationException
+import akka.actor.ActorKilledException
 
 object FileLogResource {
 
   val logger = Logger.getLogger(getClass())
-  
+
   val system = ActorSystem("FileLogResourceSystem")
 
   def shutdown() = {
-	  system.shutdown
-	  system.awaitTermination(Duration(20, TimeUnit.SECONDS))
+    system.shutdown
+    system.awaitTermination(Duration(20, TimeUnit.SECONDS))
   }
 
-    
-  def stopActor(actorRef:ActorRef) = {
+  def stopActor(actorRef: ActorRef) = {
     try {
       val stopped: Future[Boolean] = gracefulStop(actorRef, Duration(10, TimeUnit.SECONDS))(system)
       Await.result(stopped, Duration(10, TimeUnit.SECONDS))
       // the actor has been stopped
     } catch {
-      case e: Throwable => logger.error(e.toString(), e) 
+      case e: Throwable => logger.error(e.toString(), e)
     }
-    
+
   }
-  
+
 }
 
 /**
@@ -190,7 +192,17 @@ object LogFileWriter {
  * Each file for the topic is itself handled as an Actor wrapped by the FileObj instance.<br/>
  */
 class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: CompressionPoolFactory, statusActor: ActorRef = null) extends Actor {
+//
   val logger = Logger.getLogger(classOf[LogFileWriter])
+  
+  override val supervisorStrategy = AllForOneStrategy(maxNrOfRetries = 0) {
+     case e: ActorInitializationException  => logger.info("!!!!!!!!1 Actor init Error: " + e.actor); context.system.shutdown(); Stop
+      case e: ActorKilledException         => logger.info("!!!!!!!!2 Actor killed Error" + e.getCause()); context.system.shutdown(); Stop
+      case e: Exception                    => logger.info("!!!!!!!!3 Exception " + e.getCause()); context.system.shutdown(); Restart
+      case _                               => logger.info("!11111114 Exscalate"); context.system.shutdown(); Escalate
+  }
+  
+  
 
   val baseDir = topicConfig.baseDir
   //ensure that the directory is created
@@ -217,14 +229,14 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
     case 'flush =>
       flushAll()
     case 'logged =>
-       ; //message was logged to the WAL
+      ; //message was logged to the WAL
     case 'stopped =>
       ; //ignore, the file obj responded to the stop command
-    case t:Terminated =>
-         logger.info(t.getActor + " terminated")
+    case t: Terminated =>
+      logger.info(t.getActor + " terminated")
     case m: Any =>
       logger.warn("Coult not understand: " + m)
-   
+
   }
 
   def flushAll() = {
@@ -248,16 +260,16 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
 
     val rollCheck = topicConfig.rollCheck
     for ((date, fileObj) <- openFiles) {
-      val checkResult:Future[Boolean] = fileObj.ask(rollCheck)(new Timeout(10, TimeUnit.SECONDS)).mapTo[Boolean] 
-      try{
-	      if( Await.result(checkResult, Duration(10, TimeUnit.SECONDS)) ){
-		      FileLogResource.stopActor(fileObj)
-		      context.unwatch(fileObj)
-		      openFiles -= date //remove this file from the open files list
-	      }
-      }catch{
-        case e:Throwable =>
-           logger.error(e.toString(), e)
+      val checkResult: Future[Boolean] = fileObj.ask(rollCheck)(new Timeout(10, TimeUnit.SECONDS)).mapTo[Boolean]
+      try {
+        if (Await.result(checkResult, Duration(10, TimeUnit.SECONDS))) {
+          FileLogResource.stopActor(fileObj)
+          context.unwatch(fileObj)
+          openFiles -= date //remove this file from the open files list
+        }
+      } catch {
+        case e: Throwable =>
+          logger.error(e.toString(), e)
       }
     }
   }
@@ -294,7 +306,7 @@ object FileObj {
   def apply(context: ActorContext, file: File, compression: CompressionPool, topicConfig: TopicConfig, statusActor: ActorRef) = {
     context.actorOf(Props(new FileObj(file, compression, topicConfig, statusActor)), file.getName() + System.currentTimeMillis())
   }
-  
+
   def apply(file: File, compression: CompressionPool, topicConfig: TopicConfig, statusActor: ActorRef) = {
     FileLogResource.system.actorOf(Props(new FileObj(file, compression, topicConfig, statusActor)), file.getName() + System.currentTimeMillis())
   }
@@ -306,17 +318,17 @@ object FileObj {
  */
 class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig, statusActor: ActorRef) extends Actor {
 
-   override val supervisorStrategy = AllForOneStrategy(maxNrOfRetries = 0) {
-    case _: Exception => Stop
+  override val supervisorStrategy = AllForOneStrategy(maxNrOfRetries = 0) {
+    case _: Exception => Escalate
   }
-  
+
   val logger = Logger.getLogger(classOf[FileObj])
 
-  val fileOut = new FileOutputStream(file)
-  val output = compression.create(fileOut, 1000, TimeUnit.MILLISECONDS)
-  var modTs = System.currentTimeMillis()
+  var fileOut: FileOutputStream = null
+  var output: CompressionOutputStream = null
+  var modTs: Long = 0L
 
-  val walLog = new WALLog(new File(WALLog.fileName(file.getAbsolutePath())), false)
+  var walLog: WALLog = null
 
   val usenewLine = topicConfig.usenewLine
   val useBase64 = topicConfig.useBase64
@@ -324,6 +336,13 @@ class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig
   val base64 = new Base64()
 
   def lastModTime() = modTs
+
+  override def preStart() = {
+    fileOut = new FileOutputStream(file)
+    output = compression.create(fileOut, 1000, TimeUnit.MILLISECONDS)
+    walLog = new WALLog(new File(WALLog.fileName(file.getAbsolutePath())), false)
+    modTs = System.currentTimeMillis()
+  }
 
   override def postStop() = {
     try {
@@ -341,10 +360,10 @@ class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig
       <<(msg)
     case 'flush =>
       output.flush()
-    case check:DateSizeCheck =>
-        //send back response true or false
-      	sender !  check.shouldRoll(lastModTime(), size()) 
-      	
+    case check: DateSizeCheck =>
+      //send back response true or false
+      sender ! check.shouldRoll(lastModTime(), size())
+
   }
 
   var lines = 1L
@@ -386,9 +405,18 @@ class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig
    * Close and rename the file from name_ to name
    */
   def close() = {
-    compression.closeAndRelease(output)
-    file.renameTo(new File(file.getParentFile(), file.getName().init))
-    walLog.destroy()
+    try{
+	    if(compression != null)
+	    	compression.closeAndRelease(output)
+	    if(file != null && file.exists())
+	    	file.renameTo(new File(file.getParentFile(), file.getName().init))
+	    
+	    if(walLog != null)
+	    	walLog.destroy()
+    }catch{
+      case e:Throwable => logger.warn(e.toString(), e)
+    }
+    
   }
 
 }
