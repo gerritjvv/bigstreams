@@ -85,6 +85,7 @@ object KafkaCollector{
           
           fileLogResource.close
           execService.shutdown()
+          FileLogResource.shutdown
           kafkaConsumer.criticalError.set(true)
           
         }
@@ -94,6 +95,7 @@ object KafkaCollector{
         override def run() = {
           fileLogResource.close
           execService.shutdownNow()
+          FileLogResource.shutdown
           logger.info("bye")
         }
       })
@@ -108,6 +110,7 @@ object KafkaCollector{
     }finally{
       fileLogResource.close
       execService.shutdown()
+      FileLogResource.shutdown
       logger.info("waiting for shutdown")
       if(!execService.awaitTermination(20, TimeUnit.SECONDS)){
         logger.warn("forcing shutdown")
