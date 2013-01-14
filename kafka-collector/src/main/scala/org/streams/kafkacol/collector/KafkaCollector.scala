@@ -5,15 +5,14 @@ import java.lang.Thread.UncaughtExceptionHandler
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
-
 import scala.collection.JavaConversions.asScalaBuffer
-
 import org.apache.log4j.Logger
 import org.streams.kafkacol.conf.CollectorConfig
 import org.streams.kafkacol.conf.CollectorConfig.apply
 import org.streams.streamslog.log.file.FileLogResource
-
 import joptsimple.OptionParser
+import org.mortbay.resource.FileResource
+import org.streams.streamslog.log.file.FileLogResource
 
 /**
  * Kafka Collector application
@@ -101,26 +100,27 @@ object KafkaCollector{
       })
       
       logger.info("Consumption started, waiting for shutdown...")
-      while(!(Thread.currentThread().isInterrupted() || kafkaConsumer.criticalError.get()))
+      while(!(Thread.currentThread().isInterrupted() || kafkaConsumer.criticalError.get() || FileLogResource.system.isTerminated))
     	   Thread.sleep(1000L)
       	   
     }catch{
       case e:InterruptedException => logger.info("closing")
       case e:Throwable => logger.error(e.toString(), e)
     }finally{
-      fileLogResource.close
+      
       execService.shutdown()
-      FileLogResource.shutdown
       logger.info("waiting for shutdown")
-      if(!execService.awaitTermination(20, TimeUnit.SECONDS)){
+      if(!execService.awaitTermination(5, TimeUnit.SECONDS)){
         logger.warn("forcing shutdown")
         for(th <- execService.shutdownNow())
           logger.warn("Forced shutdown for thread: " + th)
       }
-      
+
+      //this will cause the shutdown hook to run
+      System.exit(0)
     }
     
-    logger.info("bye")
+    
   }
   
   def loadCollectorConf(configDir:File) = CollectorConfig(configDir)

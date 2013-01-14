@@ -50,6 +50,5 @@ CLASS="org.streams.kafkacol.collector.KafkaCollector"
 CLASSPATH="$CONF_DIR:$CONF_DIR/META-INF:$CLASSPATH"
 
 
-
-exec "$JAVA" -Xss128k -XX:MaxDirectMemorySize=1024M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+DisableExplicitGC $JAVA_HEAP $JAVA_OPTS -Djava.library.path="$HOME/lib/native/Linux-amd64-64/" -classpath "$CLASSPATH" $CLASS -config "$CONF_DIR" "$@"
+exec "$JAVA" "$JAVA_HEAP" -Xss128k -XX:MaxDirectMemorySize=1024M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+DisableExplicitGC  $JAVA_OPTS -classpath "$CLASSPATH" $CLASS -config "$CONF_DIR" "$@"
 
