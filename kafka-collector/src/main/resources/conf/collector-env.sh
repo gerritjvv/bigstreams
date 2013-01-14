@@ -4,7 +4,7 @@
 ####
 
 ## JAVA OPTIONS
-export JAVA_OPTS="-Djava.library.path=$STREAMS_HOME/lib/native/Linux-amd64-64/"
+export JAVA_OPTS="-Djava.library.path=/opt/kafka-collector/lib/native/Linux-amd64-64/"
 
 ## JAVA HEAP
 export JAVA_HEAP="-Xmx1024m"
