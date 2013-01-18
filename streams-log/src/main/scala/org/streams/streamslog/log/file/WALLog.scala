@@ -65,8 +65,11 @@ class ReplayWALLog(walFile: File) extends WALLog(walFile, true) {
           f(msg)
 
           wBuf.flip()
-          wBuf.compact()
-
+          if(acc % 10000 == 0){
+        	  wBuf.compact()
+        	  wBuf.force()
+          }
+          
           _replay(f, acc + 1, limit)
         case _ => None //ignore
       }
