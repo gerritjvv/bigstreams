@@ -87,7 +87,7 @@ object FileLogResource {
  * Manages File Writers for topics, each FileWriter in turn manages its files based on date.<br/>
  *
  */
-class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) {
+class FileLogResource private(topics: Map[String, TopicConfig], compressors: Int = 100) {
 
   val logger = Logger.getLogger(classOf[FileLogResource])
   val statusActor = StatusActor()
