@@ -399,7 +399,11 @@ class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig
     modTs = System.currentTimeMillis()
   }
 
-  def size() = file.length()
+  def size() = {
+    //first flush before checking the file size
+    output.flush()
+    file.length()
+  }
 
   /**
    * Close and rename the file from name_ to name
