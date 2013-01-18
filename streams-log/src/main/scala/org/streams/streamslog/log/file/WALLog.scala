@@ -47,6 +47,8 @@ class WALLog(walFile: File, synced: Boolean = false) {
 
 class ReplayWALLog(walFile: File) extends WALLog(walFile, true) {
 
+  val LOG = Logger.getLogger(classOf[ReplayWALLog])
+  
   override def <<(msg: => Array[Byte]) = {
     throw new RuntimeException("Replay log cannot be written to")
   }
@@ -60,17 +62,22 @@ class ReplayWALLog(walFile: File) extends WALLog(walFile, true) {
       if (acc >= limit)
         return None
 
-      readRecord match {
+      readRecord(acc) match {
         case Some(msg: Array[Byte]) =>
           f(msg)
 
-          wBuf.flip()
+          
           if(acc % 10000 == 0){
+        	  val ts = System.currentTimeMillis()
+        	  wBuf.flip()
         	  wBuf.compact()
         	  wBuf.force()
+        	  LOG.info("Took: " + (System.currentTimeMillis() - ts) + "ms to compact wal log")
           }
           
           _replay(f, acc + 1, limit)
+          
+          
         case _ => None //ignore
       }
     }
@@ -78,7 +85,7 @@ class ReplayWALLog(walFile: File) extends WALLog(walFile, true) {
     _replay(f, 0, limit)
   }
 
-  def readRecord(): Option[Array[Byte]] = {
+  def readRecord(pos:Int): Option[Array[Byte]] = {
 
     val len = wBuf.getInt()
     if (len > 0) {

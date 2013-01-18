@@ -81,8 +81,8 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
 
   val execSerivce = Executors.newScheduledThreadPool(2)
 
-  execSerivce.scheduleWithFixedDelay(new RollService(), 10L, 2L, TimeUnit.SECONDS)
-  execSerivce.scheduleWithFixedDelay(new StatusPrintService(statusActor), 10L, 10L, TimeUnit.SECONDS)
+  execSerivce.scheduleWithFixedDelay(new RollService(), 10000L, 5000L, TimeUnit.MILLISECONDS)
+  execSerivce.scheduleWithFixedDelay(new StatusPrintService(statusActor), 30000L, 30000L, TimeUnit.MILLISECONDS)
 
   def get(topic: String) = {
     openWriters.synchronized {
@@ -115,10 +115,12 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
     override def run() = {
       try {
         val writers = openWriters.synchronized { openWriters.values().toArray(Array[ActorRef]()) }
-
+        
         for (writer <- writers)
           writer ! 'checkRolls
-
+          
+        //sleep 2 seconds to give the rolls time to complete
+        Thread.sleep(2000)
       } catch {
         case e => logger.error(e.toString(), e)
       }
@@ -388,7 +390,7 @@ class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig
       lastUpdateTS = ts
 
       logger.info("Have written " + linesDiff + " messages in " + timeDiff + "ms to " + file.getAbsolutePath())
-
+      output.flush()
     }
 
     lines = lines + 1
@@ -401,7 +403,6 @@ class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig
 
   def size() = {
     //first flush before checking the file size
-    output.flush()
     file.length()
   }
 

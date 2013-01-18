@@ -21,9 +21,8 @@ class DateSizeCheck(timeSinceUpdate:Long, maxSize:Long) extends RollCheck{
   
   override def shouldRoll(lastUpdated:Long, fileSize:Long):Boolean = {
       val tsdiff = System.currentTimeMillis() - lastUpdated 
-      val sizeDiff = scala.math.abs(fileSize-maxSize)
-      logger.info("DateSizeCheck: " + tsdiff + " >= " + timeSinceUpdate + " fileSize: " + fileSize + " ( " + sizeDiff + ")")
-      (tsdiff >= timeSinceUpdate) || sizeDiff < 500
+      logger.info("DateSizeCheck: " + tsdiff + " >= " + timeSinceUpdate + " fileSize: " + fileSize + " >= ( " + (maxSize - 2048) + ")")
+      (tsdiff >= timeSinceUpdate) || fileSize >= (maxSize - 2048)
       
   }
   
