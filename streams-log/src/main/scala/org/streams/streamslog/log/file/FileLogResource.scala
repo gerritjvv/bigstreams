@@ -34,13 +34,27 @@ import akka.actor.ActorContext
 import org.apache.hadoop.io.compress.CompressionOutputStream
 import akka.actor.ActorInitializationException
 import akka.actor.ActorKilledException
+import java.util.concurrent.ScheduledFuture
+import java.util.concurrent.ThreadFactory
 
 object FileLogResource {
 
   val logger = Logger.getLogger(getClass())
 
   val system = ActorSystem("FileLogResourceSystem")
+  
+  /**
+   * Schedule daemon threads
+   */
+  val scheduleService = Executors.newScheduledThreadPool(5, new ThreadFactory(){
+    override def newThread(action:Runnable):Thread = {
+      val thread = new Thread(action)
+      thread.setDaemon(true)
+      thread
+    }
+  })
 
+  
   def shutdown() = {
     system.shutdown
     system.awaitTermination(Duration(20, TimeUnit.SECONDS))
@@ -57,6 +71,16 @@ object FileLogResource {
 
   }
 
+  //FileLogResource.scheduleSerivice.scheduleWithFixedDelay(new RollService(), 10000L, 5000L, TimeUnit.MILLISECONDS)
+  def schedule(action:Runnable, delay:Long, time:Long):ScheduledFuture[_] = {
+    FileLogResource.scheduleService.scheduleWithFixedDelay(action, delay, time, TimeUnit.MILLISECONDS)
+  }
+
+  
+  def apply(topics: Map[String, TopicConfig], compressors: Int = 100)= {
+    new FileLogResource(topics, compressors).init()
+  }
+  
 }
 
 /**
@@ -79,19 +103,18 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
   val openWriters = new ConcurrentHashMap[String, ActorRef]()
   val compressionPoolFactory = new CompressionPoolFactoryImpl(compressors, compressors, NonStatus)
 
-  val execSerivce = Executors.newScheduledThreadPool(2)
-
-  execSerivce.scheduleWithFixedDelay(new RollService(), 10000L, 5000L, TimeUnit.MILLISECONDS)
-  execSerivce.scheduleWithFixedDelay(new StatusPrintService(statusActor), 30000L, 30000L, TimeUnit.MILLISECONDS)
-
+  var rollServiceTask:ScheduledFuture[_] = null
+  var statusPrintTask:ScheduledFuture[_] = null
+  
+  def init():FileLogResource ={
+    rollServiceTask = FileLogResource.schedule(new RollService(), 10000L, 5000L)
+    statusPrintTask = FileLogResource.schedule(new StatusPrintService(statusActor), 30000L, 30000L)
+    this
+  }
+  
   def get(topic: String) = {
     openWriters.synchronized {
-      val writer = if (openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
-
-      //     if (writer.criticalError.get())
-      //      throw new RuntimeException("Critical errors while writing to filesystem")
-
-      writer
+     if (openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
     }
   }
 
@@ -100,11 +123,19 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
   }
 
   def close() = {
-    execSerivce.shutdownNow()
+    
+    try{
+     rollServiceTask.cancel(true)
+     statusPrintTask.cancel(true)
+    }catch{
+      case t:Throwable => logger.error(t.toString(), t)
+    }
+    
     for (writer <- openWriters.values) {
       logger.info("Stopping writer: " + writer)
       FileLogResource.stopActor(writer)
     }
+    
   }
 
   /**
@@ -122,7 +153,7 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
         //sleep 2 seconds to give the rolls time to complete
         Thread.sleep(2000)
       } catch {
-        case e => logger.error(e.toString(), e)
+        case e:Throwable => logger.error(e.toString(), e)
       }
     }
 
@@ -135,7 +166,7 @@ class FileLogResource(topics: Map[String, TopicConfig], compressors: Int = 100) 
       try {
         statusActor ! ('log, logger)
       } catch {
-        case e => logger.error(e.toString(), e)
+        case e:Throwable => logger.error(e.toString(), e)
       }
     }
 
@@ -198,10 +229,10 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
   val logger = Logger.getLogger(classOf[LogFileWriter])
   
   override val supervisorStrategy = AllForOneStrategy(maxNrOfRetries = 0) {
-     case e: ActorInitializationException  => logger.info("!!!!!!!!1 Actor init Error: " + e.actor); context.system.shutdown(); Stop
-      case e: ActorKilledException         => logger.info("!!!!!!!!2 Actor killed Error" + e.getCause()); context.system.shutdown(); Stop
-      case e: Exception                    => logger.info("!!!!!!!!3 Exception " + e.getCause()); context.system.shutdown(); Restart
-      case _                               => logger.info("!11111114 Exscalate"); context.system.shutdown(); Escalate
+     case e: ActorInitializationException  => logger.info("Error: " + e.actor); context.system.shutdown(); Stop
+      case e: ActorKilledException         => logger.info("Actor killed Error" + e.getCause()); context.system.shutdown(); Stop
+      case e: Exception                    => logger.info("Exception " + e.getCause()); context.system.shutdown(); Restart
+      case _                               => logger.info("Error"); context.system.shutdown(); Escalate
   }
   
   
@@ -218,8 +249,6 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
   val extension = topicConfig.codec.getDefaultExtension()
 
   val openFiles = scala.collection.mutable.Map[String, ActorRef]()
-
-  val criticalError = new AtomicBoolean(false)
 
   def receive = {
     case (date: String, msg: String) =>
@@ -249,9 +278,9 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
 
   def checkFilesToRoll() = {
 
-    //usefull notification printing
+    //useful notification printing
     if (openFiles.size == 0) {
-      if (checkI % 100 == 0) {
+      if (checkI % 1000 == 0) {
         logger.info("checkFilesToRoll for " + openFiles.size + " open files")
         checkI = 0
       } else {
@@ -261,10 +290,17 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
       logger.info("checkFilesToRoll for " + openFiles.size + " open files")
 
     val rollCheck = topicConfig.rollCheck
-    for ((date, fileObj) <- openFiles) {
-      val checkResult: Future[Boolean] = fileObj.ask(rollCheck)(new Timeout(10, TimeUnit.SECONDS)).mapTo[Boolean]
+    
+
+    //send messages and collect futures with date and fileObj
+    val timeout = new Timeout(10, TimeUnit.SECONDS)
+    val resultFutures = for ((date, fileObj) <- openFiles) 
+    				  yield (fileObj.ask(rollCheck)(timeout), fileObj, date)
+      
+    //for each future wait for completion and stop the actor
+    for((future, fileObj, date) <- resultFutures){
       try {
-        if (Await.result(checkResult, Duration(10, TimeUnit.SECONDS))) {
+        if (Await.result(future.mapTo[Boolean], Duration(10, TimeUnit.SECONDS))) {
           FileLogResource.stopActor(fileObj)
           context.unwatch(fileObj)
           openFiles -= date //remove this file from the open files list
