@@ -63,7 +63,7 @@ object KafkaCollector{
     
     val collectorConf = CollectorConfig(configDir)
     val execService = Executors.newCachedThreadPool()
-    val fileLogResource = new FileLogResource(collectorConf.topicMap, collectorConf.compressorCount)
+    val fileLogResource = FileLogResource(collectorConf.topicMap, collectorConf.compressorCount)
     
     try{
       

@@ -58,7 +58,7 @@ class TestKafkaConsumer extends FlatSpec with ShouldMatchers{
  
   val collectorConf = CollectorConfig.getTestConfig(topics, kafkaConfig, outputDir, 1)
   val execService = Executors.newCachedThreadPool()
-  val fileLogResource = new FileLogResource(collectorConf.topicMap, collectorConf.compressorCount)
+  val fileLogResource = FileLogResource(collectorConf.topicMap, collectorConf.compressorCount)
   
   
   val kafkaConsumer = new KafkaConsumer(execService, fileLogResource)
