@@ -23,6 +23,7 @@
 		<netty.version>3.2.4.Final</netty.version>
 		<bonecp.version>0.7.1.RELEASE</bonecp.version>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+                <streams.version>0.2.5</streams.version>
 	</properties>
 
 	<dependencies>
@@ -30,7 +31,7 @@
 		<dependency>
 			<groupId>org.streams</groupId>
 			<artifactId>commons</artifactId>
-			<version>${project.version}</version>
+			<version>${streams.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>org.jboss.netty</groupId>
