@@ -65,9 +65,8 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 	AtomicBoolean isClosed = new AtomicBoolean(false);
 
 	FileDateExtractor fileDateExtractor;
-	
-	public DirectoryPollingThread(
-			FileDateExtractor fileDateExtractor,
+
+	public DirectoryPollingThread(FileDateExtractor fileDateExtractor,
 			FileTrackerMemory fileTrackerMemory) {
 		logType = "DEFAULT";
 		this.fileDateExtractor = fileDateExtractor;
@@ -78,7 +77,7 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 	 * 
 	 * @param logType
 	 */
-	public DirectoryPollingThread(String logType, 
+	public DirectoryPollingThread(String logType,
 			FileDateExtractor fileDateExtractor,
 			FileTrackerMemory fileTrackerMemory) {
 		this.logType = logType;
@@ -125,6 +124,19 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 
 				FileTrackingStatus status = fileTrackerMemory
 						.getFileStatus(file);
+
+				if (status != null) {
+					LOG.debug("File: " + file.getName() + " file.length: "
+							+ file.length() + " status.length: "
+							+ status.getFileSize() + " file.modTime: "
+							+ file.lastModified() + " status.modTime: "
+							+ status.getLastModificationTime());
+				} else {
+					LOG.debug("File: " + file.getName() + " file.length: "
+							+ file.length() + " file.modTime: "
+							+ file.lastModified());
+				}
+
 				if (status == null) {
 					// this is a create
 
@@ -146,10 +158,9 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 						status.setStatus(FileTrackingStatus.STATUS.CHANGED);
 					}
 
-					
 					status.setFileSize(file.length());
 					status.setLastModificationTime(file.lastModified());
-
+					LOG.debug("NOTIFY UPDATED: " + file.getName());
 					fileTrackerMemory.updateFile(status);
 					notifyFileUpdate(status);
 
@@ -176,13 +187,13 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 			FileTrackingStatus.STATUS status, File file) {
 
 		Date fileDate = fileDateExtractor.parse(file);
-		if(fileDate == null){
+		if (fileDate == null) {
 			fileDate = new Date();
-			if(LOG.isDebugEnabled()){
+			if (LOG.isDebugEnabled()) {
 				LOG.debug("Using current date as file date for file " + file);
 			}
 		}
-		
+
 		FileTrackingStatus fileTrackingStatus = new FileTrackingStatus();
 		fileTrackingStatus.setPath(file.getAbsolutePath());
 		fileTrackingStatus.setStatus(status);
@@ -190,7 +201,7 @@ public class DirectoryPollingThread implements Runnable, DirectoryWatcher {
 		fileTrackingStatus.setLogType(logType);
 		fileTrackingStatus.setFileSize(file.length());
 		fileTrackingStatus.setFileDate(fileDate);
-		
+
 		return fileTrackingStatus;
 	}
 

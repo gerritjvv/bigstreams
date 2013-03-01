@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>agent</artifactId>
-	<version>0.2.5</version>
+	<version>0.2.6</version>
 	<name>agent</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -140,7 +140,7 @@
 
 	<build>
 		<plugins>
-
+<!--
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-pmd-plugin</artifactId>
@@ -152,7 +152,7 @@
 					<targetJdk>1.6</targetJdk>
 				</configuration>
 			</plugin>
-
+-->
 			<plugin>
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
@@ -187,9 +187,10 @@
 				</executions>
 
 			</plugin>
+<!--
 			<plugin>
 				<groupId>com.objectdriven.maven</groupId>
-				<artifactId>maven-zookeeper-plugin</artifactId>
+    				<artifactId>maven-zookeeper-plugin</artifactId>
 				<version>1.0-SNAPSHOT</version>
 				<configuration>
 					<port>3001</port>
@@ -204,7 +205,7 @@
 					</execution>
 				</executions>
 			</plugin>
-
+-->
 			<plugin>
 				<groupId>org.codehaus.mojo</groupId>
 				<artifactId>rpm-maven-plugin</artifactId>
@@ -374,10 +375,18 @@
 		</plugins>
 	</reporting>
 	<pluginRepositories>
+
 		<pluginRepository>
 			<id>dtrott</id>
 			<url>http://maven.davidtrott.com/repository</url>
 		</pluginRepository>
+
+ 		<pluginRepository>
+                        <id>streams-snapshots</id>
+                        <name>streams snapshot maven repository</name>
+                        <url>svn:https://bigstreams.googlecode.com/svn/mvnrepo/snapshots</url>
+                </pluginRepository>
+
 	</pluginRepositories>
 
 	<repositories>

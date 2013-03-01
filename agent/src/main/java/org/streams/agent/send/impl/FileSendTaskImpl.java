@@ -99,12 +99,15 @@ public class FileSendTaskImpl implements FileSendTask {
 		LOG.info("FILE SEND START " + fileStatus.getPath());
 		long fileSendStart = System.currentTimeMillis();
 		
+		/**
+		 * In cases where a file is continuously updated and we have multiple files we need to break out of the loop after 30 seconds.
+		 */
+		
 		try {
-
 			clientResource.open(collectorAddress, fileLinePointer, file);
-
-			while (!(interrupted = Thread.interrupted())) {
-
+			
+			while (!(interrupted = Thread.interrupted()) && (System.currentTimeMillis() - fileSendStart) < 30000L ) {
+				
 				long uniqueId = System.nanoTime();
 
 				boolean sentData = false;
