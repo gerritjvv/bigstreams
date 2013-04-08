@@ -8,7 +8,8 @@ import org.apache.hadoop.conf.Configuration
 /**
  * Configuration for a Topic to consume from kafka
  */
-case class TopicConfig(topic: String, tsParser: MessageTimeParser[Any], rollCheck: RollCheck, codec: CompressionCodec, baseDir: File, useBase64: Boolean = true,
+case class TopicConfig(topic: String, 
+  metaDataParser:MessageMetaDataParser, rollCheck: RollCheck, codec: CompressionCodec, baseDir: File, useBase64: Boolean = true,
   usenewLine: Boolean = true, threads: Int = 2)
 
 object TopicConfigParser {
@@ -21,7 +22,7 @@ object TopicConfigParser {
   }
 
   /**
-   * Parse a line of format topic:TSParserClass:timeout,sizeInBytes,compressionCodecClass:basedir:base64,threads,useNewLine
+   * Parse a line of format topic:NOW/script_file:timeout,sizeInBytes,compressionCodecClass:basedir:base64,threads,useNewLine
    */
   def apply(line: String) = {
 
@@ -30,9 +31,10 @@ object TopicConfigParser {
       throw new RuntimeException("TopicConfig Format must be topic:TSParser:timeout,sizeinBytes:compression:basedir:useBase64:threads:useNewLine")
 
     val topic = items(0).trim()
+    //item one can be one of two, NOW or a script file
     val tsParser = items(1).trim() match {
-      case n: String if n.toUpperCase() == "NOW" => NowMessageTimeParser
-      case n: String => Thread.currentThread().getContextClassLoader().loadClass(n).newInstance().asInstanceOf[MessageTimeParser[Any]]
+      case n: String if n.toUpperCase() == "NOW" => DefaultMessageMetaDataParser
+      case n: String => ScriptParser(new File(n)) //here we assume the string is a script file
     }
 
     val rollOverCheckParams = items(2).split(',').map(_.toLong)

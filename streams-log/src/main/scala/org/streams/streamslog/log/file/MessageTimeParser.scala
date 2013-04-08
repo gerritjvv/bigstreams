@@ -28,3 +28,4 @@ object NowMessageTimeParser extends MessageTimeParser[Any] {
   def millis(msg: Any) = System.currentTimeMillis()
 
 }
+
