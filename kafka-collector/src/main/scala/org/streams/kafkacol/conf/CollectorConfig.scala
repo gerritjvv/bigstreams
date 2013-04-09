@@ -23,7 +23,7 @@ object CollectorConfig {
 
   def getTestConfig(topics: Array[String], kafkaConfig: ConsumerConfig, outputDir: File, threads: Int) = {
     val topicConfigs = topics.map { topic =>
-      new TopicConfig(topic, NowMessageTimeParser, new DateSizeCheck(1000, 100), new GzipCodec(),
+      new TopicConfig(topic, org.streams.streamslog.log.file.DefaultMessageMetaDataParser, new DateSizeCheck(1000, 100), new GzipCodec(),
         outputDir, false, true, threads)
     }
 

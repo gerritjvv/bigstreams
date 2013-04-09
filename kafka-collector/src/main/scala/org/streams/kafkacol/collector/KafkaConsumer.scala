@@ -12,6 +12,7 @@ import kafka.consumer.KafkaStream
 import kafka.message.Message
 import kafka.serializer.DefaultDecoder
 import java.util.concurrent.atomic.AtomicBoolean
+import java.text.SimpleDateFormat
 
 
 class KafkaConsumer(execService:ExecutorService, fileLogResource:FileLogResource, retriesOnError:Int=10) {
@@ -66,15 +67,18 @@ class KafkaConsumer(execService:ExecutorService, fileLogResource:FileLogResource
   def _consume(topic:TopicConfig, stream:KafkaStream[Message]) = {
     
     val writer = fileLogResource.get(topic.topic)
-    val dateParser = topic.tsParser
-    
+    // create a new copy of the script parser only if its not threadsafe
+    val msgParser = if(topic.metaDataParser.isThreadSafe) topic.metaDataParser else topic.metaDataParser.clone()
     //for each message in the KafkaStream, extract the date and send the
     //message byte array to the writer
+    
 	for (msgAndMeta <- stream){
-	    val msg = msgAndMeta.message
-	    val offSet = msg.payload.arrayOffset()
-	    val untilIndex = offSet + msg.payloadSize
-		writer ! ( ( dateParser.dateString(msg), msg.payload.array().slice(offSet, untilIndex) ) )
+	    val msgRaw = msgAndMeta.message
+	    val offSet = msgRaw.payload.arrayOffset()
+	    val untilIndex = offSet + msgRaw.payloadSize
+	    
+	    val msg = msgRaw.payload.array().slice(offSet, untilIndex)
+	    writer ! msgParser.parse(topic.topic, msg)
 	}
     	 
     
