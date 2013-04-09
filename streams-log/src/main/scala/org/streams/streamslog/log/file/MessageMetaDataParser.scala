@@ -17,6 +17,8 @@ case class MessageMetaData(msg: Array[Byte], topics: Array[String], accept: Bool
 trait MessageMetaDataParser {
   def parse(topic:String, msg: Array[Byte]): MessageMetaData
   def isThreadSafe = false
+  override def clone():MessageMetaDataParser = this
+  
 }
 
 /**
@@ -25,6 +27,7 @@ trait MessageMetaDataParser {
 object DefaultMessageMetaDataParser extends MessageMetaDataParser{
   
 	def parse(topic:String, msg:Array[Byte]) = new MessageMetaData(msg, Array(topic))
+	
 }
 
 object ScriptParser {
@@ -95,5 +98,7 @@ object ScriptParser {
   def parse(topic:String, msg: Array[Byte]): MessageMetaData = { 
     parser.invokeFunction("parse", topic, msg).asInstanceOf[MessageMetaData]
   }
+  
+  override def clone() = ScriptParser(this)
   
 }
