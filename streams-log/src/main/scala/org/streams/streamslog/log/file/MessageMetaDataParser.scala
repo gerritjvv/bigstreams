@@ -45,6 +45,8 @@ object ScriptParser {
         if (eng == null)
           throw new RuntimeException("Could not find engine for " + ext)
         
+        println("Using Engine: " + eng.get(ScriptEngine.NAME) + " THREADING: " + eng.get("THREADING"))
+        
         map = map + (ext -> eng)
         return eng
     }
@@ -63,19 +65,30 @@ object ScriptParser {
       getScriptEngine(scriptExt))
   }
 
+  /**
+   * Creates a copy of the ScriptParse instantiating a new ScriptEngine instance
+   */
+  def apply(parser:ScriptParser):ScriptParser = {
+      return new ScriptParser(parser.getScript, em.getEngineByName(parser.engineName))
+  }
+  
 }
 
 /**
  * Takes the script engine and prepares an Invocable instance after evaluting the script.<br/>
  * On each parse method call, the "parse" method of the script is called.<br/>
  */
-class ScriptParser(script: String, scriptEngine: ScriptEngine) extends MessageMetaDataParser {
+ class ScriptParser(script: String, scriptEngine: ScriptEngine) extends MessageMetaDataParser {
 
   scriptEngine.eval(script)
   val parser: Invocable = scriptEngine.asInstanceOf[Invocable]
 
   if(parser == null)
     throw new RuntimeException("Unable to locate a function for the interface MessageMetaDataParser")
+ 
+  def getScript = script
+  def engineName = scriptEngine.get(ScriptEngine.NAME).toString
+  def isThreadSafe = if( scriptEngine.get("THREADING") != null) true else false
   
   def parse(topic:String, msg: Array[Byte]): MessageMetaData = { 
     parser.invokeFunction("parse", topic, msg).asInstanceOf[MessageMetaData]
