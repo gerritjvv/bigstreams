@@ -16,6 +16,7 @@ case class MessageMetaData(msg: Array[Byte], topics: Array[String], accept: Bool
  */
 trait MessageMetaDataParser {
   def parse(topic:String, msg: Array[Byte]): MessageMetaData
+  def isThreadSafe = false
 }
 
 /**
@@ -88,7 +89,8 @@ object ScriptParser {
  
   def getScript = script
   def engineName = scriptEngine.get(ScriptEngine.NAME).toString
-  def isThreadSafe = if( scriptEngine.get("THREADING") != null) true else false
+  
+  override def isThreadSafe = if( scriptEngine.get("THREADING") != null) true else false
   
   def parse(topic:String, msg: Array[Byte]): MessageMetaData = { 
     parser.invokeFunction("parse", topic, msg).asInstanceOf[MessageMetaData]
