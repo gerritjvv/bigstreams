@@ -36,25 +36,26 @@ import akka.actor.ActorInitializationException
 import akka.actor.ActorKilledException
 import java.util.concurrent.ScheduledFuture
 import java.util.concurrent.ThreadFactory
+import java.text.SimpleDateFormat
+import java.util.Date
 
 object FileLogResource {
 
   val logger = Logger.getLogger(getClass())
 
   val system = ActorSystem("FileLogResourceSystem")
-  
+
   /**
    * Schedule daemon threads
    */
-  val scheduleService = Executors.newScheduledThreadPool(5, new ThreadFactory(){
-    override def newThread(action:Runnable):Thread = {
+  val scheduleService = Executors.newScheduledThreadPool(5, new ThreadFactory() {
+    override def newThread(action: Runnable): Thread = {
       val thread = new Thread(action)
       thread.setDaemon(true)
       thread
     }
   })
 
-  
   def shutdown() = {
     system.shutdown
     system.awaitTermination(Duration(20, TimeUnit.SECONDS))
@@ -72,22 +73,21 @@ object FileLogResource {
   }
 
   //FileLogResource.scheduleSerivice.scheduleWithFixedDelay(new RollService(), 10000L, 5000L, TimeUnit.MILLISECONDS)
-  def schedule(action:Runnable, delay:Long, time:Long):ScheduledFuture[_] = {
+  def schedule(action: Runnable, delay: Long, time: Long): ScheduledFuture[_] = {
     FileLogResource.scheduleService.scheduleWithFixedDelay(action, delay, time, TimeUnit.MILLISECONDS)
   }
 
-  
-  def apply(topics: Map[String, TopicConfig], compressors: Int = 100)= {
+  def apply(topics: Map[String, TopicConfig], compressors: Int = 100) = {
     new FileLogResource(topics, compressors).init()
   }
-  
+
 }
 
 /**
  * Manages File Writers for topics, each FileWriter in turn manages its files based on date.<br/>
  *
  */
-class FileLogResource private(topics: Map[String, TopicConfig], compressors: Int = 100) {
+class FileLogResource private (topics: Map[String, TopicConfig], compressors: Int = 100) {
 
   val logger = Logger.getLogger(classOf[FileLogResource])
   val statusActor = StatusActor()
@@ -103,18 +103,18 @@ class FileLogResource private(topics: Map[String, TopicConfig], compressors: Int
   val openWriters = new ConcurrentHashMap[String, ActorRef]()
   val compressionPoolFactory = new CompressionPoolFactoryImpl(compressors, compressors, NonStatus)
 
-  var rollServiceTask:ScheduledFuture[_] = null
-  var statusPrintTask:ScheduledFuture[_] = null
-  
-  def init():FileLogResource ={
+  var rollServiceTask: ScheduledFuture[_] = null
+  var statusPrintTask: ScheduledFuture[_] = null
+
+  def init(): FileLogResource = {
     rollServiceTask = FileLogResource.schedule(new RollService(), 10000L, 5000L)
     statusPrintTask = FileLogResource.schedule(new StatusPrintService(statusActor), 30000L, 30000L)
     this
   }
-  
+
   def get(topic: String) = {
     openWriters.synchronized {
-     if (openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
+      if (openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
     }
   }
 
@@ -123,19 +123,19 @@ class FileLogResource private(topics: Map[String, TopicConfig], compressors: Int
   }
 
   def close() = {
-    
-    try{
-     rollServiceTask.cancel(true)
-     statusPrintTask.cancel(true)
-    }catch{
-      case t:Throwable => logger.error(t.toString(), t)
+
+    try {
+      rollServiceTask.cancel(true)
+      statusPrintTask.cancel(true)
+    } catch {
+      case t: Throwable => logger.error(t.toString(), t)
     }
-    
+
     for (writer <- openWriters.values) {
       logger.info("Stopping writer: " + writer)
       FileLogResource.stopActor(writer)
     }
-    
+
   }
 
   /**
@@ -146,14 +146,14 @@ class FileLogResource private(topics: Map[String, TopicConfig], compressors: Int
     override def run() = {
       try {
         val writers = openWriters.synchronized { openWriters.values().toArray(Array[ActorRef]()) }
-        
+
         for (writer <- writers)
           writer ! 'checkRolls
-          
+
         //sleep 2 seconds to give the rolls time to complete
         Thread.sleep(2000)
       } catch {
-        case e:Throwable => logger.error(e.toString(), e)
+        case e: Throwable => logger.error(e.toString(), e)
       }
     }
 
@@ -166,7 +166,7 @@ class FileLogResource private(topics: Map[String, TopicConfig], compressors: Int
       try {
         statusActor ! ('log, logger)
       } catch {
-        case e:Throwable => logger.error(e.toString(), e)
+        case e: Throwable => logger.error(e.toString(), e)
       }
     }
 
@@ -225,17 +225,15 @@ object LogFileWriter {
  * Each file for the topic is itself handled as an Actor wrapped by the FileObj instance.<br/>
  */
 class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: CompressionPoolFactory, statusActor: ActorRef = null) extends Actor {
-//
+  //
   val logger = Logger.getLogger(classOf[LogFileWriter])
-  
+
   override val supervisorStrategy = AllForOneStrategy(maxNrOfRetries = 0) {
-     case e: ActorInitializationException  => logger.info("Error: " + e.actor); context.system.shutdown(); Stop
-      case e: ActorKilledException         => logger.info("Actor killed Error" + e.getCause()); context.system.shutdown(); Stop
-      case e: Exception                    => logger.info("Exception " + e.getCause()); context.system.shutdown(); Restart
-      case _                               => logger.info("Error"); context.system.shutdown(); Escalate
+    case e: ActorInitializationException => logger.info("Error: " + e.actor); context.system.shutdown(); Stop
+    case e: ActorKilledException => logger.info("Actor killed Error" + e.getCause()); context.system.shutdown(); Stop
+    case e: Exception => logger.info("Exception " + e.getCause()); context.system.shutdown(); Restart
+    case _ => logger.info("Error"); context.system.shutdown(); Escalate
   }
-  
-  
 
   val baseDir = topicConfig.baseDir
   //ensure that the directory is created
@@ -250,7 +248,24 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
 
   val openFiles = scala.collection.mutable.Map[String, ActorRef]()
 
+  val dateParser = new SimpleDateFormat("yyyy-MM-dd-HH")
+  val dateObj = new Date()
+
   def receive = {
+    case meta: MessageMetaData =>
+      if (meta.accept) {
+        if (meta.topics == null) { logger.error("Topics cannot be null") }
+        else if (meta.topics.size == 1) {
+          dateObj.setTime(meta.ts)
+          write(dateParser.format(dateObj), meta.msg)
+        } else {
+          //else for each topic write out
+          for (topic <- meta.topics) {
+            dateObj.setTime(meta.ts)
+            write(dateParser.format(dateObj), meta.msg)
+          }
+        }
+      }
     case (date: String, msg: String) =>
       write(date, msg.getBytes())
     case (date: String, msg: Array[Byte]) =>
@@ -290,15 +305,14 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
       logger.info("checkFilesToRoll for " + openFiles.size + " open files")
 
     val rollCheck = topicConfig.rollCheck
-    
 
     //send messages and collect futures with date and fileObj
     val timeout = new Timeout(10, TimeUnit.SECONDS)
-    val resultFutures = for ((date, fileObj) <- openFiles) 
-    				  yield (fileObj.ask(rollCheck)(timeout), fileObj, date)
-      
+    val resultFutures = for ((date, fileObj) <- openFiles)
+      yield (fileObj.ask(rollCheck)(timeout), fileObj, date)
+
     //for each future wait for completion and stop the actor
-    for((future, fileObj, date) <- resultFutures){
+    for ((future, fileObj, date) <- resultFutures) {
       try {
         if (Await.result(future.mapTo[Boolean], Duration(10, TimeUnit.SECONDS))) {
           FileLogResource.stopActor(fileObj)
@@ -446,18 +460,18 @@ class FileObj(file: File, compression: CompressionPool, topicConfig: TopicConfig
    * Close and rename the file from name_ to name
    */
   def close() = {
-    try{
-	    if(compression != null)
-	    	compression.closeAndRelease(output)
-	    if(file != null && file.exists())
-	    	file.renameTo(new File(file.getParentFile(), file.getName().init))
-	    
-	    if(walLog != null)
-	    	walLog.destroy()
-    }catch{
-      case e:Throwable => logger.warn(e.toString(), e)
+    try {
+      if (compression != null)
+        compression.closeAndRelease(output)
+      if (file != null && file.exists())
+        file.renameTo(new File(file.getParentFile(), file.getName().init))
+
+      if (walLog != null)
+        walLog.destroy()
+    } catch {
+      case e: Throwable => logger.warn(e.toString(), e)
     }
-    
+
   }
 
 }
