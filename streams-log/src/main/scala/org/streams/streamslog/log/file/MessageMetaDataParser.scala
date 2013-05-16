@@ -9,7 +9,14 @@ import com.googlecode.scalascriptengine.ScalaScriptEngine
 import scala.io.Source
 
 case class MessageMetaData(msg: Array[Byte], topics: Array[String], accept: Boolean = true, 
-  ts:Long=System.currentTimeMillis())
+  ts:Long=System.currentTimeMillis(), priority:Int=0) extends Comparable[MessageMetaData]{
+  def this(msg: Array[Byte], topics:Array[String]) = this(msg, topics, true, System.currentTimeMillis(), 0)
+  def this(msg: Array[Byte], topics: Array[String], accept: Boolean,
+  ts:Long) = this(msg, topics, accept, ts, 0)
+
+  def compareTo(m:MessageMetaData):Int = priority.compareTo(m.priority)
+
+}
 
 /**
  * All interfaces
