@@ -31,7 +31,7 @@ JAVA=$JAVA_HOME/bin/java
 
 
 if [ -z $JAVA_HEAP ]; then
- export JAVA_HEAP="-Xmx2048m"
+ export JAVA_HEAP="-Xmx1024m"
 fi
 
 # check envvars which might override default args
@@ -50,5 +50,4 @@ CLASS="org.streams.kafkacol.collector.KafkaCollector"
 CLASSPATH="$CONF_DIR:$CONF_DIR/META-INF:$CLASSPATH"
 
 
-exec "$JAVA" "$JAVA_HEAP" -Xss128k -XX:MaxDirectMemorySize=1024M -XX:+UseConcMarkSweepGC -XX:+UseParNewGC -XX:+DisableExplicitGC  $JAVA_OPTS -classpath "$CLASSPATH" $CLASS -config "$CONF_DIR" "$@"
-
+exec "$JAVA" $JAVA_MEM_OPTS $JAVA_OPTS -classpath "$CLASSPATH" $CLASS -config "$CONF_DIR" "$@"

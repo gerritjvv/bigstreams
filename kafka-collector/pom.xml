@@ -30,7 +30,7 @@
 		<dependency>
 			<groupId>org.apache.kafka</groupId>
 			<artifactId>kafka-core</artifactId>
-			<version>0.7.2-2.9.2</version>
+			<version>0.7.2</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.apache.zookeeper</groupId>
