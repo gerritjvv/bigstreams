@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>kafka-collector</artifactId>
-	<version>0.4.0</version>
+	<version>0.5.0</version>
 	<name>kafka-collector</name>
 	<url>http://maven.apache.org</url>
 	<properties>
@@ -20,7 +20,7 @@
 		<dependency>
 			<groupId>org.streams</groupId>
 			<artifactId>streams-log</artifactId>
-			<version>0.4.0</version>
+			<version>0.5.0</version>
 		</dependency>
 		<dependency>
 			<groupId>org.streams</groupId>
@@ -121,7 +121,7 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Kafka Streams Log Import</distribution>
-					<release>1</release>
+					<release>2</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
