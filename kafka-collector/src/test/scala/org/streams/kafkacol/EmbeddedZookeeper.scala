@@ -15,9 +15,9 @@ class EmbeddedZookeeper(dataLogDir: File, dataDir: File) {
   zkServer.setTickTime(200);
   zkServer.setMinSessionTimeout(1000);
   zkServer.setMaxSessionTimeout(1000);
-  val cnxnFactory = new NIOServerCnxn.Factory(new InetSocketAddress(2181),
-    100);
-  cnxnFactory.startup(zkServer);
+  //val cnxnFactory = new NIOServerCnxn.Factory(new InetSocketAddress(2181),
+  //  100);
+  //cnxnFactory.startup(zkServer);
 
   
   //  cnxnFactory.configure(new InetSocketAddress(2181),
