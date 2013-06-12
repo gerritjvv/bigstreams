@@ -4,6 +4,7 @@ import java.io.File
 import scala.io.Source
 import org.apache.hadoop.io.compress.CompressionCodec
 import org.apache.hadoop.conf.Configuration
+import org.apache.log4j.Logger
 
 /**
  * Configuration for a Topic to consume from kafka
@@ -13,12 +14,14 @@ case class TopicConfig(topic: String,
   usenewLine: Boolean = true, threads: Int = 2)
 
 object TopicConfigParser {
-
+  
+  val logger = Logger.getLogger(getClass)
+ 
   val conf = new Configuration()
   
   def apply(file: File): Array[TopicConfig] = {
     //filter out comment lines that start with # or //
-    Source.fromFile(file).getLines().withFilter({ line => val l = line.trim(); !(l.startsWith("#") || l.startsWith("//")) }).map(apply(_)).toArray
+    Source.fromFile(file).getLines().withFilter({ line => val l = line.trim(); !(l.startsWith("#") || l.startsWith("//") || l.lenght() < 1)  }).map(apply(_)).toArray
   }
 
   /**
@@ -36,7 +39,9 @@ object TopicConfigParser {
       case n: String if n.toUpperCase() == "NOW" => DefaultMessageMetaDataParser
       case n: String => ScriptParser(new File(n)) //here we assume the string is a script file
     }
-
+    
+    logger.info("Using MessageMetaDataParser: " + tsParser + " for topic " + topic)
+    
     val rollOverCheckParams = items(2).split(',').map(_.toLong)
 
     if (rollOverCheckParams.size != 2)
