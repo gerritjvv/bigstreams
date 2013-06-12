@@ -21,7 +21,7 @@ object TopicConfigParser {
   
   def apply(file: File): Array[TopicConfig] = {
     //filter out comment lines that start with # or //
-    Source.fromFile(file).getLines().withFilter({ line => val l = line.trim(); !(l.startsWith("#") || l.startsWith("//") || l.lenght() < 1)  }).map(apply(_)).toArray
+    Source.fromFile(file).getLines().withFilter({ line => val l = line.trim(); !(l.startsWith("#") || l.startsWith("//") || l.length() < 1)  }).map(apply(_)).toArray
   }
 
   /**
