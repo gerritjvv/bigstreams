@@ -10,7 +10,7 @@ import org.streams.streamslog.log.file.DateSizeCheck
 import org.apache.hadoop.io.compress.GzipCodec
 
 case class CollectorConfig(topicConfigs: Array[TopicConfig], topicMap: Map[String, TopicConfig], kafkaConfig: ConsumerConfig,
-    retriesOnError:Int=10, replayWAL:Boolean=true) {
+    retriesOnError:Int=10, replayWAL:Boolean=true, httpPort:Int=7001) {
 
   /**
    * We potentially need as many compressors as there are topics plus a cache
@@ -37,20 +37,21 @@ object CollectorConfig {
       throw new RuntimeException(topicsFile.getAbsolutePath() + " does not exist or is not readable")
 
     val topics = TopicConfigParser(topicsFile)
-    new CollectorConfig(topics, toTopicMap(topics), loadKafkaProps(baseDir))
+    val props = loadProps(baseDir)
+    
+    new CollectorConfig(topics, toTopicMap(topics), new ConsumerConfig(props), props.getProperty("httpPort", "7001").toInt)
   }
 
   def toTopicMap(topics: Array[TopicConfig]) = topics.foldLeft(Map[String, TopicConfig]()) { (m, config) => m + (config.topic -> config) }
 
-  def loadKafkaProps(configDir: File) = {
+  def loadProps(configDir: File) = {
     val file = new File(configDir, "kafka.properties")
     if (!(file.exists() && file.canRead()))
       throw new RuntimeException(configDir.getAbsolutePath() + "/kafka.properties does not exist or is not readable")
 
     val props = new java.util.Properties
     props.load(new FileInputStream(file))
-
-    new ConsumerConfig(props)
+    props
   }
 
 }

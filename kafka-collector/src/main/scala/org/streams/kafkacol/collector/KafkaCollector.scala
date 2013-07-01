@@ -125,7 +125,7 @@ object KafkaCollector{
         
       });
       
-      Metrics.startHttp(7001)
+      Metrics.startHttp(collectorConf.httpPort)
       
       logger.info("Consumption started, waiting for shutdown...")
       while(!(Thread.currentThread().isInterrupted() || kafkaConsumer.criticalError.get() || FileLogResource.system.isTerminated))
