@@ -13,6 +13,10 @@ import org.streams.streamslog.log.file.FileLogResource
 import joptsimple.OptionParser
 import org.mortbay.resource.FileResource
 import org.streams.streamslog.log.file.FileLogResource
+import com.codahale.metrics.health.HealthCheck
+import com.codahale.metrics.health.HealthCheck
+import org.I0Itec.zkclient.ZkClient
+import kafka.utils.ZKStringSerializer
 
 /**
  * Kafka Collector application
@@ -20,13 +24,12 @@ import org.streams.streamslog.log.file.FileLogResource
 object KafkaCollector{
 
   val logger = Logger.getLogger(getClass)
-  
+    
   val parser = new OptionParser(){
       accepts("config").withRequiredArg().ofType(classOf[File])
       .describedAs("configuration directory")
     };
-    
-    
+       
   def main(args:Array[String]):Unit = {
     
     try{
@@ -35,13 +38,16 @@ object KafkaCollector{
     	
     	runApp(configDir)
     	
-    	
     }catch{
       case e => 
         	logger.error(e.toString(), e);
         	e.printStackTrace()
             parser.printHelpOn(System.out)
             System.exit(-1)
+    }finally{
+      
+      Metrics.shutdown
+      
     }
 
     System.exit(0)
@@ -98,6 +104,28 @@ object KafkaCollector{
           logger.info("bye")
         }
       })
+      
+      /**
+       * We add in a health check
+       * 
+       */
+      
+      Metrics.register("health", new HealthCheck(){
+        
+        def check():HealthCheck.Result = {
+          if(kafkaConsumer.criticalError.get())
+             return HealthCheck.Result.unhealthy(kafkaConsumer.error.get());
+          else if(FileLogResource.system.isTerminated)
+             return HealthCheck.Result.unhealthy("[Critical] Local file writing actors have been terminated")
+          else if(kafkaConsumer.nonCriticalError.get())
+             return HealthCheck.Result.unhealthy("[Error] Cannot connect to zookeeper")
+          else 
+             return HealthCheck.Result.healthy();
+        }
+        
+      });
+      
+      Metrics.startHttp(7001)
       
       logger.info("Consumption started, waiting for shutdown...")
       while(!(Thread.currentThread().isInterrupted() || kafkaConsumer.criticalError.get() || FileLogResource.system.isTerminated))

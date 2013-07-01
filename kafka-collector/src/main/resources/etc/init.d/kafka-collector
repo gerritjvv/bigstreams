@@ -1,6 +1,6 @@
 #!/bin/bash
 # chkconfig: 2345 20 80
-# description: streams collector
+# description: kafka collector
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -66,16 +66,9 @@ start() {
    else
 
     echo -n $"Starting Kafka collector: "
+    mkdir -p /opt/kafka-collector/logs
 
-    if type -p start-stop-daemon ; then
-        nohup $streamsd &> /dev/null&    
-    elif [ "$ISDAEMON" -eq "1" ]; then
-        daemon $streamsd  &> /dev/null& 
-    elif type -p daemon ; then
-        daemon  -X "$streamsd "
-    else 
-        nohup $streamsd &> /dev/null&
-    fi
+    nohup $streamsd &> /opt/kafka-collector/logs/collector.log&
          
 
     counter=0
@@ -102,18 +95,17 @@ stop() {
     RETVAL=$?
 
     if [ $RETVAL = $OK_STAT ]; then
-      echo -n "Stopping streams: "
-      $streamsd -stop collector
+      echo -n "Stopping kafka-collector: "
 
       counter=0
       while [ $counter -lt 5 ]
       do
         status
         RETVAL=$?
-        sleep 1s
         counter=$(( counter + 1 ))
-
-        [ $counter -gt 3 ] && [ $RETVAL = $OK_STAT ] && kill 
+              
+        [ $counter -gt 3 ] && [ $RETVAL = $OK_STAT ] && shutdown 
+        sleep 1s
       done
 
        [ $RETVAL = $DEAD_STAT ] && rm -f ${lockfile} && echo "OK"
@@ -132,11 +124,11 @@ restart() {
     start
 }
 
-kill() {
+shutdown() {
 
   pid=`pgrep -f "$REGEX"`
   if [ -n "$pid" ]; then
-    kill -6 $pid
+     kill -6 $pid
   fi 
 
 }
