@@ -15,15 +15,14 @@ import org.streams.commons.file.FileStatus.FileTrackingStatus;
 import org.streams.commons.zookeeper.ZConnection;
 import org.streams.commons.zookeeper.ZStore;
 
-public class ZooStoreExpireCheckServiceIntegrationTest {
+public class ZooStoreExpireCheckServiceIntegrationTest extends ZookeeperTest{
 
 	@Test
 	public void testExpireData() throws Exception {
 
 		// we expect a ConnectException to be thrown
-		CuratorFramework zk = new ZConnection("localhost:3001", 10000L).get();
 
-		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:3001",
+		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:" + server.getPort(),
 				10000L));
 
 		long uniqueId = System.currentTimeMillis();

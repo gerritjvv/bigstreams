@@ -24,25 +24,25 @@ import org.streams.commons.zookeeper.ZLock;
  * Test the ZLock helper class
  * 
  */
-public class ZLockIntegrationTest {
+public class ZLockIntegrationTest extends ZookeeperTest{
 
-	@Test(expected = ConnectException.class)
-	public void testNoConnection() throws Exception {
-
-		// we expect the connection to fail
-		new ZLock(new ZConnection("localhost:200", 1000L)).withLock("a",
-				2,
-				TimeUnit.SECONDS,
-				new Callable<Boolean>() {
-
-					@Override
-					public Boolean call() throws Exception {
-						return true;
-					}
-
-				});
-
-	}
+//	@Test(expected = ConnectException.class)
+//	public void testNoConnection() throws Exception {
+//
+//		// we expect the connection to fail
+//		new ZLock(new ZConnection("localhost:200", 1000L)).withLock("a",
+//				2,
+//				TimeUnit.SECONDS,
+//				new Callable<Boolean>() {
+//
+//					@Override
+//					public Boolean call() throws Exception {
+//						return true;
+//					}
+//
+//				});
+//
+//	}
 
 	@Test
 	public void testLockHeld1() throws InterruptedException, ExecutionException {
@@ -51,7 +51,7 @@ public class ZLockIntegrationTest {
 
 		// only one thread will hold the lock
 
-		// setup the thread that will hold the lock untill shutdown
+		// setup the thread that will hold the lock until shutdown
 		final CountDownLatch shutdown = new CountDownLatch(1);
 		final CountDownLatch lockHeldLatch = new CountDownLatch(1);
 		final AtomicInteger lockHeld = new AtomicInteger();
@@ -64,7 +64,7 @@ public class ZLockIntegrationTest {
 			futures.add(service.submit(new Callable<Boolean>() {
 				public Boolean call() throws Exception {
 					// we expect this lock to complete and release
-					return new ZLock(new ZConnection("localhost:3001", 20000L)).withLock(testTempName,
+					return new ZLock(new ZConnection("localhost:" + server.getPort(), 20000L)).withLock(testTempName,
 							10, TimeUnit.SECONDS,
 							new Callable<Boolean>() {
 
@@ -107,9 +107,8 @@ public class ZLockIntegrationTest {
 	@Test
 	public void testLock() throws Exception {
 
-		final String testTempName = System.currentTimeMillis() + ".lock";
 		// we expect this lock to complete and release
-		new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
+		new ZLock(new ZConnection("localhost:" + server.getPort(), 1000L)).withLock("a",
 				10,
 				TimeUnit.SECONDS,
 				new Callable<Boolean>() {
@@ -123,7 +122,7 @@ public class ZLockIntegrationTest {
 
 		// if the lock was properly release this block will complete without
 		// exceptions
-		boolean ret = new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
+		boolean ret = new ZLock(new ZConnection("localhost:" + server.getPort(), 1000L)).withLock("a",
 				10,
 				TimeUnit.SECONDS,
 				new Callable<Boolean>() {

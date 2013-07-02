@@ -18,7 +18,7 @@ import org.streams.commons.group.GroupKeeper;
 import org.streams.commons.zookeeper.ZConnection;
 import org.streams.commons.zookeeper.ZGroup;
 
-public class ZGroupIntegrationTest {
+public class ZGroupIntegrationTest extends ZookeeperTest{
 
 	ZGroup group;
 
@@ -27,7 +27,7 @@ public class ZGroupIntegrationTest {
 
 		// create agent
 
-		group = new ZGroup(new ZConnection("localhost:3001", 10000L));
+		group = new ZGroup(new ZConnection("localhost:" + server.getPort(), 10000L));
 		GroupStatus agent = GroupStatus.newBuilder().setHost("localhost")
 				.setLastUpdate(System.currentTimeMillis()).setLoad(10)
 				.setMsg("TEST").setType(GroupStatus.Type.AGENT)
@@ -51,7 +51,7 @@ public class ZGroupIntegrationTest {
 	public void testGroupList() throws Exception {
 
 		//assert that the basedir exists
-		CuratorFramework zk = new ZConnection("localhost:3001", 10000L).get();
+		CuratorFramework zk = new ZConnection("localhost:" + server.getPort(), 10000L).get();
 		assertNotNull(zk.checkExists().forPath(ZGroup.BASEDIR));
 		
 		

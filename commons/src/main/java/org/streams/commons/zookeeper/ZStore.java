@@ -80,8 +80,17 @@ public class ZStore {
 	public byte[] get(String key) throws Exception {
 
 		String keyPath = path + "/" + calcBucket(key) + "/" + key;
-		return connection.get().getData().forPath(keyPath);
-
+		try{
+			return connection.get().getData().forPath(keyPath);
+		}catch(KeeperException.NoNodeException nonode){
+			
+			//if the path does not exist we return a null result
+			if(connection.get().checkExists().forPath(keyPath) == null){
+				return null;
+			}else{
+				throw nonode;
+			}
+		}
 	}
 
 	/**

@@ -13,15 +13,14 @@ import org.streams.commons.zookeeper.ZStore;
 
 import com.google.protobuf.Message;
 
-public class ZStoreIntegrationTest {
+public class ZStoreIntegrationTest extends ZookeeperTest{
 
 	@Test
 	public void testPutGetExist() throws Exception {
 
 		// we expect a ConnectException to be thrown
-		CuratorFramework zk = new ZConnection("localhost:3001", 10000L).get();
 
-		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:3001",
+		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:" + server.getPort(),
 				10000L));
 		long uniqueId = System.currentTimeMillis();
 
@@ -41,10 +40,7 @@ public class ZStoreIntegrationTest {
 	@Test
 	public void testGetNotExist() throws Exception {
 
-		// we expect a ConnectException to be thrown
-		CuratorFramework zk = new ZConnection("localhost:3001", 10000L).get();
-
-		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:3001",
+		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:" + server.getPort(),
 				10000L));
 		long uniqueId = System.currentTimeMillis();
 		Message msg = store.get("myKey-" + uniqueId,
