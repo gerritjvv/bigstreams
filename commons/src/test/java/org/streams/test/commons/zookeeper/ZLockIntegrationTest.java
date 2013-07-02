@@ -31,6 +31,8 @@ public class ZLockIntegrationTest {
 
 		// we expect the connection to fail
 		new ZLock(new ZConnection("localhost:200", 1000L)).withLock("a",
+				2,
+				TimeUnit.SECONDS,
 				new Callable<Boolean>() {
 
 					@Override
@@ -63,6 +65,7 @@ public class ZLockIntegrationTest {
 				public Boolean call() throws Exception {
 					// we expect this lock to complete and release
 					return new ZLock(new ZConnection("localhost:3001", 20000L)).withLock(testTempName,
+							10, TimeUnit.SECONDS,
 							new Callable<Boolean>() {
 
 								@Override
@@ -107,6 +110,8 @@ public class ZLockIntegrationTest {
 		final String testTempName = System.currentTimeMillis() + ".lock";
 		// we expect this lock to complete and release
 		new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
+				10,
+				TimeUnit.SECONDS,
 				new Callable<Boolean>() {
 
 					@Override
@@ -119,6 +124,8 @@ public class ZLockIntegrationTest {
 		// if the lock was properly release this block will complete without
 		// exceptions
 		boolean ret = new ZLock(new ZConnection("localhost:3001", 1000L)).withLock("a",
+				10,
+				TimeUnit.SECONDS,
 				new Callable<Boolean>() {
 
 					@Override

@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 
 import java.io.IOException;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.junit.Test;
@@ -17,12 +18,10 @@ import org.streams.commons.zookeeper.ZStore;
 public class ZooStoreExpireCheckServiceIntegrationTest {
 
 	@Test
-	public void testExpireData() throws IOException, InterruptedException,
-			KeeperException {
+	public void testExpireData() throws Exception {
 
 		// we expect a ConnectException to be thrown
-		ZooKeeper zk = new ZConnection("localhost:3001", 10000L).get();
-		assertTrue(zk.getState().isAlive());
+		CuratorFramework zk = new ZConnection("localhost:3001", 10000L).get();
 
 		ZStore store = new ZStore("/a/b/c/d", new ZConnection("localhost:3001",
 				10000L));

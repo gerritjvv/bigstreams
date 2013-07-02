@@ -7,6 +7,7 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.util.Collection;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.ZooKeeper;
 import org.junit.AfterClass;
@@ -47,12 +48,11 @@ public class ZGroupIntegrationTest {
 	}
 
 	@Test
-	public void testGroupList() throws IOException, InterruptedException,
-			KeeperException {
+	public void testGroupList() throws Exception {
 
 		//assert that the basedir exists
-		ZooKeeper zk = new ZConnection("localhost:3001", 10000L).get();
-		assertNotNull(zk.exists(ZGroup.BASEDIR, false));
+		CuratorFramework zk = new ZConnection("localhost:3001", 10000L).get();
+		assertNotNull(zk.checkExists().forPath(ZGroup.BASEDIR));
 		
 		
 		Collection<GroupKeeper.GROUPS> groups = group.listGroups();

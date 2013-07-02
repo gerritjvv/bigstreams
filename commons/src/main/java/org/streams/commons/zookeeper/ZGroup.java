@@ -11,12 +11,13 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.api.BackgroundCallback;
+import org.apache.curator.framework.api.CuratorEvent;
+import org.apache.curator.framework.api.CuratorEventType;
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.WatchedEvent;
-import org.apache.zookeeper.Watcher;
-import org.apache.zookeeper.ZooKeeper;
 import org.jboss.netty.util.internal.ConcurrentHashMap;
 import org.streams.commons.group.Group;
 import org.streams.commons.group.Group.GroupStatus;
@@ -59,7 +60,7 @@ public class ZGroup implements GroupKeeper {
 			throws KeeperException, InterruptedException, IOException {
 		this.connection = connection;
 		this.group = group;
-		
+
 		// register thread that will attach watchers if not attached
 		service.scheduleWithFixedDelay(new Runnable() {
 
@@ -90,10 +91,10 @@ public class ZGroup implements GroupKeeper {
 		List<InetSocketAddress> list = new ArrayList<InetSocketAddress>();
 
 		try {
-			ZooKeeper zk = getZK();
+			final CuratorFramework zk = getZK();
 
-			if (zk.exists(path, null) != null) {
-				List<String> children = getZK().getChildren(path, null);
+			if (zk.checkExists().forPath(path) != null) {
+				final List<String> children = zk.getChildren().forPath(path);
 				if (children != null) {
 					for (String childName : children) {
 						// get data
@@ -129,10 +130,10 @@ public class ZGroup implements GroupKeeper {
 		Collection<GroupStatus> list = new ArrayList<GroupStatus>();
 
 		try {
-			ZooKeeper zk = getZK();
+			final CuratorFramework zk = getZK();
 
-			if (zk.exists(path, null) != null) {
-				List<String> children = getZK().getChildren(path, null);
+			if (zk.checkExists().forPath(path) != null) {
+				final List<String> children = zk.getChildren().forPath(path);
 				if (children != null) {
 					for (String childName : children) {
 						// get data
@@ -160,13 +161,13 @@ public class ZGroup implements GroupKeeper {
 
 		Collection<GROUPS> groups = null;
 
-		String path = BASEDIR + "/" + group;
+		final String path = BASEDIR + "/" + group;
 		try {
-			ZooKeeper zk = getZK();
+			final CuratorFramework zk = getZK();
 
-			if (zk.exists(path, null) != null) {
+			if (zk.checkExists().forPath(path) != null) {
 
-				List<String> groupNames = getZK().getChildren(path, false);
+				final List<String> groupNames = zk.getChildren().forPath(path);
 				groups = new ArrayList<GroupKeeper.GROUPS>(groupNames.size());
 				for (String groupName : groupNames) {
 					try {
@@ -186,7 +187,7 @@ public class ZGroup implements GroupKeeper {
 	}
 
 	@Override
-	public void updateStatus(GroupStatus status) {
+	public final void updateStatus(GroupStatus status) {
 
 		// collectors are ephemeral, we wants agent data to stay live even after
 		// its down
@@ -194,49 +195,30 @@ public class ZGroup implements GroupKeeper {
 		String group = null;
 
 		if (status.getType().equals(GroupStatus.Type.COLLECTOR)) {
-
 			mode = CreateMode.EPHEMERAL;
 			group = GROUPS.COLLECTORS.toString();
-			
+
 		} else {
 			mode = CreateMode.PERSISTENT;
 			group = GROUPS.AGENTS.toString();
 		}
 
 		try {
-
-			byte data[] = status.toByteArray();
-
-			ZooKeeper zk = getZK();
-
-			String path = makePath(group + "/" + status.getHost() + ":"
-					+ status.getPort());
-
-			// ensure that the path has been created
-			// at any time external code can remove the nodes, here we ensure
-			// its created
-			// before updating
-			if(status.getType().equals(GroupStatus.Type.COLLECTOR)){
-				ZPathUtil.mkdirs(zk, makePath(group), CreateMode.PERSISTENT);
-			}
-			
-			ZPathUtil.mkdirs(zk,
-					path, mode);
-
-			ZPathUtil.store(zk, path, data, mode);
-
+			ZPathUtil.store(getZK(), makePath(group + "/" + status.getHost()
+					+ ":" + status.getPort()), status.toByteArray(), mode);
 		} catch (Throwable t) {
 			throw new GroupException(t);
 		}
 
 	}
 
-	private String makePath(String path) {
+	private final String makePath(String path) {
 		return path.startsWith("/") ? BASEDIR + "/" + group + path : BASEDIR
 				+ "/" + group + "/" + path;
 	}
 
-	private ZooKeeper getZK() throws IOException, InterruptedException {
+	private final CuratorFramework getZK() throws IOException,
+			InterruptedException {
 		return connection.get();
 	}
 
@@ -267,7 +249,7 @@ public class ZGroup implements GroupKeeper {
 	 * Watcher that reattach itself on each event.<br/>
 	 * Keeps track of group members.
 	 */
-	private class GroupWatch implements Watcher {
+	private class GroupWatch implements BackgroundCallback {
 
 		GROUPS groupType;
 		String path;
@@ -281,10 +263,9 @@ public class ZGroup implements GroupKeeper {
 		public synchronized void attach() {
 
 			try {
-				ZooKeeper zk = getZK();
+				CuratorFramework zk = getZK();
 
-				// reatach watch
-				zk.getChildren(path, this);
+				zk.getChildren().watched().inBackground(this);
 
 				// get new group members
 				List<GroupChangeListener> selectors = addressSelectorMap
@@ -312,17 +293,14 @@ public class ZGroup implements GroupKeeper {
 		}
 
 		@Override
-		public synchronized void process(WatchedEvent event) {
-			LOG.info("Watch Event: " + event);
-
-			if (event.getType() == Watcher.Event.EventType.NodeChildrenChanged
-					|| event.getType() == Watcher.Event.EventType.NodeCreated
-					|| event.getType() == Watcher.Event.EventType.NodeDeleted) {
-
-				LOG.info("NodeChildrenChanged Event: " + event);
+		public synchronized void processResult(CuratorFramework client,
+				CuratorEvent event) throws Exception {
+			if (event.getType().equals(CuratorEventType.CHILDREN)
+					|| event.getType().equals(CuratorEventType.CREATE)
+					|| event.getType().equals(CuratorEventType.DELETE)) {
 				attach();
-
 			}
+
 		}
 
 	}

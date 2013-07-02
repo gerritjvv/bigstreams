@@ -1,15 +1,11 @@
 package org.streams.commons.zookeeper;
 
 import java.io.IOException;
-import java.util.Date;
-import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.curator.framework.CuratorFramework;
 import org.apache.log4j.Logger;
-import org.apache.zookeeper.AsyncCallback;
 import org.apache.zookeeper.CreateMode;
 import org.apache.zookeeper.KeeperException;
-import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 import org.streams.commons.util.ConsistentHashBuckets;
 
@@ -29,12 +25,9 @@ public class ZStore {
 	 * Buckets caculation is class wide
 	 */
 	private static final ConsistentHashBuckets buckets = new ConsistentHashBuckets();
-	
-	private final AtomicBoolean init = new AtomicBoolean(false);
 
 	final ZConnection connection;
 	final String path;
-	
 
 	public ZStore(String path, ZConnection connection) {
 		this.connection = connection;
@@ -42,82 +35,27 @@ public class ZStore {
 
 	}
 
-	/**
-	 * Ensure that the path exists
-	 * 
-	 * @param zk
-	 * @throws KeeperException
-	 * @throws InterruptedException
-	 */
-	private final synchronized void init(ZooKeeper zk) throws KeeperException,
-			InterruptedException {
+	public synchronized void removeExpired(final int seconds) throws Exception {
 
-		ZPathUtil.mkdirs(zk, path);
-		init.set(true);
-
-	}
-
-	public synchronized void removeExpired(final int seconds)
-			throws IOException, InterruptedException, KeeperException {
-
-		ZooKeeper zk = connection.get();
-		if (!init.get()) {
-			init(zk);
-		}
+		final CuratorFramework zk = connection.get();
 
 		final long expireMilliseconds = seconds * 1000;
-		System.out.println("path: " + path);
-		
-		zk.getChildren(path, false, new AsyncCallback.ChildrenCallback() {
 
-			@Override
-			public void processResult(int rc, String path, Object ctx,
-					List<String> buckets) {
-				ZooKeeper zk1;
-				try {
-					zk1 = connection.get();
+		for (String bucket : zk.getChildren().forPath(path)) {
+			for (String child : zk.getChildren().forPath(path + "/" + bucket)) {
 
-					for(String bucket : buckets){
-						List<String> children = zk1.getChildren(path + "/" + bucket, false);
-						
-						for (String child : children) {
-							
-						     String childPath = path + "/" + bucket + "/" + child;
-							
-							
-							Stat stat = zk1.exists(childPath, false);
-							
-							if (stat != null) {
-								if ((System.currentTimeMillis() - stat.getMtime()) > expireMilliseconds) {
-									LOG.info("Deleting: path with mtime: "
-											+ new Date(stat.getMtime()));
-									
-									zk1.delete(childPath, stat.getVersion(),
-											new AsyncCallback.VoidCallback() {
-										
-												@Override
-												public void processResult(int rc,
-														String path, Object ctx) {
-													LOG.info("Deleted " + path);
-												}
-											}, null);
-								}
-							}
-	
-						}
-	
+				final String childPath = path + "/" + bucket + "/" + child;
+				final Stat stat = zk.checkExists().forPath(childPath);
+				if (stat != null) {
+					if (System.currentTimeMillis() - stat.getMtime() > expireMilliseconds) {
+						LOG.info("Deleting " + childPath);
+						zk.delete().forPath(childPath);
 					}
-					} catch (KeeperException e) {
-						LOG.error(e);
-					} catch (InterruptedException e) {
-						Thread.currentThread().interrupt();
-						return;
-					} catch (IOException e) {
-						LOG.error(e);
-					}
-				
+				}
+
 			}
-		}, new Integer(seconds));
+		}
+
 	}
 
 	/**
@@ -134,27 +72,23 @@ public class ZStore {
 		return store(key, message.toByteArray());
 	}
 
-	public Message get(String key, Builder<?> builder) throws IOException,
-			InterruptedException, KeeperException {
+	public Message get(String key, Builder<?> builder) throws Exception {
 		byte[] data = get(key);
 		return (data == null) ? null : builder.mergeFrom(data).build();
 	}
 
-	public byte[] get(String key) throws IOException, InterruptedException,
-			KeeperException {
-		ZooKeeper zk = connection.get();
-		if (!init.get()) {
-			init(zk);
-		}
+	public byte[] get(String key) throws Exception {
 
 		String keyPath = path + "/" + calcBucket(key) + "/" + key;
-		return ZPathUtil.get(zk, keyPath);
+		return connection.get().getData().forPath(keyPath);
 
 	}
 
 	/**
-	 * Creating buckets help spread the values over many sub folders, adding to efficiency in zookeeper.
-	 * i.e. zookeeper does not deal well with thousands of children to a folder.
+	 * Creating buckets help spread the values over many sub folders, adding to
+	 * efficiency in zookeeper. i.e. zookeeper does not deal well with thousands
+	 * of children to a folder.
+	 * 
 	 * @param key
 	 * @return
 	 */
@@ -178,25 +112,18 @@ public class ZStore {
 	public byte[] store(String key, byte[] data) throws IOException,
 			InterruptedException, KeeperException {
 
-		ZooKeeper zk = connection.get();
-		if (!init.get()) {
-			init(zk);
-		}
-
 		String baseDir = path + "/" + calcBucket(key);
 		String keyPath = baseDir + "/" + key;
-		ZPathUtil.mkdirs(zk, baseDir);
-		
-		return ZPathUtil.store(zk, keyPath, data, CreateMode.PERSISTENT);
 
+		ZPathUtil.store(connection.get(), keyPath, data, CreateMode.PERSISTENT);
+		return data;
 	}
 
-	public void sync(String key) throws IOException, InterruptedException,
-			KeeperException {
+	public void sync(String key) throws Exception {
 		String keyPath = path + "/" + calcBucket(key) + "/" + key;
 
-		ZooKeeper zk = connection.get();
-		zk.sync(keyPath, null, null);
+		connection.get().getZookeeperClient().getZooKeeper()
+				.sync(keyPath, null, null);
 
 	}
 

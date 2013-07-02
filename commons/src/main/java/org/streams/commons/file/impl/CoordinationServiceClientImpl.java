@@ -2,6 +2,8 @@ package org.streams.commons.file.impl;
 
 import java.io.IOException;
 import java.util.concurrent.Callable;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import org.apache.log4j.Logger;
 import org.apache.zookeeper.KeeperException;
@@ -28,17 +30,18 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 	private static final Logger LOG = Logger.getLogger(CoordinationServiceClientImpl.class);
 	
-	ZLock zlock;
-    ZStore zstore;
+	final ZLock zlock;
+    final ZStore zstore;
 	
-    volatile boolean isAgentSync;
+    final AtomicBoolean isAgentSync = new AtomicBoolean(true);
     
 	public CoordinationServiceClientImpl(ZLock zlock, ZStore zstore) {
 		super();
 		this.zlock = zlock;
 		this.zstore = zstore;
-		isAgentSync = !(System.getenv("agent.sync") == null || System.getProperty("agent.sync") == null);
-		if(isAgentSync){
+		isAgentSync.set( !(System.getenv("agent.sync") == null || System.getProperty("agent.sync") == null) );
+		
+		if(isAgentSync.get()){
 			LOG.info("Agent is is on");
 			
 			new Thread(){
@@ -49,9 +52,10 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 					} catch (InterruptedException e) {
 						Thread.currentThread().interrupt();
 						return;
+					}finally{
+						isAgentSync.set(false);
+						LOG.info("Turning agent sync off");
 					}
-					LOG.info("Turning agent sync off");
-					isAgentSync = false;
 				}
 			}.start();
 		}
@@ -69,7 +73,8 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 	 * syncConflict
 	 */
 	@Override
-	public <T> T withLock(final FileStatus.FileTrackingStatus fileStatus,
+	public final <T> T withLock(final FileStatus.FileTrackingStatus fileStatus, 
+			long timeout, TimeUnit unit,
 			final CoordinationServiceListener<T> coordinationServiceListener)
 			throws Exception {
 
@@ -77,7 +82,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 				+ fileStatus.getFileName().replace('/', '_');
 
 		
-		return zlock.withLock(lockId, new Callable<T>() {
+		return zlock.withLock(lockId, timeout, unit, new Callable<T>() {
 
 			@Override
 			public T call() throws Exception {
@@ -110,7 +115,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 							});
 
 				} else {
-					if(isAgentSync){
+					if(isAgentSync.get()){
 						// we call the inSync method, and PostWriteAction, the
 						// listener should write out
 						// the client data and then call the PostWriteAction
@@ -149,7 +154,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 
 	}
 
-	private void saveSyncPointer(String key, SyncPointer pointer, FileStatus.FileTrackingStatus fileStatus) throws IOException, InterruptedException, KeeperException {
+	private final void saveSyncPointer(String key, SyncPointer pointer, FileStatus.FileTrackingStatus fileStatus) throws IOException, InterruptedException, KeeperException {
 		//update a new file status instance with the pointer data
 		Builder builder = FileStatus.FileTrackingStatus.newBuilder(fileStatus);
 		
@@ -160,7 +165,7 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		zstore.store(key, statusNew);
 	}
 
-	private final SyncPointer getSyncPointer(String key, FileStatus.FileTrackingStatus fileStatus) throws IOException, InterruptedException, KeeperException {
+	private final SyncPointer getSyncPointer(String key, FileStatus.FileTrackingStatus fileStatus) throws Exception {
 		FileStatus.FileTrackingStatus status = (FileTrackingStatus) zstore.get(key,  FileStatus.FileTrackingStatus.newBuilder());
 		
 		SyncPointer syncPointer;
@@ -174,8 +179,6 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			if(fileStatus.getFilePointer() != status.getFilePointer()){
 				//the zookeeper client might be out of sync. sync and retry.
 				
-				long statusFilePointer = status.getFilePointer();
-				
 				zstore.sync(key);
 				status = (FileTrackingStatus) zstore.get(key,  FileStatus.FileTrackingStatus.newBuilder());
 		
@@ -183,8 +186,8 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 				if(status != null){
 					syncPointer = new SyncPointer(status);
 					
-					LOG.info("Possible sync conflict: syncing zookeeper agent: " + fileStatus.getFilePointer()
-							+ " zookeeper.old " + statusFilePointer 
+					LOG.info("Possible sync conflict: syncing collector with zookeeper: " + fileStatus.getFilePointer()
+							+ " zookeeper.old " + fileStatus.getFilePointer() 
 							+ " zookeeper.new " + status.getFilePointer() + " key: " + key + " syncid: " + syncPointer.getTimeStamp());
 					
 				}
@@ -201,14 +204,6 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 		
 		
 		return syncPointer;
-	}
-
-	public ZLock getZlock() {
-		return zlock;
-	}
-
-	public void setZlock(ZLock zlock) {
-		this.zlock = zlock;
 	}
 
 }

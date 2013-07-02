@@ -5,12 +5,13 @@ import static org.junit.Assert.assertTrue;
 import java.io.IOException;
 import java.net.ConnectException;
 
-import org.apache.zookeeper.ZooKeeper;
+import org.apache.curator.framework.CuratorFramework;
+import org.apache.curator.framework.imps.CuratorFrameworkState;
 import org.junit.Test;
 import org.streams.commons.zookeeper.ZConnection;
 
 public class ZConnectionIntegrationTest {
-	
+
 	/**
 	 * Test the timeout exception
 	 * 
@@ -21,13 +22,15 @@ public class ZConnectionIntegrationTest {
 	public void testConnect() throws IOException, InterruptedException {
 
 		// we expect a ConnectException to be thrown
+		final ZConnection conn = new ZConnection("localhost:3001", 10000L);
+
 		try {
-			ZooKeeper zk = new ZConnection("localhost:3001", 10000L).get();
-			
-			assertTrue(zk.getState().isAlive());
+			CuratorFramework zk = conn.get();
+
+			assertTrue(zk.getState().compareTo(CuratorFrameworkState.STARTED) == 0);
 
 		} finally {
-			new ZConnection("localhost:3001", 10000L).get().close();
+			conn.close();
 		}
 
 	}
@@ -43,12 +46,7 @@ public class ZConnectionIntegrationTest {
 			InterruptedException {
 
 		// we expect a ConnectException to be thrown
-		try {
-			ZooKeeper zk = new ZConnection("localhost:2001", 10000L).get();
-		} finally {
-			new ZConnection("localhost:2001", 10000L).get().close();
-		}
-
+		new ZConnection("localhost:2001", 10000L).get();
 	}
 
 }
