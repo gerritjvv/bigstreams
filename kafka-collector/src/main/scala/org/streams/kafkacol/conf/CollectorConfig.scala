@@ -10,7 +10,8 @@ import org.streams.streamslog.log.file.DateSizeCheck
 import org.apache.hadoop.io.compress.GzipCodec
 
 case class CollectorConfig(topicConfigs: Array[TopicConfig], topicMap: Map[String, TopicConfig], kafkaConfig: ConsumerConfig,
-    retriesOnError:Int=10, replayWAL:Boolean=true, httpPort:Int=7001) {
+    httpPort:Int,
+    retriesOnError:Int=10, replayWAL:Boolean=true) {
 
   /**
    * We potentially need as many compressors as there are topics plus a cache
@@ -27,7 +28,7 @@ object CollectorConfig {
         outputDir, false, true, threads)
     }
 
-    new CollectorConfig(topicConfigs, toTopicMap(topicConfigs), kafkaConfig)
+    new CollectorConfig(topicConfigs, toTopicMap(topicConfigs), kafkaConfig, 7001)
   }
 
   def apply(baseDir: File) = {
@@ -38,8 +39,10 @@ object CollectorConfig {
 
     val topics = TopicConfigParser(topicsFile)
     val props = loadProps(baseDir)
+    val port = props.getProperty("httpPort", "7001")
     
-    new CollectorConfig(topics, toTopicMap(topics), new ConsumerConfig(props), props.getProperty("httpPort", "7001").toInt)
+    println("Using httpPort " + port);
+    new CollectorConfig(topics, toTopicMap(topics), new ConsumerConfig(props), port.toInt)
   }
 
   def toTopicMap(topics: Array[TopicConfig]) = topics.foldLeft(Map[String, TopicConfig]()) { (m, config) => m + (config.topic -> config) }

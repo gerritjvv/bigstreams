@@ -34,6 +34,11 @@
 		</dependency>
 		<dependency>
 			<groupId>com.codahale.metrics</groupId>
+			<artifactId>metrics-core</artifactId>
+			<version>3.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.codahale.metrics</groupId>
 			<artifactId>metrics-healthchecks</artifactId>
 			<version>3.0.0</version>
 		</dependency>
@@ -141,14 +146,14 @@
 				<configuration>
 					<copyright>http://www.apache.org/licenses/LICENSE-2.0</copyright>
 					<distribution>Kafka Streams Log Import</distribution>
-					<release>5</release>
+					<release>7</release>
 					<group>utilties</group>
 					<packager>http://code.google.com/p/bigstreams/</packager>
 					<provides>
 						<provide>kafka-collector</provide>
 					</provides>
 					<needarch>x86_64</needarch>
-                                        <requires>
+					<requires>
 					</requires>
 					<changelogFile>src/changelog</changelogFile>
 
