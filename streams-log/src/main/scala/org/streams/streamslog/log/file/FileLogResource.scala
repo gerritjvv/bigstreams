@@ -21,9 +21,9 @@ import akka.actor.ActorRef
 import akka.actor.ActorSystem
 import akka.actor.Props
 import akka.pattern.gracefulStop
-import akka.dispatch.Await
-import akka.util.Duration
-import akka.dispatch.Future
+import scala.concurrent.Await
+import scala.concurrent.Future
+import scala.concurrent.duration._
 import akka.pattern.ask
 import akka.util.Timeout
 import akka.actor.Terminated
@@ -58,12 +58,13 @@ object FileLogResource {
 
   def shutdown() = {
     system.shutdown
-    system.awaitTermination(Duration(20, TimeUnit.SECONDS))
+    system.awaitTermination
   }
 
   def stopActor(actorRef: ActorRef) = {
     try {
-      val stopped: Future[Boolean] = gracefulStop(actorRef, Duration(10, TimeUnit.SECONDS))(system)
+      //gracefulStop(target: ActorRef, timeout: FiniteDuration, stopMessage: Any = PoisonPill)
+      val stopped: Future[Boolean] = gracefulStop(actorRef, 5 seconds)
       Await.result(stopped, Duration(10, TimeUnit.SECONDS))
       // the actor has been stopped
     } catch {
@@ -77,9 +78,15 @@ object FileLogResource {
     FileLogResource.scheduleService.scheduleWithFixedDelay(action, delay, time, TimeUnit.MILLISECONDS)
   }
 
+  def apply(topics: java.util.Map[String, TopicConfig], compressors:Int) = {
+   new FileLogResource(
+		Map(collection.JavaConversions.mapAsScalaMap(topics).toSeq:_*), compressors).init() 
+  }
+
   def apply(topics: Map[String, TopicConfig], compressors: Int = 100) = {
     new FileLogResource(topics, compressors).init()
   }
+
 
 }
 
@@ -112,13 +119,18 @@ class FileLogResource private (topics: Map[String, TopicConfig], compressors: In
     this
   }
 
-  def get(topic: String) = {
+  def get(topic: String):ActorRef = {
     openWriters.synchronized {
       if (openWriters.containsKey(topic)) { openWriters(topic) } else { val w = createWriter(topic); openWriters.put(topic, w); w }
     }
   }
 
-  def createWriter(topic: String) = {
+  def send(topic:String, msg: MessageMetaData) = { 
+    val writer = get(topic)
+    writer ! msg
+  }
+
+  def createWriter(topic: String) : ActorRef = {
     LogFileWriter(topics(topic), compressionPoolFactory, statusActor)
   }
 
@@ -215,7 +227,7 @@ class StatusActor extends Actor with StatusActorMBean {
 
 object LogFileWriter {
 
-  def apply(topicConfig: TopicConfig, compressionPoolFactory: CompressionPoolFactory, statusActor: ActorRef = null) = {
+  def apply(topicConfig: TopicConfig, compressionPoolFactory: CompressionPoolFactory, statusActor: ActorRef = null) : ActorRef = {
     FileLogResource.system.actorOf(Props(new LogFileWriter(topicConfig, compressionPoolFactory, statusActor)), "logWriter-" + topicConfig.topic)
   }
 
@@ -229,7 +241,7 @@ class LogFileWriter(topicConfig: TopicConfig, compressionPoolFactory: Compressio
   val logger = Logger.getLogger(classOf[LogFileWriter])
 
   override val supervisorStrategy = AllForOneStrategy(maxNrOfRetries = 0) {
-    case e: ActorInitializationException => logger.info("Error: " + e.actor); context.system.shutdown(); Stop
+    case e: ActorInitializationException => logger.info("Error: " + e); context.system.shutdown(); Stop
     case e: ActorKilledException => logger.info("Actor killed Error" + e.getCause()); context.system.shutdown(); Stop
     case e: Exception => logger.info("Exception " + e.getCause()); context.system.shutdown(); Restart
     case _ => logger.info("Error"); context.system.shutdown(); Escalate
