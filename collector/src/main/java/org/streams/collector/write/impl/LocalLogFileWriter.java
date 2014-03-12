@@ -1,12 +1,14 @@
 package org.streams.collector.write.impl;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import org.apache.commons.io.IOUtils;
+import org.apache.commons.codec.binary.Base64;
 import org.apache.hadoop.io.compress.CompressionCodec;
 import org.apache.log4j.Logger;
 import org.streams.collector.write.FileOutputStreamPool;
@@ -100,11 +102,12 @@ public class LocalLogFileWriter implements LogFileWriter {
 	/**
 	 * 
 	 * @return the number of bytes written
-	 * @throws InterruptedException 
+	 * @throws InterruptedException
 	 */
 	@Override
-	public int write(FileStatus.FileTrackingStatus fileStatus, InputStream input,
-			PostWriteAction postWriteAction) throws WriterException, InterruptedException {
+	public int write(FileStatus.FileTrackingStatus fileStatus,
+			InputStream input, PostWriteAction postWriteAction)
+			throws WriterException, InterruptedException {
 
 		String key = logFileNameExtractor.getFileName(fileStatus);
 		int wasWritten = 0;
@@ -123,11 +126,26 @@ public class LocalLogFileWriter implements LogFileWriter {
 			// we need to mark the current stream
 			outputStream.mark();
 
-			// we don't need to synchronise here. The FileOutputStreamPool
-			// will lock the output stream for use only by this thread
-			// until the releaseFile method is called
-			wasWritten = IOUtils.copy(input, outputStream);
-			
+			/**
+			 * here we deserialise the base 64 data and write out
+			 * [len][bts][len][bts]
+			 */
+			final BufferedReader reader = new BufferedReader(
+					new InputStreamReader(input));
+			String line = null;
+			try {
+				while ((line = reader.readLine()) != null) {
+					final byte[] bts = Base64.decodeBase64(line
+							.getBytes("UTF-8"));
+
+					wasWritten += bts.length;
+					outputStream.write(bts.length);
+					outputStream.write(bts);
+				}
+			} finally {
+				reader.close();
+			}
+
 			if (postWriteAction != null) {
 				postWriteAction.run(wasWritten);
 			}
@@ -247,7 +265,7 @@ public class LocalLogFileWriter implements LogFileWriter {
 				// due to threading and this method
 				// being called from the Timer Thread.
 				LOG.debug("Using rollover class: " + logRolloverCheck);
-				
+
 				if (logRolloverCheck != null
 						&& fileOutputStreamPoolFactory != null)
 					fileOutputStreamPoolFactory
