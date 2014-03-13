@@ -179,17 +179,19 @@ public class CoordinationServiceClientImpl implements CoordinationServiceClient 
 			if(fileStatus.getFilePointer() != status.getFilePointer()){
 				//the zookeeper client might be out of sync. sync and retry.
 				
+				
 				zstore.sync(key);
 				status = (FileTrackingStatus) zstore.get(key,  FileStatus.FileTrackingStatus.newBuilder());
-		
+		        if(fileStatus.getFilePointer() != status.getFilePointer()){
 				
 				if(status != null){
 					syncPointer = new SyncPointer(status);
 					
-					LOG.info("Possible sync conflict: syncing collector with zookeeper: " + fileStatus.getFilePointer()
-							+ " zookeeper.old " + fileStatus.getFilePointer() 
-							+ " zookeeper.new " + status.getFilePointer() + " key: " + key + " syncid: " + syncPointer.getTimeStamp());
-					
+					if(LOG.isDebugEnabled()){
+						LOG.debug("Possible sync conflict: syncing collector with zookeeper: " + fileStatus.getFilePointer()
+								+ " zookeeper.old " + fileStatus.getFilePointer() 
+								+ " zookeeper.new " + status.getFilePointer() + " key: " + key + " syncid: " + syncPointer.getTimeStamp());
+					}
 				}
 			}
 			
