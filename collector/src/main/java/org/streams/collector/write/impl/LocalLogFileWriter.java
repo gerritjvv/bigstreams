@@ -204,7 +204,7 @@ public class LocalLogFileWriter implements LogFileWriter {
 	 */
 	private final File getOutputFile(String key) {
 		return (compressionCodec == null) ? new File(baseDir, key) : new File(
-				baseDir, key + "-bin" + compressionCodec.getDefaultExtension());
+				baseDir, key + compressionCodec.getDefaultExtension());
 	}
 
 	/**

@@ -63,7 +63,7 @@ public class SimpleLogRollover implements LogRollover{
 		
 		//if the fileName has a known compression extension, roll with last suffix being the compression extension
 		if(extension == null || extension.length() < 1){
-			ret = fileName + '.'  + rolloverIndex;
+			ret = fileName + "-bin."   + rolloverIndex;
 		}else{
 			ret = FilenameUtils.removeExtension(fileName) + '.'+ rolloverIndex + '.' + extension;
 		}
@@ -75,7 +75,7 @@ public class SimpleLogRollover implements LogRollover{
 
 	@Override
 	public boolean isRolledFile(File file) {
-		//get the second extension i.e. the times stamp extension
+		//get the second extension i.e. the time stamp extension
 		
 		boolean isLong = false;
 		try{
