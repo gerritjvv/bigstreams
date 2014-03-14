@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector</artifactId>
-	<version>0.2.5</version>
+	<version>0.3.0</version>
 	<name>collector</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -29,7 +29,7 @@
 		<dependency>
 			<groupId>org.streams</groupId>
 			<artifactId>commons</artifactId>
-			<version>${project.version}</version>
+			<version>0.2.5</version>
 			<exclusions>
 				<exclusion>
 					<groupId>org.restlet.jse</groupId>
