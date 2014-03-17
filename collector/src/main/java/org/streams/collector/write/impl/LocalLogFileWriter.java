@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -100,6 +101,21 @@ public class LocalLogFileWriter implements LogFileWriter {
 	}
 
 	/**
+	 * Helper function for writing
+	 * 
+	 * @param out
+	 * @param v
+	 * @throws IOException
+	 */
+	private static final void writeInt(final OutputStream out, final int v)
+			throws IOException {
+		out.write(0xff & (v >> 24));
+		out.write(0xff & (v >> 16));
+		out.write(0xff & (v >> 8));
+		out.write(0xff & v);
+	}
+
+	/**
 	 * 
 	 * @return the number of bytes written
 	 * @throws InterruptedException
@@ -139,8 +155,9 @@ public class LocalLogFileWriter implements LogFileWriter {
 							.getBytes("UTF-8"));
 
 					wasWritten += bts.length;
-					outputStream.write(bts.length);
+					writeInt(outputStream, bts.length);
 					outputStream.write(bts);
+
 				}
 			} finally {
 				reader.close();

@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector</artifactId>
-	<version>0.3.0</version>
+	<version>0.3.1</version>
 	<name>collector</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -57,10 +57,19 @@
 			<version>0.1.1</version>
 		</dependency>
 		<dependency>
+			<groupId>commons-codec</groupId>
+			<artifactId>commons-codec</artifactId>
+			<version>1.9</version>
+		</dependency>
+		<dependency>
 			<groupId>org.apache.hadoop</groupId>
 			<artifactId>hadoop-core</artifactId>
 			<version>${hadoop.version}</version>
 			<exclusions>
+				<exclusion>
+					<groupId>commons-codec</groupId>
+					<artifactId>commons-codec</artifactId>
+				</exclusion>
 				<exclusion>
 					<groupId>hsqldb</groupId>
 					<artifactId>hsqldb</artifactId>
