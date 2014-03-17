@@ -61,11 +61,10 @@ public class SimpleLogRollover implements LogRollover{
 		
 		String ret = null;
 		
-		//if the fileName has a known compression extension, roll with last suffix being the compression extension
 		if(extension == null || extension.length() < 1){
-			ret = fileName + "-bin."   + rolloverIndex;
+			ret = fileName + rolloverIndex + ".bin";
 		}else{
-			ret = FilenameUtils.removeExtension(fileName) + '.'+ rolloverIndex + '.' + extension;
+			ret = FilenameUtils.removeExtension(fileName) + '.'+ rolloverIndex + ".bin." + extension;
 		}
 		
 
