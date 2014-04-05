@@ -52,6 +52,7 @@ import org.streams.collector.server.CollectorServer;
 import org.streams.collector.server.impl.CollectorServerImpl;
 import org.streams.collector.server.impl.IpFilterHandler;
 import org.streams.collector.server.impl.LogWriterHandler;
+import org.streams.collector.server.impl.RedisCoordinationServiceClient;
 import org.streams.collector.write.FileOutputStreamPoolFactory;
 import org.streams.collector.write.LogFileNameExtractor;
 import org.streams.collector.write.LogFileWriter;
@@ -70,7 +71,6 @@ import org.streams.commons.app.impl.RestletService;
 import org.streams.commons.cli.AppStartCommand;
 import org.streams.commons.compression.CompressionPoolFactory;
 import org.streams.commons.file.CoordinationServiceClient;
-import org.streams.commons.file.impl.CoordinationServiceClientImpl;
 import org.streams.commons.group.Group;
 import org.streams.commons.group.GroupHeartbeatService;
 import org.streams.commons.group.GroupKeeper;
@@ -80,8 +80,6 @@ import org.streams.commons.metrics.impl.MetricChannel;
 import org.streams.commons.metrics.impl.MetricsAppService;
 import org.streams.commons.zookeeper.ZConnection;
 import org.streams.commons.zookeeper.ZGroup;
-import org.streams.commons.zookeeper.ZLock;
-import org.streams.commons.zookeeper.ZStore;
 import org.streams.commons.zookeeper.ZStoreExpireCheckService;
 import org.streams.coordination.cli.startup.service.impl.CollectorServerService;
 import org.streams.coordination.cli.startup.service.impl.FileCloseService;
@@ -439,15 +437,12 @@ public class CollectorDI {
 				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
 						.toString());
 
-		ZConnection connection = beanFactory.getBean(ZConnection.class);
+		String host = configuration.getString(
+				CollectorProperties.WRITER.REDIS_HOST.toString(),
+				CollectorProperties.WRITER.REDIS_HOST.getDefaultValue()
+						.toString());
 
-		ZStoreExpireCheckService expireCheckService = beanFactory
-				.getBean(ZStoreExpireCheckService.class);
-		ZStore zstore = new ZStore("/coordination/" + group, connection);
-
-		expireCheckService.getStores().add(zstore);
-
-		return new CoordinationServiceClientImpl(new ZLock(connection), zstore);
+		return new RedisCoordinationServiceClient(host, group);
 	}
 
 	@Bean

@@ -31,6 +31,8 @@ public interface CollectorProperties {
 		
 		OPEN_FILE_LIMIT("openfile.limit", 30000L),
 		
+		REDIS_HOST("redis.host", "localhost"),
+		
 		COORDINATION_GROUP("coordination.group", "default"),
 		BLOCKED_IPS("blocked.ips", ""),
 		
