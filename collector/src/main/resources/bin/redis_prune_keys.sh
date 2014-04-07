@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 basedir=`dirname $0`
 
 currentdate=$(/bin/date --date "2 week ago" +%Y-%m-%d)
