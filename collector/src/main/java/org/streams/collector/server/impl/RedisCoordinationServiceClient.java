@@ -91,7 +91,7 @@ public class RedisCoordinationServiceClient implements
 	 * @param pointer
 	 */
 	private void saveSyncPointer(String lockId, SyncPointer pointer) {
-		RedisConn.persistent_set(pointer, lockId, pointer.getFilePointer());
+		RedisConn.persistent_set(connector, lockId, pointer.getFilePointer());
 	}
 
 	/**

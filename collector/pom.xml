@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector</artifactId>
-	<version>0.5.0</version>
+	<version>0.5.1</version>
 	<name>collector</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
