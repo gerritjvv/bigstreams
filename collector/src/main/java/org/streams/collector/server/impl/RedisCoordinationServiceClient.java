@@ -50,23 +50,23 @@ public class RedisCoordinationServiceClient implements
 
 				final SyncPointer pointer = getSyncPointer(lockId,
 						fileStatus.getFilePointer());
-
+				final long longFilePointer = pointer.getFilePointer();
+				
 				// the both file pointers match, then call in sync
-				if (pointer.getFilePointer() == fileStatus.getFilePointer()) {
-					return listener.inSync(fileStatus, new SyncPointer(),
+				if (longFilePointer == fileStatus.getFilePointer()) {
+					return listener.inSync(fileStatus, pointer,
 							new PostWriteAction() {
 								// on post write, inc the file pointer and push
 								// to redis
 								@Override
 								public void run(int bytesWritten)
 										throws Exception {
-									pointer.incFilePointer(bytesWritten);
-
+									
 									// save pointer -- on exception the output
 									// streams is rolled back.
 									// -- ensures that pointer save and file
 									// output is atomic.
-									saveSyncPointer(lockId, pointer);
+									saveSyncPointer(lockId, longFilePointer + bytesWritten);
 								}
 
 							});
@@ -90,8 +90,8 @@ public class RedisCoordinationServiceClient implements
 	 * @param lockId
 	 * @param pointer
 	 */
-	private void saveSyncPointer(String lockId, SyncPointer pointer) {
-		RedisConn.persistent_set(connector, lockId, pointer.getFilePointer());
+	private void saveSyncPointer(String lockId, long pointer) {
+		RedisConn.persistent_set(connector, lockId, String.valueOf(pointer));
 	}
 
 	private static final long castToLong(Object obj){
@@ -112,7 +112,7 @@ public class RedisCoordinationServiceClient implements
 	private final SyncPointer getSyncPointer(String lockId, long currentPointer) {
 		Object val = RedisConn.persistent_get(connector, lockId);
 		SyncPointer pointer = new SyncPointer();
-
+		
 		if (val != null) {
 			pointer.setFilePointer(castToLong(val));
 		} else {

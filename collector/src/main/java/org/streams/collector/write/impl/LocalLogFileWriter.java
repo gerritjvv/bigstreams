@@ -162,9 +162,9 @@ public class LocalLogFileWriter implements LogFileWriter {
 
 				}
 			} finally {
+				wasWritten = (int)countInput.getCount();
 				reader.close();
 				countInput.close();
-				wasWritten = (int)countInput.getCount();
 			}
 
 			if (postWriteAction != null) {
