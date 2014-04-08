@@ -94,6 +94,14 @@ public class RedisCoordinationServiceClient implements
 		RedisConn.persistent_set(connector, lockId, pointer.getFilePointer());
 	}
 
+	private static final long castToLong(Object obj){
+		if(obj instanceof Long){
+			return ((Long)obj).longValue();
+		}else{
+			return Long.parseLong(obj.toString());
+		}
+	}
+	
 	/**
 	 * Load the pointer from redis or if null the current pointer is used
 	 * 
@@ -106,7 +114,7 @@ public class RedisCoordinationServiceClient implements
 		SyncPointer pointer = new SyncPointer();
 
 		if (val != null) {
-			pointer.setFilePointer(((Long) val).longValue());
+			pointer.setFilePointer(castToLong(val));
 		} else {
 			pointer.setFilePointer(currentPointer);
 		}
