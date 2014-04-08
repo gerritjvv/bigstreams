@@ -22,6 +22,8 @@ import org.streams.commons.file.PostWriteAction;
 import org.streams.commons.file.RollBackOutputStream;
 import org.streams.commons.file.WriterException;
 
+import com.google.common.io.CountingInputStream;
+
 /**
  * This class has the following aims:<br/>
  * 
@@ -146,21 +148,23 @@ public class LocalLogFileWriter implements LogFileWriter {
 			 * here we deserialise the base 64 data and write out
 			 * [len][bts][len][bts]
 			 */
-			final BufferedReader reader = new BufferedReader(
-					new InputStreamReader(input));
+			final CountingInputStream countInput = new CountingInputStream(
+					input);
+			final BufferedReader reader = new BufferedReader(new InputStreamReader(countInput));
+
 			String line = null;
 			try {
 				while ((line = reader.readLine()) != null) {
-					final byte[] bts = Base64.decodeBase64(line
-							.getBytes("UTF-8"));
+					final byte[] bts = Base64.decodeBase64(line.getBytes("UTF-8"));
 
-					wasWritten += bts.length;
 					writeInt(outputStream, bts.length);
 					outputStream.write(bts);
 
 				}
 			} finally {
 				reader.close();
+				countInput.close();
+				wasWritten = (int)countInput.getCount();
 			}
 
 			if (postWriteAction != null) {
