@@ -45,7 +45,8 @@ public class RedisCoordinationServiceClient implements
 		final String lockId = group + "/" + fileStatus.getAgentName()
 				+ fileStatus.getLogType() + fileStatus.getFileName();
 
-		if (RedisConn.lock(connector, lockId)) {
+		
+		if (tryLock(connector, lockId)) {
 			try {
 
 				final SyncPointer pointer = getSyncPointer(lockId,
@@ -82,6 +83,25 @@ public class RedisCoordinationServiceClient implements
 		}
 
 		return null;
+	}
+
+	private static final boolean tryLock(final Object connector, final String lockId) {
+		boolean hasLock = false;
+		int c = 0;
+		
+		//we can use a reentrant lock here because locally a file lock is also used, this ensures that if redis
+		//is slow with lock cleanout that the same collector will not fail on locking
+		while(!(hasLock = RedisConn.reentrant_lock(connector, lockId)) && (c++ < 5)){
+			try {
+				Thread.sleep(100 * c);
+				LOG.info("Cannot object lock for lockId " + lockId + " retry " +  c + " of 5");
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+				return hasLock;
+			}
+		}
+		
+		return hasLock;
 	}
 
 	/**
