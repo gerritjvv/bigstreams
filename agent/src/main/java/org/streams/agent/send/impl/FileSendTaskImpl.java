@@ -197,7 +197,7 @@ public class FileSendTaskImpl implements FileSendTask {
 				}
 
 				try {
-					Thread.sleep(500L);
+					Thread.sleep(100L);
 				} catch (InterruptedException e) {
 					interrupted = true;
 					break;
