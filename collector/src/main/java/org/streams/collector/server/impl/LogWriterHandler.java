@@ -232,7 +232,7 @@ public class LogWriterHandler extends SimpleChannelUpstreamHandler {
 									ChannelBuffer buffer = ChannelBuffers
 											.dynamicBuffer();
 									buffer.writeInt(200);
-									return buffer;
+						return buffer;
 								}
 
 							});
