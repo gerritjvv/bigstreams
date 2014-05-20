@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>org.streams</groupId>
 	<artifactId>collector</artifactId>
-	<version>0.5.3</version>
+	<version>0.5.5</version>
 	<name>collector</name>
 	<url>http://code.google.com/p/bigstreams/</url>
 	<properties>
@@ -25,7 +25,7 @@
 		<dependency>
 			<groupId>group-redis</groupId>
 			<artifactId>group-redis</artifactId>
-			<version>0.2.1</version>
+			<version>0.6.3-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.streams</groupId>

@@ -7,9 +7,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import net.jpountz.xxhash.XXHash32;
-import net.jpountz.xxhash.XXHashFactory;
-
 import org.apache.log4j.Logger;
 import org.streams.commons.file.CoordinationServiceClient;
 import org.streams.commons.file.FileStatus.FileTrackingStatus;
@@ -32,40 +29,43 @@ public class RedisCoordinationServiceClient implements
 
 	final static HashFunction hash = Hashing.murmur3_32();
 	final static Charset char_set = Charset.forName("UTF-8");
-	
+
 	final Object[] connectors;
 	final String group;
 
-	
-	public RedisCoordinationServiceClient(String redishosts, String group) {
-		
+	public RedisCoordinationServiceClient(String[] hosts, String group) {
+
 		this.group = group;
 
 		// for each host create a group connector
-		final String[] hosts = redishosts.split(",");
-		
-		System.out.println("Creating RedisCoordinationServiceClient with " + redishosts + " = " + Arrays.toString(hosts));
+		LOG.info("Creating RedisCoordinationServiceClient with " + hosts
+				+ " = " + Arrays.toString(hosts));
 		connectors = new Object[hosts.length];
-		for (int i = 0; i < hosts.length; i++){
-			final String host = hosts[i].trim();
-			connectors[i] = RedisConn.create_group_connector(host, createConf(group, extractPort(host)));
+		for (int i = 0; i < hosts.length; i++) {
+			final Object[] parts = extractPort(hosts[i].trim());
+			final String host = (String) parts[0];
+			final Integer port = (Integer) parts[1];
+			connectors[i] = RedisConn.create_group_connector(host,
+					createConf(group, port));
 		}
 
 	}
 
 	/**
-	 * Host can be addres or address:port if no port is provided the value 6379 (default redis port) is returned.
+	 * Host can be address or address:port if no port is provided the value 6379
+	 * (default redis port) is returned.
+	 * 
 	 * @param host
-	 * @return int the port value
+	 * @return Object [0] = host:String, [1] = port:Integer
 	 */
-	private static final int extractPort(String host){
+	private static final Object[] extractPort(String host) {
 		String[] parts = host.split(":");
-		if(parts.length == 2)
-			return Integer.parseInt(parts[1].trim());
+		if (parts.length == 2)
+			return new Object[] { parts[0], Integer.parseInt(parts[1].trim()) };
 		else
-			return 6379;
+			return new Object[] { host, 6379 };
 	}
-	
+
 	private static final Map<String, Object> createConf(String group, int port) {
 		final Map<String, Object> props = new HashMap<String, Object>();
 		props.put("group-name", group);
@@ -75,8 +75,12 @@ public class RedisCoordinationServiceClient implements
 
 	@Override
 	public void destroy() {
-		for(Object connector : connectors)
-		   try{ RedisConn.close(connector); } catch (Exception e ){LOG.error(e.toString(), e);}
+		for (Object connector : connectors)
+			try {
+				RedisConn.close(connector);
+			} catch (Exception e) {
+				LOG.error(e.toString(), e);
+			}
 	}
 
 	@Override
@@ -87,7 +91,7 @@ public class RedisCoordinationServiceClient implements
 				+ fileStatus.getLogType() + fileStatus.getFileName();
 
 		final Object connector = getConnector(lockId);
-		
+
 		if (tryLock(connector, lockId)) {
 			try {
 
@@ -127,14 +131,17 @@ public class RedisCoordinationServiceClient implements
 
 		return null;
 	}
-	
+
 	/**
 	 * Use a hash and mod algorithm to check
+	 * 
 	 * @param id
 	 * @return Object connector
 	 */
-	private final Object getConnector(String id){
-        final int i = Hashing.consistentHash(hash.hashString(id, char_set), connectors.length);
+	private final Object getConnector(String id) {
+		final int i = Hashing.consistentHash(hash.hashString(id, char_set),
+				connectors.length);
+		//LOG.info("SELECT HOST [" + i + "] = " + connectors[i]);
 		return connectors[i];
 	}
 
@@ -170,7 +177,7 @@ public class RedisCoordinationServiceClient implements
 	 */
 	private void saveSyncPointer(String lockId, long pointer) {
 		final Object connector = getConnector(lockId);
-		
+
 		RedisConn.persistent_set(connector, lockId, String.valueOf(pointer));
 	}
 
@@ -191,7 +198,7 @@ public class RedisCoordinationServiceClient implements
 	 */
 	private final SyncPointer getSyncPointer(String lockId, long currentPointer) {
 		final Object connector = getConnector(lockId);
-		
+
 		Object val = RedisConn.persistent_get(connector, lockId);
 		SyncPointer pointer = new SyncPointer();
 

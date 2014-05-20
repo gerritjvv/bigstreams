@@ -437,12 +437,14 @@ public class CollectorDI {
 				CollectorProperties.WRITER.COORDINATION_GROUP.getDefaultValue()
 						.toString());
 
-		String host = configuration.getString(
-				CollectorProperties.WRITER.REDIS_HOST.toString(),
-				CollectorProperties.WRITER.REDIS_HOST.getDefaultValue()
+		String[] hosts = configuration.getStringArray(
+				CollectorProperties.WRITER.REDIS_HOST.toString()
 						.toString());
 
-		return new RedisCoordinationServiceClient(host, group);
+		if(hosts == null || hosts.length == 0)
+			hosts = new String[]{CollectorProperties.WRITER.REDIS_HOST.getDefaultValue().toString()};
+		
+		return new RedisCoordinationServiceClient(hosts, group);
 	}
 
 	@Bean
