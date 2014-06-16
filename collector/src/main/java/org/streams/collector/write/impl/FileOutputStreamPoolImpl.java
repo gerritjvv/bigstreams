@@ -49,7 +49,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			.getLogger(FileOutputStreamPoolImpl.class);
 
 	final AtomicBoolean isShutdown = new AtomicBoolean(false);
-	
+
 	/**
 	 * Used to lock individual operations on a key
 	 */
@@ -60,7 +60,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	 * Uses to monitor the files that have not been released yet.
 	 */
 	final Set<String> filesExternalLockRequest = new ConcurrentSkipListSet<String>();
-	
+
 	/**
 	 * each tmie a file output stream is created an entry is added here.
 	 */
@@ -117,25 +117,26 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		this.compressionPoolFactory = compressionPoolFactory;
 	}
 
-	public void shutdown() throws IOException{
-	
-		if(!isShutdown.getAndSet(true)){
+	public void shutdown() throws IOException {
+
+		if (!isShutdown.getAndSet(true)) {
 			closeAll();
 		}
-		
+
 	}
-	
+
 	/**
 	 * If a file is open return true.
+	 * 
 	 * @param file
 	 * @return
 	 */
-	public boolean isFileOpen(File file){
-		
+	public boolean isFileOpen(File file) {
+
 		return filesExternalLockRequest.contains(file.getAbsolutePath());
-		
+
 	}
-	
+
 	/**
 	 * Will always return an opened output stream.<br/>
 	 * 
@@ -152,10 +153,11 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			CompressionCodec compressionCodec, File file, boolean append)
 			throws IOException {
 
-		if(isShutdown.get()){
-			throw new IllegalStateException("The collector has been shutdown, no more file writing is allowed");
+		if (isShutdown.get()) {
+			throw new IllegalStateException(
+					"The collector has been shutdown, no more file writing is allowed");
 		}
-		
+
 		// if interrupted the exception will be thrown and nothing will be done
 		// this lock is kept until the file has been released.
 		// note that no rollover will be done if this lock is not released
@@ -222,7 +224,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 			FileUtils.forceMkdir(file.getParentFile());
 			file.createNewFile();
-			
+
 			// wait for file creation. This is needed if the file is stored
 			// via NFS or other.
 			// a 30 second limit is created
@@ -284,9 +286,11 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 		}
 
-		//this way we know the user has an external request on the output streams
-		//i.e. although the timeout might expire if the collector is slowing down in writing
-		//because of load it should not timeout the file.
+		// this way we know the user has an external request on the output
+		// streams
+		// i.e. although the timeout might expire if the collector is slowing
+		// down in writing
+		// because of load it should not timeout the file.
 		filesExternalLockRequest.add(file.getAbsolutePath());
 		fileUpdateTimes.put(file, System.currentTimeMillis());
 
@@ -305,10 +309,10 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 
 		Set<String> keys = openFiles.keySet();
 
-		if(keys == null){
+		if (keys == null) {
 			return;
 		}
-		
+
 		// we're using concurrent hashmap so the set is safe
 		// for each key we will:
 		// --- (1) - check to see if we should roll it over
@@ -329,55 +333,53 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 			Long creationTime = fileCreationTimes.get(file);
 			// the time in milliseconds when the file was last updated
 			Long updateTime = null;
-			try{
-				updateTime = (filesExternalLockRequest.contains(file.getAbsolutePath())) ? System.currentTimeMillis() : fileUpdateTimes.get(file);
-			}catch(NullPointerException excp){
-				
+			try {
+				updateTime = (filesExternalLockRequest.contains(file
+						.getAbsolutePath())) ? System.currentTimeMillis()
+						: fileUpdateTimes.get(file);
+			} catch (NullPointerException excp) {
+
 				fileCreationTimes.put(file,
 						Long.valueOf(System.currentTimeMillis()));
-				
+
 				updateTime = System.currentTimeMillis();
 			}
-			
+
 			boolean shouldRollover = false;
-			try{
-			 shouldRollover = rolloverCheck.shouldRollover(file,
-					creationTime, updateTime);
-			}catch(Throwable t){
+			try {
+				shouldRollover = rolloverCheck.shouldRollover(file,
+						creationTime, updateTime);
+			} catch (Throwable t) {
 				t.printStackTrace();
-				LOG.error("rolloverCheck: " + rolloverCheck + " file : " + file + " error: " + t.toString(), t);
+				LOG.error("rolloverCheck: " + rolloverCheck + " file : " + file
+						+ " error: " + t.toString(), t);
 			}
-			
+
 			if (shouldRollover) {
-				boolean lockAcquired;
 
-				LOG.info("Rollover: " + file.getAbsolutePath() + " locked files: " + Arrays.asList(filesExternalLockRequest.toArray()));
-				try {
-					// this try lock is still good for inactivity checks also
-					// because an inactive file will not have any locks.
-					lockAcquired = keyLock.acquireLock(key);
-				} catch (InterruptedException e) {
-					//ignore we need to close the files
-				}
-
-				if (lockAcquired) {
-					
-					fileUpdateTimes.remove(file);
-					
-					
-					try {
-						//remove file
-						closeLockedFile(key, openFiles.get(key));
-					} finally {
-						keyLock.releaseLock(key);
-					}
-				} else {
-					LOG.warn("Failed to acquire a lock on "
-							+ file.getAbsolutePath()
-							+ " this file will be rolled over later");
+				LOG.info("Rollover: " + file.getAbsolutePath()
+						+ " locked files: "
+						+ Arrays.asList(filesExternalLockRequest.toArray()));
+				
+				boolean acquired = false;
+				
+				try{				
+					keyLock.acquireLock(key);
+					acquired = true;
+				}catch(InterruptedException ie){
 				}
 				
-			}
+				fileUpdateTimes.remove(file);
+
+				try {
+					// remove file
+				    if(acquired)
+					 closeLockedFile(key, openFiles.get(key));
+				} finally {
+					keyLock.releaseLock(key);
+				}
+				
+			} 
 
 		}
 	}
@@ -396,8 +398,8 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		keyLock.releaseLock(key);
 
 		File file = openFiles.get(key);
-		
-		if (file != null){
+
+		if (file != null) {
 			fileUpdateTimes.put(file, System.currentTimeMillis());
 			filesExternalLockRequest.remove(file.getAbsolutePath());
 		}
@@ -426,7 +428,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	private void closeLockedFile(String key, File file) throws IOException {
 		// remove from openFiles
 		File fileFound = openFiles.remove(key);
-		
+
 		if (file == null) {
 			LOG.info("No file found to roll for " + key);
 			return;
@@ -498,7 +500,8 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 		try {
 			keyLock.acquireLock(key);
 		} catch (InterruptedException e) {
-			//even if interrupted the close file method should always close, the file.
+			// even if interrupted the close file method should always close,
+			// the file.
 		}
 
 		try {
