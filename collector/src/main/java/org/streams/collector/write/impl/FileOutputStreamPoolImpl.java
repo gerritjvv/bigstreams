@@ -72,7 +72,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 	 */
 	final Map<File, Long> fileUpdateTimes = new ConcurrentHashMap<File, Long>();
 
-	KeyLock keyLock = new KeyLock();
+	final KeyLock keyLock = new KeyLock();
 
 	public static final long defaultOpenFileLimit = 30000L;
 
@@ -355,11 +355,9 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 				try {
 					// this try lock is still good for inactivity checks also
 					// because an inactive file will not have any locks.
-					lockAcquired = keyLock.acquireLock(key, 1000L);
+					lockAcquired = keyLock.acquireLock(key);
 				} catch (InterruptedException e) {
-					Thread.currentThread().interrupt();
-					// we need to thread to leave this method immediately
-					return;
+					//ignore we need to close the files
 				}
 
 				if (lockAcquired) {
@@ -378,7 +376,7 @@ public class FileOutputStreamPoolImpl implements FileOutputStreamPool {
 							+ file.getAbsolutePath()
 							+ " this file will be rolled over later");
 				}
-
+				
 			}
 
 		}
