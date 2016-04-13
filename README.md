@@ -47,3 +47,13 @@ These logs cannot afford any data loss, data corruption or row duplication. File
 
 Logs collected are partitioned per date,hour and size, allowing administrators to specify the chunk sizes of collected logs. e.g. Lets say we have log type A and we want to use this on a hadoop cluster for block size 128MB. Streams can import all logs for type A base on daydate and hour and in chunks more or less in 128MB size. This makes the files easier to process in M/R and allows non splittable compression formats to be used.  
 
+## Contact
+
+Email: gerritjvv@gmail.com
+
+Twitter: @gerrit_jvv
+
+## License
+
+
+Distributed under the Eclipse Public License either version 1.0 
